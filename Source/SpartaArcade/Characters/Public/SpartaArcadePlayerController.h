@@ -1,5 +1,3 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -7,7 +5,6 @@
 #include "GameFramework/PlayerController.h"
 #include "SpartaArcadePlayerController.generated.h"
 
-/** Forward declaration to improve compiling times */
 class UNiagaraSystem;
 class UInputMappingContext;
 class UInputAction;
@@ -22,47 +19,45 @@ class ASpartaArcadePlayerController : public APlayerController
 public:
 	ASpartaArcadePlayerController();
 
-	/** Time Threshold to know if it was a short press */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-	float ShortPressThreshold;
-
-	/** FX Class that we will spawn when clicking */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-	UNiagaraSystem* FXCursor;
-
-	/** MappingContext */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Input, meta=(AllowPrivateAccess = "true"))
+	// IMC
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputMappingContext* DefaultMappingContext;
 	
-	/** Jump Input Action */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Input, meta=(AllowPrivateAccess = "true"))
-	UInputAction* SetDestinationClickAction;
+	// WASD 이동을 위한 인풋 액션
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* MoveAction;
+	
+	// 폭탄 설치 인풋 액션
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* PlaceBombAction;
 
-	/** Jump Input Action */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Input, meta=(AllowPrivateAccess = "true"))
-	UInputAction* SetDestinationTouchAction;
+	// 폭탄 차기 및 구급상자 사용 인풋 액션
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* KickBombAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* UseFirstAidKitAction;
 
 protected:
-	/** True if the controlled character should navigate to the mouse cursor. */
-	uint32 bMoveToMouseCursor : 1;
 
 	virtual void SetupInputComponent() override;
+	virtual void BeginPlay() override;
 	
-	// To add mapping context
-	virtual void BeginPlay();
+	//  WASD 이동 입력 처리 함수
+	void OnMoveTriggered(const struct FInputActionValue& Value);
 
-	/** Input handlers for SetDestination action. */
-	void OnInputStarted();
-	void OnSetDestinationTriggered();
-	void OnSetDestinationReleased();
-	void OnTouchTriggered();
-	void OnTouchReleased();
+	// 폭탄 설치, 폭탄 차기, 구급상자 사용 입력 키 바인딩용 콜백 함수들
+	void OnPlaceBombTriggered();
+	void OnKickBombTriggered();
+	void OnUseFirstAidKitTriggered();
 
-private:
-	FVector CachedDestination;
+	// 서버 연산 주도를 위한 Server RPC 선언
+	UFUNCTION(Server, Reliable)
+	void ServerPlaceBomb();
 
-	bool bIsTouch; // Is it a touch device
-	float FollowTime; // For how long it has been pressed
+	UFUNCTION(Server, Reliable)
+	void ServerKickBomb();
+
+	UFUNCTION(Server, Reliable)
+	void ServerUseFirstAidKit();
 };
-
-
