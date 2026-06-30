@@ -1,5 +1,5 @@
-#include "Systems/ExplosionComponent.h"
-#include "Systems/Damageable.h"
+#include "ExplosionComponent.h"
+#include "Damageable.h"
 #include "Kismet/KismetSystemLibrary.h"
 
 UExplosionComponent::UExplosionComponent()

@@ -1,6 +1,6 @@
-#include "Items/BreakableBox.h"
+#include "BreakableBox.h"
 #include "Components/StaticMeshComponent.h"
-#include "Systems/ItemDropComponent.h"
+#include "ItemDropComponent.h"
 
 ABreakableBox::ABreakableBox()
 {

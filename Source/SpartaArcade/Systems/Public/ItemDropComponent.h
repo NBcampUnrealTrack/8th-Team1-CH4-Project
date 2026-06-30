@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Systems/BomberTypes.h"
+#include "BomberTypes.h"
 #include "ItemDropComponent.generated.h"
 
 class AItemActor;

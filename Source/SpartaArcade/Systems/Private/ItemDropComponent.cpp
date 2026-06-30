@@ -1,5 +1,5 @@
-#include "Systems/ItemDropComponent.h"
-#include "Items/ItemActor.h"
+#include "ItemDropComponent.h"
+#include "ItemActor.h"
 
 UItemDropComponent::UItemDropComponent()
 {

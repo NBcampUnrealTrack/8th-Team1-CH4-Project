@@ -1,4 +1,4 @@
-#include "Systems/CombatComponent.h"
+#include "CombatComponent.h"
 // #include "Net/UnrealNetwork.h"
 
 UCombatComponent::UCombatComponent()

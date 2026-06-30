@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Systems/BomberTypes.h"
+#include "BomberTypes.h"
 #include "ItemActor.generated.h"
 
 class USphereComponent;

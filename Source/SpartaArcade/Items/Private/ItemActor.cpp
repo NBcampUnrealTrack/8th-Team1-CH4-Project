@@ -1,7 +1,7 @@
-#include "Items/ItemActor.h"
+#include "ItemActor.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
-#include "Systems/StatComponent.h"
+#include "StatComponent.h"
 
 AItemActor::AItemActor()
 {

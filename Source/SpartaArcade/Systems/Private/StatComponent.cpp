@@ -1,4 +1,4 @@
-#include "Systems/StatComponent.h"
+#include "StatComponent.h"
 // #include "Net/UnrealNetwork.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"

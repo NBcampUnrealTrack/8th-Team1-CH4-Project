@@ -1,6 +1,6 @@
-#include "Systems/Bomb.h"
-#include "Systems/ExplosionComponent.h"
-#include "Systems/BomberTypes.h"
+#include "Bomb.h"
+#include "ExplosionComponent.h"
+#include "BomberTypes.h"
 
 ABomb::ABomb()
 {

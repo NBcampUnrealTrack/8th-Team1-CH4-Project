@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Systems/Damageable.h"
+#include "Damageable.h"
 #include "BreakableBox.generated.h"
 
 class UStaticMeshComponent;

@@ -1,6 +1,6 @@
-#include "Systems/BombPlacerComponent.h"
-#include "Systems/StatComponent.h"
-#include "Systems/Bomb.h"
+#include "BombPlacerComponent.h"
+#include "StatComponent.h"
+#include "Bomb.h"
 // #include "Net/UnrealNetwork.h"
 
 UBombPlacerComponent::UBombPlacerComponent()
