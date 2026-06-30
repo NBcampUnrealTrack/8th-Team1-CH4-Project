@@ -30,8 +30,8 @@ void ATitlePlayerController::BeginPlay()
 	}
 }
 
-void ATitlePlayerController::JoinServer(const FString& InIPAddress)
+void ATitlePlayerController::JoinServer(const FString& InIPAddress, const FString& InPlayerName)
 {
-	FName NextLevelName = FName(*InIPAddress);
-	UGameplayStatics::OpenLevel(GetWorld(), NextLevelName, true);
+	FString ConnectionURL = FString::Printf(TEXT("%s?PlayerName=%s"), *InIPAddress, *InPlayerName);
+	ClientTravel(ConnectionURL, ETravelType::TRAVEL_Absolute);
 }

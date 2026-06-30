@@ -1,9 +1,10 @@
-#include "SpartaLobbyWidget.h"
+﻿#include "SpartaLobbyWidget.h"
 #include "Components/ScrollBox.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerController.h"
+#include "Framework/Public/Lobby/LobbyPlayerController.h"
 
 void USpartaLobbyWidget::NativeConstruct()
 {
@@ -171,6 +172,11 @@ void USpartaLobbyWidget::OnCharacterAClicked()
     APlayerController* PC = GetOwningPlayer();
     if (PC)
     {
+		ALobbyPlayerController* LobbyPC = Cast<ALobbyPlayerController>(PC);
+        if(IsValid(LobbyPC))
+        {
+            LobbyPC->ServerSelectCharacter(ECharacterType::CharacterA);
+        }
         // PC->GetHUD() 혹은 커스텀 컨트롤러 캐스팅을 통해 RPC 호출을 위임
         // e.g. PC->ServerSelectCharacter(ECharacterType::CharacterA);
     }
@@ -183,6 +189,11 @@ void USpartaLobbyWidget::OnCharacterBClicked()
     APlayerController* PC = GetOwningPlayer();
     if (PC)
     {
+		ALobbyPlayerController* LobbyPC = Cast<ALobbyPlayerController>(PC);
+        if(IsValid(LobbyPC))
+        {
+            LobbyPC->ServerSelectCharacter(ECharacterType::CharacterB);
+		}
         // e.g. PC->ServerSelectCharacter(ECharacterType::CharacterB);
     }
 }
@@ -194,6 +205,11 @@ void USpartaLobbyWidget::OnCharacterCClicked()
     APlayerController* PC = GetOwningPlayer();
     if (PC)
     {
+		ALobbyPlayerController* LobbyPC = Cast<ALobbyPlayerController>(PC);
+        if(IsValid(LobbyPC))
+        {
+			LobbyPC->ServerSelectCharacter(ECharacterType::CharacterC);
+		}
         // e.g. PC->ServerSelectCharacter(ECharacterType::CharacterC);
     }
 }
@@ -215,6 +231,11 @@ void USpartaLobbyWidget::OnReadyClicked()
     APlayerController* PC = GetOwningPlayer();
     if (PC)
     {
+		ALobbyPlayerController* LobbyPC = Cast<ALobbyPlayerController>(PC);
+        if(IsValid(LobbyPC))
+        {
+			LobbyPC->ServerToggleReady();
+		}
         // e.g. PC->ServerToggleReady();
     }
 }
@@ -225,6 +246,11 @@ void USpartaLobbyWidget::OnStartClicked()
     APlayerController* PC = GetOwningPlayer();
     if (PC)
     {
+		ALobbyPlayerController* LobbyPC = Cast<ALobbyPlayerController>(PC);
+        if(IsValid(LobbyPC))
+		{
+			LobbyPC->ServerStartMatch();
+		}
         // e.g. PC->ServerStartMatch();
     }
 }

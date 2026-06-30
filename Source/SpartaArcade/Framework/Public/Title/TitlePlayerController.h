@@ -19,7 +19,7 @@ class SPARTAARCADE_API ATitlePlayerController : public APlayerController
 public:
 	virtual void BeginPlay() override;
 
-	void JoinServer(const FString& InIPAddress);
+	void JoinServer(const FString& InIPAddress, const FString& InPlayerName);
 
 private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))

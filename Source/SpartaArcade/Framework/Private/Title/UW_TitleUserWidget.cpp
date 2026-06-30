@@ -35,13 +35,14 @@ void UUW_TitleUserWidget::OnPlayButtonClicked()
 			FString ServerIP = ServerIPEditableText->GetText().ToString();
 			if (ServerIP.IsEmpty() == false)
 			{
-				FString PlayerName;
-				if (IsValid(PlayerNameEditableText) == true)
+				FString PlayerName = TEXT("Player");	
+				FString PlayerNameInput = PlayerNameEditableText->GetText().ToString();
+				if (PlayerNameInput.IsEmpty() == false)
 				{
-					PlayerName = PlayerNameEditableText->GetText().ToString();
+					PlayerName = PlayerNameInput;
+					UE_LOG(LogTemp, Log, TEXT("[클라이언트] 플레이어 이름을 설정함: %s"), *PlayerName);
 				}
-				//TitlePlayerController->PlayerState->SetPlayerName(PlayerName);
-				TitlePlayerController->JoinServer(ServerIP);
+				TitlePlayerController->JoinServer(ServerIP, PlayerName);
 			}
 		}
 	}
