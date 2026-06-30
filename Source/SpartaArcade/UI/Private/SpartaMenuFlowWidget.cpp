@@ -1,0 +1,198 @@
+#include "SpartaMenuFlowWidget.h"
+#include "Components/WidgetSwitcher.h"
+#include "Components/Button.h"
+#include "Components/TextBlock.h"
+#include "Components/ScrollBox.h"
+#include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetSystemLibrary.h"
+
+void USpartaMenuFlowWidget::NativeConstruct()
+{
+    Super::NativeConstruct();
+
+    // 1) 메인 메뉴 이벤트 바인딩
+    if (JoinButton)
+    {
+        JoinButton->OnClicked.AddDynamic(this, &USpartaMenuFlowWidget::OnJoinClicked);
+    }
+    if (SettingsButton)
+    {
+        SettingsButton->OnClicked.AddDynamic(this, &USpartaMenuFlowWidget::OnSettingsClicked);
+    }
+    if (QuitButton)
+    {
+        QuitButton->OnClicked.AddDynamic(this, &USpartaMenuFlowWidget::OnQuitClicked);
+    }
+
+    // 2) 일시정지 이벤트 바인딩
+    if (ResumeButton)
+    {
+        ResumeButton->OnClicked.AddDynamic(this, &USpartaMenuFlowWidget::OnResumeClicked);
+    }
+    if (ExitToLobbyButton)
+    {
+        ExitToLobbyButton->OnClicked.AddDynamic(this, &USpartaMenuFlowWidget::OnExitToLobbyClicked);
+    }
+
+    // 3) 결과 화면 이벤트 바인딩
+    if (LobbyReturnButton)
+    {
+        LobbyReturnButton->OnClicked.AddDynamic(this, &USpartaMenuFlowWidget::OnLobbyReturnClicked);
+    }
+}
+
+void USpartaMenuFlowWidget::NativeDestruct()
+{
+    Super::NativeDestruct();
+}
+
+void USpartaMenuFlowWidget::ShowMainMenu()
+{
+    if (MenuWidgetSwitcher)
+    {
+        MenuWidgetSwitcher->SetActiveWidgetIndex(Index_MainMenu);
+    }
+}
+
+void USpartaMenuFlowWidget::ShowPauseMenu()
+{
+    if (MenuWidgetSwitcher)
+    {
+        MenuWidgetSwitcher->SetActiveWidgetIndex(Index_PauseMenu);
+    }
+}
+
+void USpartaMenuFlowWidget::ShowStartCountdown(int32 RemainingSeconds)
+{
+    if (MenuWidgetSwitcher)
+    {
+        MenuWidgetSwitcher->SetActiveWidgetIndex(Index_StartCountdown);
+    }
+
+    if (MatchStartCountdownText)
+    {
+        if (RemainingSeconds > 0)
+        {
+            MatchStartCountdownText->SetText(FText::AsNumber(RemainingSeconds));
+        }
+        else
+        {
+            MatchStartCountdownText->SetText(FText::FromString(TEXT("START!")));
+        }
+    }
+}
+
+void USpartaMenuFlowWidget::ShowMatchResult(EMatchResult Result, int32 MyRank, const TArray<FMatchPlayerResult>& PlayerResults)
+{
+    if (MenuWidgetSwitcher)
+    {
+        MenuWidgetSwitcher->SetActiveWidgetIndex(Index_ResultScreen);
+    }
+
+    // 1. 승리/패배 타이틀 텍스트 설정
+    if (ResultTitleText)
+    {
+        FString TitleStr;
+        switch (Result)
+        {
+        case EMatchResult::Victory:
+            TitleStr = TEXT("승리!");
+            break;
+        case EMatchResult::Defeat:
+            TitleStr = TEXT("패배..");
+            break;
+        case EMatchResult::Draw:
+            TitleStr = TEXT("무승부");
+            break;
+        }
+        ResultTitleText->SetText(FText::FromString(TitleStr));
+    }
+
+    // 2. 본인 순위 출력
+    if (MyRankText)
+    {
+        MyRankText->SetText(FText::FromString(FString::Printf(TEXT("순위 : #%d"), MyRank)));
+    }
+
+    // 3. 리더보드 목록 생성 및 렌더링
+    if (LeaderboardScrollBox)
+    {
+        LeaderboardScrollBox->ClearChildren();
+
+        for (const FMatchPlayerResult& PlayerRes : PlayerResults)
+        {
+            if (LeaderboardEntryWidgetClass)
+            {
+                UUserWidget* EntryWidget = CreateWidget<UUserWidget>(GetWorld(), LeaderboardEntryWidgetClass);
+                if (EntryWidget)
+                {
+                    UTextBlock* RankText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("RankTextBlock")));
+                    UTextBlock* NameText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("PlayerNameTextBlock")));
+                    UTextBlock* TimeText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("SurvivalTimeTextBlock")));
+
+                    if (RankText)
+                    {
+                        RankText->SetText(FText::FromString(FString::Printf(TEXT("#%d"), PlayerRes.Rank)));
+                    }
+                    if (NameText)
+                    {
+                        NameText->SetText(FText::FromString(PlayerRes.PlayerName));
+                    }
+                    if (TimeText)
+                    {
+                        int32 Mins = PlayerRes.SurvivalTime / 60;
+                        int32 Secs = PlayerRes.SurvivalTime % 60;
+                        TimeText->SetText(FText::FromString(FString::Printf(TEXT("%02d:%02d"), Mins, Secs)));
+                    }
+
+                    LeaderboardScrollBox->AddChild(EntryWidget);
+                }
+            }
+        }
+    }
+}
+
+void USpartaMenuFlowWidget::OnJoinClicked()
+{
+    // 로비 서버로 접속 (임시로 IP 주소 127.0.0.1 지정 가능 또는 매치메이킹 맵 연결)
+    UGameplayStatics::OpenLevel(GetWorld(), TEXT("LobbyLevel"));
+}
+
+void USpartaMenuFlowWidget::OnSettingsClicked()
+{
+    // 설정 서브메뉴가 있는 경우 화면 노출 처리 (추후 기획 연계 가능)
+}
+
+void USpartaMenuFlowWidget::OnQuitClicked()
+{
+    APlayerController* PC = GetOwningPlayer();
+    UKismetSystemLibrary::QuitGame(GetWorld(), PC, EQuitPreference::Quit, false);
+}
+
+void USpartaMenuFlowWidget::OnResumeClicked()
+{
+    // 일시정지 해제 처리
+    APlayerController* PC = GetOwningPlayer();
+    if (PC)
+    {
+        // UI 모드에서 인게임 모드로 전환 설정 및 입력 바인딩 복원
+        FInputModeGameOnly InputMode;
+        PC->SetInputMode(InputMode);
+        PC->SetShowMouseCursor(false);
+    }
+    
+    // 화면에서 일시정지 위젯 제거 또는 비활성화
+    SetVisibility(ESlateVisibility::Collapsed);
+}
+
+void USpartaMenuFlowWidget::OnExitToLobbyClicked()
+{
+    // 게임 포기 및 로비/메인화면으로 복귀
+    UGameplayStatics::OpenLevel(GetWorld(), TEXT("MainMenuLevel"));
+}
+
+void USpartaMenuFlowWidget::OnLobbyReturnClicked()
+{
+    // 매치 종료 후 메인화면/로비로 복귀
+    UGameplayStatics::OpenLevel(GetWorld(), TEXT("MainMenuLevel"));
+}
