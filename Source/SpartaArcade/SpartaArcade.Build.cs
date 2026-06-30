@@ -17,7 +17,7 @@ public class SpartaArcade : ModuleRules
 	        Path.Combine(ModuleDirectory, "Items/Public"),
 	        Path.Combine(ModuleDirectory, "Level/Public"),
 	        Path.Combine(ModuleDirectory, "Spawn/Public"),
-	        Path.Combine(ModuleDirectory, "Systems/Public"),
+	        Path.Combine(ModuleDirectory, "Public/Systems"),
 	        Path.Combine(ModuleDirectory, "UI/Public")
         });
 
@@ -28,7 +28,7 @@ public class SpartaArcade : ModuleRules
 	        Path.Combine(ModuleDirectory, "Items/Private"),
 	        Path.Combine(ModuleDirectory, "Level/Private"),
 	        Path.Combine(ModuleDirectory, "Spawn/Private"),
-	        Path.Combine(ModuleDirectory, "Systems/Private"),
+	        Path.Combine(ModuleDirectory, "Private/Systems"),
 	        Path.Combine(ModuleDirectory, "UI/Private")
         });
     }
