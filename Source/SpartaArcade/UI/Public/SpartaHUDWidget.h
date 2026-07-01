@@ -17,12 +17,26 @@ class SPARTAARCADE_API USpartaHUDWidget : public UUserWidget
 protected:
     virtual void NativeConstruct() override;
     virtual void NativeDestruct() override;
-
+    
+    //하트 개수 기반 체력 표시
     UPROPERTY(meta = (BindWidget))
-    UProgressBar* HPProgressBar;
+    class UHorizontalBox* HeartHorizontalBox;
 
+    //개별 하트를 렌더링하기 위한 단위 위젯 에셋 클래스
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI | HP")
+    TSubclassOf<UUserWidget> HeartUnitWidgetClass;
+
+    // 기절 상태(물방울) 화면 덮개 패널 추가
     UPROPERTY(meta = (BindWidget))
-    UTextBlock* HPText;
+    UWidget* StunOverlayPanel;
+
+    // 기절 탈출 진행률 바
+    UPROPERTY(meta = (BindWidget))
+    UProgressBar* StunProgressBar;
+
+    //  기절 시간을 안내할 텍스트
+    UPROPERTY(meta = (BindWidget))
+    UTextBlock* StunWarningText;
 
     UPROPERTY(meta = (BindWidget))
     UTextBlock* CurrentBombCountText;
@@ -53,8 +67,21 @@ protected:
     TSubclassOf<UUserWidget> DamageTextWidgetClass;
 
 public:
+    // Removed: UpdateHP는 하트 기반인 UpdateHearts로 대체되어 Unused 처리되었습니다.
+    // UFUNCTION(BlueprintCallable, Category = "UI | Update")
+    // void UpdateHP(float CurrentHP, float MaxHP);
+
+    // Modified: 하트 개수 업데이트 함수 추가
     UFUNCTION(BlueprintCallable, Category = "UI | Update")
-    void UpdateHP(float CurrentHP, float MaxHP);
+    void UpdateHearts(int32 CurrentHearts, int32 MaxHearts);
+
+    // Modified: 기절 UI 활성화 제어 함수 추가
+    UFUNCTION(BlueprintCallable, Category = "UI | Update")
+    void SetStunActive(bool bIsActive);
+
+    // Modified: 기절 탈출 게이지 갱신 함수 추가
+    UFUNCTION(BlueprintCallable, Category = "UI | Update")
+    void UpdateStunProgress(float Percent);
 
     UFUNCTION(BlueprintCallable, Category = "UI | Update")
     void UpdateBombStats(int32 CurrentBombs, int32 MaxBombs);
