@@ -1,15 +1,18 @@
 #include "SpartaHUDWidget.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
+#include "Components/HorizontalBox.h"
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
 
 void USpartaHUDWidget::NativeConstruct()
 {
     Super::NativeConstruct();
-
-    // 초기값 설정
-    UpdateHP(100.0f, 100.0f);
+    
+    //초기 하트 체력 설정 (3/3) 및 기절 패널 비활성화
+    UpdateHearts(3, 3);
+    SetStunActive(false);
+    
     UpdateBombStats(1, 1);
     UpdateCharacterStats(1.0f, 1.0f, false);
     UpdateGameStateInfo(0, 0, 0);
@@ -20,17 +23,38 @@ void USpartaHUDWidget::NativeDestruct()
     Super::NativeDestruct();
 }
 
-void USpartaHUDWidget::UpdateHP(float CurrentHP, float MaxHP)
+void USpartaHUDWidget::UpdateHearts(int32 CurrentHearts, int32 MaxHearts)
 {
-    if (HPProgressBar)
+    // 하트 개수만큼 UI 슬롯에 하트 유닛 스폰 및 리스트업
+    if (HeartHorizontalBox && HeartUnitWidgetClass)
     {
-        float Percent = (MaxHP > 0.0f) ? (CurrentHP / MaxHP) : 0.0f;
-        HPProgressBar->SetPercent(Percent);
+        HeartHorizontalBox->ClearChildren();
+        for (int32 i = 0; i < CurrentHearts; ++i)
+        {
+            UUserWidget* HeartWidget = CreateWidget<UUserWidget>(this, HeartUnitWidgetClass);
+            if (HeartWidget)
+            {
+                HeartHorizontalBox->AddChildToHorizontalBox(HeartWidget);
+            }
+        }
     }
+}
 
-    if (HPText)
+void USpartaHUDWidget::SetStunActive(bool bIsActive)
+{
+    // 기절 오버레이 활성 상태 토글
+    if (StunOverlayPanel)
     {
-        HPText->SetText(FText::FromString(FString::Printf(TEXT("%d / %d"), FMath::RoundToInt(CurrentHP), FMath::RoundToInt(MaxHP))));
+        StunOverlayPanel->SetVisibility(bIsActive ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+    }
+}
+
+void USpartaHUDWidget::UpdateStunProgress(float Percent)
+{
+    //  탈출 게이지 충전률 갱신
+    if (StunProgressBar)
+    {
+        StunProgressBar->SetPercent(Percent);
     }
 }
 
@@ -69,7 +93,7 @@ void USpartaHUDWidget::UpdateGameStateInfo(int32 AlivePlayers, int32 MatchSecond
 {
     if (AlivePlayersText)
     {
-        AlivePlayersText->SetText(FText::FromString(FString::Printf(TEXT("%d SURVIVORS"), AlivePlayers)));
+        AlivePlayersText->SetText(FText::FromString(FString::Printf(TEXT("%d 명 생존"), AlivePlayers)));
     }
 
     if (MatchTimeText)
