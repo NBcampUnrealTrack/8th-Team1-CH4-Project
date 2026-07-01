@@ -59,7 +59,7 @@ struct FMatchPlayerResult
     int32 SurvivalTime = 0;
 };
 
-// Modified: UI 레이어 구조를 명확히 구분하기 위한 EUILayer 열거형 추가
+// UI 레이어 구조를 명확히 구분하기 위한 EUILayer 열거형 추가
 UENUM(BlueprintType)
 enum class EUILayer : uint8
 {
