@@ -67,19 +67,15 @@ protected:
     TSubclassOf<UUserWidget> DamageTextWidgetClass;
 
 public:
-    // Removed: UpdateHP는 하트 기반인 UpdateHearts로 대체되어 Unused 처리되었습니다.
-    // UFUNCTION(BlueprintCallable, Category = "UI | Update")
-    // void UpdateHP(float CurrentHP, float MaxHP);
-
-    // Modified: 하트 개수 업데이트 함수 추가
+    // 하트 개수 업데이트 함수 추가
     UFUNCTION(BlueprintCallable, Category = "UI | Update")
     void UpdateHearts(int32 CurrentHearts, int32 MaxHearts);
 
-    // Modified: 기절 UI 활성화 제어 함수 추가
+    // 기절 UI 활성화 제어 함수 추가
     UFUNCTION(BlueprintCallable, Category = "UI | Update")
     void SetStunActive(bool bIsActive);
 
-    // Modified: 기절 탈출 게이지 갱신 함수 추가
+    // 기절 탈출 게이지 갱신 함수 추가
     UFUNCTION(BlueprintCallable, Category = "UI | Update")
     void UpdateStunProgress(float Percent);
 
