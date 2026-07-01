@@ -15,6 +15,8 @@ class SPARTAARCADE_API ALobbyGameModeBase : public AGameModeBase
 	GENERATED_BODY()
 	
 public:
+	ALobbyGameModeBase();
+
 	virtual void PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
 	virtual FString InitNewPlayer(APlayerController* NewPlayerController, const FUniqueNetIdRepl& UniqueId, const FString& Options, const FString& Portal) override;
 	virtual void PostLogin(APlayerController* NewPlayer) override;
@@ -23,4 +25,17 @@ public:
 	void OnPlayerReadyStateChanged();
 
 	void StartInGameMatch();
+
+	bool IsCanStartMatch() const;
+
+	void UpdateMatchStartCountdown();
+
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
+	TSoftObjectPtr<UWorld> InGameMap;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
+	int32 StartCountdownTimeRemaining;
+
+	FTimerHandle StartCountdownTimerHandle;
 };

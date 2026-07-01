@@ -23,9 +23,10 @@ void ALobbyGameStateBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ALobbyGameStateBase, HostPlayerState);
-	DOREPLIFETIME(ALobbyGameStateBase, MaxPlayerCount);
+	//DOREPLIFETIME(ALobbyGameStateBase, MaxPlayerCount);
 	DOREPLIFETIME(ALobbyGameStateBase, MinPlayerCount);
 	DOREPLIFETIME(ALobbyGameStateBase, CurrentPlayerCount);
+	DOREPLIFETIME(ALobbyGameStateBase, StartCountdownTime);
 	DOREPLIFETIME(ALobbyGameStateBase, GameModeType);
 	DOREPLIFETIME(ALobbyGameStateBase, PlayerStates);
 }
@@ -38,6 +39,18 @@ void ALobbyGameStateBase::OnRep_RoomInfoChanged()
 	}
 
 	RefreshLobbyUI();
+}
+
+void ALobbyGameStateBase::OnRep_StartCountdownTime()
+{
+	if (GetNetMode() == NM_DedicatedServer)
+	{
+		return;
+	}
+	if (IsValid(LobbyUIWidget))
+	{
+		LobbyUIWidget->UpdateCountdown(StartCountdownTime);
+	}
 }
 
 void ALobbyGameStateBase::RefreshLobbyUI()

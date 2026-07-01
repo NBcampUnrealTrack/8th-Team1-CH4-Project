@@ -6,6 +6,14 @@
 #include "Lobby/LobbyPlayerState.h"
 #include "Kismet/GameplayStatics.h"
 
+ALobbyGameModeBase::ALobbyGameModeBase()
+{
+	GameStateClass = ALobbyGameStateBase::StaticClass();
+	PlayerStateClass = ALobbyPlayerState::StaticClass();
+
+	bUseSeamlessTravel = true;
+}
+
 void ALobbyGameModeBase::PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
 {
 	Super::PreLogin(Options, Address, UniqueId, ErrorMessage);
@@ -97,7 +105,76 @@ void ALobbyGameModeBase::OnPlayerReadyStateChanged()
 	}
 }
 
+bool ALobbyGameModeBase::IsCanStartMatch() const
+{
+	ALobbyGameStateBase* LobbyGameState = GetGameState<ALobbyGameStateBase>();
+	if (IsValid(LobbyGameState))
+	{
+		if(LobbyGameState->CurrentPlayerCount < LobbyGameState->MinPlayerCount)
+		{
+			return false;
+		}
+
+		for (APlayerState* PlayerState : LobbyGameState->PlayerStates)
+		{
+			if (PlayerState == nullptr)
+			{
+				continue;
+			}
+			if (ALobbyPlayerState* LobbyPlayerState = Cast<ALobbyPlayerState>(PlayerState))
+			{
+				if (!LobbyPlayerState->bIsReady)
+				{
+					return false;
+				}
+			}
+			else
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+	return false;
+}
+
 void ALobbyGameModeBase::StartInGameMatch()
 {
-	
+	if(IsCanStartMatch() == false)
+	{
+		return;
+	}
+
+	// 모든 조건이 충족되면 타이머 시작
+	ALobbyGameStateBase* LobbyGameState = GetGameState<ALobbyGameStateBase>();
+	if (IsValid(LobbyGameState))
+	{
+		LobbyGameState->StartCountdownTime = StartCountdownTimeRemaining;
+		GetWorldTimerManager().SetTimer(StartCountdownTimerHandle, this, &ALobbyGameModeBase::UpdateMatchStartCountdown, 1.0f, true);
+	}
+}
+
+void ALobbyGameModeBase::UpdateMatchStartCountdown()
+{
+	ALobbyGameStateBase* LobbyGameState = GetGameState<ALobbyGameStateBase>();
+	if (IsValid(LobbyGameState))
+	{
+		LobbyGameState->StartCountdownTime--;
+		LobbyGameState->OnRep_StartCountdownTime();
+		if (LobbyGameState->StartCountdownTime <= 0)
+		{
+			GetWorldTimerManager().ClearTimer(StartCountdownTimerHandle);
+
+			UWorld* World = GetWorld();
+			if (IsValid(World))
+			{
+				if (InGameMap.IsNull() == false)
+				{
+					FString MapPath = InGameMap.GetLongPackageName();
+
+					World->ServerTravel(MapPath + TEXT("?listen"));
+				}
+			}
+		}
+	}
 }

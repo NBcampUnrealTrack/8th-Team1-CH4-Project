@@ -28,6 +28,9 @@ public:
 	UFUNCTION()
 	void OnRep_RoomInfoChanged();
 
+	UFUNCTION()
+	void OnRep_StartCountdownTime();
+
 protected:
 	UPROPERTY()
 	USpartaLobbyWidget* LobbyUIWidget;
@@ -36,7 +39,8 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_RoomInfoChanged)
 	APlayerState* HostPlayerState;
 
-	UPROPERTY(ReplicatedUsing = OnRep_RoomInfoChanged)
+	// 추후에 최대 인원을 설정할 수 있게 한다면 활성화
+	//UPROPERTY(ReplicatedUsing = OnRep_RoomInfoChanged)
 	int32 MaxPlayerCount;
 
 	UPROPERTY(ReplicatedUsing = OnRep_RoomInfoChanged)
@@ -44,6 +48,9 @@ public:
 
 	UPROPERTY(ReplicatedUsing = OnRep_RoomInfoChanged)
 	int32 CurrentPlayerCount;
+	
+	UPROPERTY(ReplicatedUsing = OnRep_StartCountdownTime)
+	int32 StartCountdownTime;
 
 	UPROPERTY(ReplicatedUsing = OnRep_RoomInfoChanged)
 	EGameModeType GameModeType;

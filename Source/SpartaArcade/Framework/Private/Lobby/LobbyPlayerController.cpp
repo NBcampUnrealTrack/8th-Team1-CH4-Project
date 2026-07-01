@@ -66,11 +66,6 @@ void ALobbyPlayerController::ServerToggleReady_Implementation()
 	{
 		LobbyPlayerState->bIsReady = !LobbyPlayerState->bIsReady;
 		LobbyPlayerState->OnRep_LobbyStateChanged();
-
-		if (ALobbyGameModeBase* LobbyGameMode = GetWorld()->GetAuthGameMode<ALobbyGameModeBase>())
-		{
-			//LobbyGameMode->CheckReadyStatus();
-		}
 	}
 }
 
@@ -82,7 +77,11 @@ bool ALobbyPlayerController::ServerToggleReady_Validate()
 // 매치 시작 요청을 서버로 전송하는 함수
 void ALobbyPlayerController::ServerStartMatch_Implementation()
 {
-
+	ALobbyGameModeBase* LobbyGameMode = GetWorld()->GetAuthGameMode<ALobbyGameModeBase>();
+	if (IsValid(LobbyGameMode) == true)
+	{
+		LobbyGameMode->StartInGameMatch();
+	}
 }
 
 bool ALobbyPlayerController::ServerStartMatch_Validate()

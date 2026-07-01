@@ -40,7 +40,6 @@ void UUW_TitleUserWidget::OnPlayButtonClicked()
 				if (PlayerNameInput.IsEmpty() == false)
 				{
 					PlayerName = PlayerNameInput;
-					UE_LOG(LogTemp, Log, TEXT("[클라이언트] 플레이어 이름을 설정함: %s"), *PlayerName);
 				}
 				TitlePlayerController->JoinServer(ServerIP, PlayerName);
 			}
