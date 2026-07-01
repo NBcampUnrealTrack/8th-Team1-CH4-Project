@@ -29,6 +29,13 @@ ASpartaArcadeBomb::ASpartaArcadeBomb()
 	bIsRolling = false;
 	RollDirection = FVector::ZeroVector;
 	RollSpeed = 800.f;
+	bIsExploded = false;
+	
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMeshAsset(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+	if (SphereMeshAsset.Succeeded())
+	{
+		MeshComponent->SetStaticMesh(SphereMeshAsset.Object);
+	}
 }
 
 void ASpartaArcadeBomb::BeginPlay()
@@ -45,8 +52,32 @@ void ASpartaArcadeBomb::InitializeBomb(ASpartaArcadeCharacter* InInstigator, int
 	FirePower = InFirePower;
 }
 
+void ASpartaArcadeBomb::ApplyCenterDamage(const FVector& Center)
+{
+	// 폭탄 자체의 반경 내에 있는 중심점 데미지 스윕 판정
+	TArray<FHitResult> OutHits;
+	FCollisionShape CenterSphere = FCollisionShape::MakeSphere(GridSize * 0.4f);
+	FCollisionQueryParams CenterParams;
+	CenterParams.AddIgnoredActor(this);
+
+	if (GetWorld()->SweepMultiByChannel(OutHits, Center, Center + FVector(0.f, 0.f, 1.f), FQuat::Identity, ECC_Visibility, CenterSphere, CenterParams))
+	{
+		for (const FHitResult& Hit : OutHits)
+		{
+			AActor* HitActor = Hit.GetActor();
+			if (HitActor && HitActor->IsA(ASpartaArcadeCharacter::StaticClass()))
+			{
+				UGameplayStatics::ApplyDamage(HitActor, ExplosionDamage, InstigatorCharacter ? InstigatorCharacter->GetController() : nullptr, this, UDamageType::StaticClass());
+			}
+		}
+	}
+}
+
 void ASpartaArcadeBomb::Explode()
 {
+	// 이미 폭발 중이면 즉시 리턴하여 무한 루프 방지
+	if (bIsExploded) return;
+	bIsExploded = true;
 	// 유폭 연쇄 호출 시 타이머 중복 트리거 방지를 위해 선제 소멸 처리
 	GetWorld()->GetTimerManager().ClearTimer(ExplosionTimerHandle);
 
@@ -58,23 +89,7 @@ void ASpartaArcadeBomb::Explode()
 		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, ExplosionVFX, StartLoc);
 	}
 
-	// 폭탄 자체의 반경 내에 있는 중심점 데미지 스윕 판정
-	TArray<FHitResult> OutHits;
-	FCollisionShape CenterSphere = FCollisionShape::MakeSphere(GridSize * 0.4f);
-	FCollisionQueryParams CenterParams;
-	CenterParams.AddIgnoredActor(this);
-	
-	if (GetWorld()->SweepMultiByChannel(OutHits, StartLoc, StartLoc + FVector(0.f,0.f,1.f), FQuat::Identity, ECC_Visibility, CenterSphere, CenterParams))
-	{
-		for (const FHitResult& Hit : OutHits)
-		{
-			AActor* HitActor = Hit.GetActor();
-			if (HitActor && HitActor->IsA(ASpartaArcadeCharacter::StaticClass()))
-			{
-				UGameplayStatics::ApplyDamage(HitActor, ExplosionDamage, InstigatorCharacter ? InstigatorCharacter->GetController() : nullptr, this, UDamageType::StaticClass());
-			}
-		}
-	}
+	ApplyCenterDamage(StartLoc);
 
 	// 십자 4방향으로 폭폭 화염 투사
 	PerformExplosionDirection(FVector(1.f, 0.f, 0.f));  // 북
@@ -89,6 +104,33 @@ void ASpartaArcadeBomb::Explode()
 	}
 
 	Destroy();
+}
+
+bool ASpartaArcadeBomb::HandleExplosionHit(AActor* HitActor)
+{
+	// 다른 폭탄 발견 시 즉각 유폭(Chain Explosion) 유발 및 연속 관통 허용
+	if (ASpartaArcadeBomb* OtherBomb = Cast<ASpartaArcadeBomb>(HitActor))
+	{
+		OtherBomb->Explode();
+		return false;
+	}
+
+	// 파괴 가능 상자 블록 발견 시 부수고 불길 차단 (1칸만 파괴)
+	if (ASpartaArcadeBlock* Block = Cast<ASpartaArcadeBlock>(HitActor))
+	{
+		Block->DestroyBlock();
+		return true;
+	}
+
+	// 캐릭터 피격 처리 (캐릭터는 불길을 차단하지 않고 관통 통과)
+	if (ASpartaArcadeCharacter* Character = Cast<ASpartaArcadeCharacter>(HitActor))
+	{
+		UGameplayStatics::ApplyDamage(Character, ExplosionDamage, InstigatorCharacter ? InstigatorCharacter->GetController() : nullptr, this, UDamageType::StaticClass());
+		return false;
+	}
+
+	// 다른 폭탄이 아닌 고정 벽 지형이면 즉시 차단
+	return true;
 }
 
 void ASpartaArcadeBomb::PerformExplosionDirection(const FVector& Direction)
@@ -125,36 +167,11 @@ void ASpartaArcadeBomb::PerformExplosionDirection(const FVector& Direction)
 			UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, ExplosionVFX, TargetLoc);
 		}
 
-		if (bHit)
+		if (bHit && HitResult.GetActor())
 		{
-			AActor* HitActor = HitResult.GetActor();
-			if (HitActor)
+			if (HandleExplosionHit(HitResult.GetActor()))
 			{
-				// 다른 폭탄 발견 시 즉각 유폭(Chain Explosion) 유발 및 연속 관통 허용
-				ASpartaArcadeBomb* OtherBomb = Cast<ASpartaArcadeBomb>(HitActor);
-				if (OtherBomb)
-				{
-					OtherBomb->Explode();
-				}
-
-				// 파괴 가능 상자 블록 발견 시 부수고 불길 차단 (1칸만 파괴)
-				ASpartaArcadeBlock* Block = Cast<ASpartaArcadeBlock>(HitActor);
-				if (Block)
-				{
-					Block->DestroyBlock();
-					break;
-				}
-
-				// 캐릭터 피격 처리 (캐릭터는 불길을 차단하지 않고 관통 통과)
-				ASpartaArcadeCharacter* Character = Cast<ASpartaArcadeCharacter>(HitActor);
-				if (Character)
-				{
-					UGameplayStatics::ApplyDamage(Character, ExplosionDamage, InstigatorCharacter ? InstigatorCharacter->GetController() : nullptr, this, UDamageType::StaticClass());
-				}
-				else if (!OtherBomb) //  다른 폭탄이 아닌 고정 벽 지형이면 즉시 차단
-				{
-					break;
-				}
+				break;
 			}
 		}
 	}
@@ -165,24 +182,25 @@ void ASpartaArcadeBomb::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (bIsRolling)
+	if (!HasAuthority() || !bIsRolling)
 	{
-		FHitResult SweepHit;
-		FVector NextLoc = GetActorLocation() + RollDirection * RollSpeed * DeltaTime;
+		return;
+	}
+	FHitResult SweepHit;
+	FVector NextLoc = GetActorLocation() + RollDirection * RollSpeed * DeltaTime;
 
-		// 스윕 콜리전을 켠 상태로 위치 갱신
-		bool bObstacleHit = SetActorLocation(NextLoc, true, &SweepHit);
+	// 스윕 콜리전을 켠 상태로 위치 갱신
+	bool bObstacleHit = SetActorLocation(NextLoc, true, &SweepHit);
 
-		// 다른 플레이어나 상자, 벽을 마주해 멈출 경우
-		if (!bObstacleHit || SweepHit.bBlockingHit)
-		{
-			bIsRolling = false;
+	// 다른 플레이어나 상자, 벽을 마주해 멈출 경우
+	if (!bObstacleHit || SweepHit.bBlockingHit)
+	{
+		bIsRolling = false;
 
-			// 폭발이 타일 격자 축을 빗나가지 않도록 즉시 100단위 그리드로 보정 스냅
-			float RoundedX = FMath::RoundToFloat(GetActorLocation().X / 100.f) * 100.f;
-			float RoundedY = FMath::RoundToFloat(GetActorLocation().Y / 100.f) * 100.f;
-			SetActorLocation(FVector(RoundedX, RoundedY, GetActorLocation().Z));
-		}
+		// 폭발이 타일 격자 축을 빗나가지 않도록 즉시 100단위 그리드로 보정 스냅
+		float RoundedX = FMath::RoundToFloat(GetActorLocation().X / 100.f) * 100.f;
+		float RoundedY = FMath::RoundToFloat(GetActorLocation().Y / 100.f) * 100.f;
+		SetActorLocation(FVector(RoundedX, RoundedY, GetActorLocation().Z));
 	}
 }
 
