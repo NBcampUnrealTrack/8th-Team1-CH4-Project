@@ -1,4 +1,4 @@
-#include "SpartaArcadePlayerController.h"
+﻿#include "SpartaArcadePlayerController.h"
 #include "GameFramework/Pawn.h"
 #include "Blueprint/AIBlueprintHelperLibrary.h"
 #include "NiagaraSystem.h"
@@ -19,6 +19,14 @@ ASpartaArcadePlayerController::ASpartaArcadePlayerController()
 void ASpartaArcadePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (IsLocalController() == false)
+	{
+		return;
+	}
+
+	FInputModeGameOnly GameOnly;
+	SetInputMode(GameOnly);
 }
 
 void ASpartaArcadePlayerController::SetupInputComponent()
