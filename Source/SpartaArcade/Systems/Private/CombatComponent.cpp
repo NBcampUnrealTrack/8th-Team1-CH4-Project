@@ -208,3 +208,11 @@ void UCombatComponent::OnRep_CurrentState()
 {
     // 애니메이션 갱신용 - 상태 변경 시 자동 호출됨
 }
+
+// 캐릭터 위임 연동을 위한 Heal 함수 구현 추가
+void UCombatComponent::Heal(int32 Amount)
+{
+    if (CurrentState != EBomberPlayerState::Alive) return;
+    Hearts = FMath::Clamp(Hearts + Amount, 0, StartHearts);
+    OnHit.Broadcast(); // UI 갱신을 위해 브로드캐스트
+}

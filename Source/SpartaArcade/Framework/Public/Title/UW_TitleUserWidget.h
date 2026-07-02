@@ -9,9 +9,7 @@
 class UButton;
 class UEditableText;
 
-/**
- * 
- */
+
 UCLASS()
 class SPARTAARCADE_API UUW_TitleUserWidget : public UUserWidget
 {

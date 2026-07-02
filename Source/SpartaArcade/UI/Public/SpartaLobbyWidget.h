@@ -67,7 +67,7 @@ public:
     void SetStartButtonVisibility(bool bIsHost, bool bCanStart);
 
     UFUNCTION(BlueprintCallable, Category = "UI | Lobby")
-    void UpdateCharacterPreview(ECharacterType CharacterType);
+    void UpdateCharacterPreview(ELobbyCharacterType CharacterType);
 
 protected:
     // 네트워크/로비 파트로 요청 전달
@@ -88,6 +88,6 @@ protected:
 
 private:
     // 로컬 선택 상태
-    ECharacterType SelectedCharacterType = ECharacterType::CharacterA;
+    ELobbyCharacterType SelectedCharacterType = ELobbyCharacterType::CharacterA;
     bool bIsReady = false;
 };

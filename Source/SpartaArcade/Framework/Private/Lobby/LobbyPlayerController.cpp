@@ -40,7 +40,7 @@ void ALobbyPlayerController::BeginPlay()
 }
 
 // 캐릭터 변경 요청을 서버로 전송하는 함수
-void ALobbyPlayerController::ServerSelectCharacter_Implementation(ECharacterType NewType)
+void ALobbyPlayerController::ServerSelectCharacter_Implementation(ELobbyCharacterType NewType)
 {
 	ALobbyPlayerState* LobbyPlayerState = GetPlayerState<ALobbyPlayerState>();
 	if (IsValid(LobbyPlayerState) == true)
@@ -53,7 +53,7 @@ void ALobbyPlayerController::ServerSelectCharacter_Implementation(ECharacterType
 	}
 }
 
-bool ALobbyPlayerController::ServerSelectCharacter_Validate(ECharacterType NewType)
+bool ALobbyPlayerController::ServerSelectCharacter_Validate(ELobbyCharacterType NewType)
 {
 	return true;
 }

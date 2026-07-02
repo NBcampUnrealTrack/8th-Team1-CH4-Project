@@ -6,10 +6,8 @@
 #include "GameFramework/PlayerState.h"
 #include "LobbyPlayerState.generated.h"
 
-enum class ECharacterType : uint8;
-/**
- * 
- */
+enum class ELobbyCharacterType : uint8;
+
 UCLASS()
 class SPARTAARCADE_API ALobbyPlayerState : public APlayerState
 {
@@ -24,7 +22,7 @@ public:
 	bool bIsReady;
 
 	UPROPERTY(ReplicatedUsing = OnRep_LobbyStateChanged)
-	ECharacterType SelectedCharacterType;
+	ELobbyCharacterType SelectedCharacterType;
 
 	UFUNCTION()
 	void OnRep_LobbyStateChanged();

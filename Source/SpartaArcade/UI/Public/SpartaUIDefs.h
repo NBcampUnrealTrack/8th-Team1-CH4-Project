@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "SpartaUIDefs.generated.h"
@@ -21,7 +21,7 @@ enum class EMatchResult : uint8
 };
 
 UENUM(BlueprintType)
-enum class ECharacterType : uint8
+enum class ELobbyCharacterType : uint8
 {
     CharacterA  UMETA(DisplayName = "폭발형"),
     CharacterB  UMETA(DisplayName = "속도형"),
@@ -58,3 +58,14 @@ struct FMatchPlayerResult
     UPROPERTY(BlueprintReadOnly, Category = "UI")
     int32 SurvivalTime = 0;
 };
+
+// UI 레이어 구조를 명확히 구분하기 위한 EUILayer 열거형 추가
+UENUM(BlueprintType)
+enum class EUILayer : uint8
+{
+    GameHUD        UMETA(DisplayName = "Game HUD"),
+    MenuScreen     UMETA(DisplayName = "Menu Screen"),
+    Popup          UMETA(DisplayName = "Popup"),
+    SystemOverlay  UMETA(DisplayName = "System Overlay")
+};
+

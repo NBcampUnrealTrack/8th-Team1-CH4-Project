@@ -8,7 +8,7 @@
 
 ALobbyPlayerState::ALobbyPlayerState() 
 	: bIsReady(false)
-	, SelectedCharacterType(ECharacterType::CharacterA)
+	, SelectedCharacterType(ELobbyCharacterType::CharacterA)
 {
 	bReplicates = true;
 }

@@ -6,13 +6,19 @@
 #include "Net/UnrealNetwork.h"
 #include "SpartaArcadeCharacter.generated.h"
 
+// 컴포넌트 의존 관계 설정을 위한 전방 선언
+class UStatComponent;
+class UCombatComponent;
+class UBombPlacerComponent;
+class UDataTable;
+
 // 캐릭터 스탯 특화 선택을 위한 타입 열거형
 UENUM(BlueprintType)
 enum class ESpartaArcadeCharacterType : uint8
 {
-	Explosive      UMETA(DisplayName = "Explosive Specialized"),
-	Speed          UMETA(DisplayName = "Speed Specialized"),
-	BombCount      UMETA(DisplayName = "Bomb Count Specialized")
+	Explosive      UMETA(DisplayName = "폭발형"),
+	Speed          UMETA(DisplayName = "속도형"),
+	BombCount      UMETA(DisplayName = "폭탄 갯수형")
 };
 
 UCLASS(Blueprintable)
@@ -55,27 +61,23 @@ public:
 	void AddFirstAidKit();
 	void AddShield();
 	void OnBombExploded();
-
-	// 기절 복귀 및 무적 처리 함수 추가
-	void ReviveCharacter(int32 HealthToRestore);
-	void HandleStunTimeout();
-	void ResetInvulnerability();
+	
 
 	// 네트워크 속성 동기화 함수 선언
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	// UI 및 HUD 연동을 위한 Getter 함수
 	UFUNCTION(BlueprintPure, Category = "Gameplay")
-	FORCEINLINE float GetHP() const { return (float)Hearts; }
+	float GetHP() const;
 
 	UFUNCTION(BlueprintPure, Category = "Gameplay")
-	FORCEINLINE float GetMaxHP() const { return (float)MaxHearts; }
+	float GetMaxHP() const;
 
 	UFUNCTION(BlueprintPure, Category = "Gameplay")
-	FORCEINLINE bool IsShielded() const { return bIsShielded; }
+	bool IsShielded() const;
 
 	UFUNCTION(BlueprintPure, Category = "Gameplay")
-	FORCEINLINE bool IsStunned() const { return bIsStunned; }
+	bool IsStunned() const;
 
 	UFUNCTION(BlueprintPure, Category = "Gameplay")
 	FORCEINLINE int32 GetFirstAidKitCount() const { return FirstAidKits; }
@@ -85,38 +87,29 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attributes|Setup")
 	ESpartaArcadeCharacterType CharacterType;
 
-	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Attributes|Health")
-	int32 Hearts;
+	// 컴포넌트 초기화를 위한 데이터 테이블 구조 노출
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attributes|Setup")
+	TObjectPtr<UDataTable> CharacterStatTable;
 
-	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Attributes|Health")
-	int32 MaxHearts;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attributes|Setup")
+	TObjectPtr<UDataTable> CombatStatTable;
 
-	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Attributes|Movement")
-	int32 SpeedLevel;
+	// 중복 코드 및 의존 관계 정리를 위해 컴포넌트 추가
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UStatComponent> StatComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UCombatComponent> CombatComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UBombPlacerComponent> BombPlacerComponent;
+
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attributes|Movement")
 	float BaseMovementSpeed;
 
-	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Attributes|Bombs")
-	int32 MaxBombs;
-
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Attributes|Bombs")
-	int32 CurrentActiveBombs;
-
-	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Attributes|Bombs")
-	int32 BombRange;
-
-	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Attributes|Defense")
-	bool bIsShielded;
-
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Attributes|Health")
 	int32 FirstAidKits;
-
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Attributes|State")
-	bool bIsStunned;
-
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Attributes|State")
-	bool bIsInvulnerable;
 
 	// 팀전 구분을 위한 TeamID 속성
 	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Attributes|Team")
@@ -125,8 +118,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay")
 	TSubclassOf<class ASpartaArcadeBomb> BombClass;
 
-	FTimerHandle StunTimerHandle;
-	FTimerHandle InvulnerableTimerHandle;
+	// CombatComponent 측 기절 및 무적 타이머로 통합
+	// FTimerHandle StunTimerHandle;
+	// FTimerHandle InvulnerableTimerHandle;
 
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
@@ -136,4 +130,17 @@ private:
 	class USpringArmComponent* CameraBoom;
 	
 	FVector GetSnappedKickDirection() const;
+
+	// CombatComponent 이벤트 대응 핸들러 추가
+	UFUNCTION()
+	void HandleOnStun();
+
+	UFUNCTION()
+	void HandleOnRevived();
+
+	UFUNCTION()
+	void HandleOnSelfRevive();
+
+	UFUNCTION()
+	void HandleOnEliminated();
 };

@@ -4,7 +4,7 @@
 #include "Components/ActorComponent.h"
 #include "BombPlacerComponent.generated.h"
 
-class ABomb;
+class ASpartaArcadeBomb;
 class UStatComponent;
 
 UCLASS(ClassGroup=(Bomber), meta=(BlueprintSpawnableComponent))
@@ -23,7 +23,7 @@ protected:
 	virtual void BeginPlay() override;
 
 	UPROPERTY(EditDefaultsOnly, Category="Data")
-	TSubclassOf<ABomb> BombClass;
+	TSubclassOf<ASpartaArcadeBomb> BombClass;
 
 	UPROPERTY(EditDefaultsOnly, Category="Data")
 	TObjectPtr<UDataTable> BombStatTable;

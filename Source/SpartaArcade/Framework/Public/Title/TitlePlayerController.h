@@ -8,9 +8,6 @@
 
 class UUserWidget;
 
-/**
- * 
- */
 UCLASS()
 class SPARTAARCADE_API ATitlePlayerController : public APlayerController
 {

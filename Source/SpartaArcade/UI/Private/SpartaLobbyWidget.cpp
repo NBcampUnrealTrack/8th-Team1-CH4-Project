@@ -1,4 +1,4 @@
-﻿#include "SpartaLobbyWidget.h"
+#include "SpartaLobbyWidget.h"
 #include "Components/ScrollBox.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
@@ -33,7 +33,7 @@ void USpartaLobbyWidget::NativeConstruct()
     }
 
     // 기본 프리뷰 세팅
-    UpdateCharacterPreview(ECharacterType::CharacterA);
+    UpdateCharacterPreview(ELobbyCharacterType::CharacterA);
     
     // 카운트다운 기본 숨김 처리
     if (CountdownTextBlock)
@@ -113,7 +113,7 @@ void USpartaLobbyWidget::SetStartButtonVisibility(bool bIsHost, bool bCanStart)
     }
 }
 
-void USpartaLobbyWidget::UpdateCharacterPreview(ECharacterType CharacterType)
+void USpartaLobbyWidget::UpdateCharacterPreview(ELobbyCharacterType CharacterType)
 {
     SelectedCharacterType = CharacterType;
 
@@ -126,19 +126,19 @@ void USpartaLobbyWidget::UpdateCharacterPreview(ECharacterType CharacterType)
     // 최종 기획에 맞게 수치 수정
     switch (CharacterType)
     {
-    case ECharacterType::CharacterA:
+    case ELobbyCharacterType::CharacterA:
         RangeText = TEXT("폭발 범위 : 5");
         BombText = TEXT("폭탄 갯수 : 3");
         SpeedText = TEXT("이동 속도 : 3");
         Description = TEXT("화력 특화형 - 폭발 범위 1단계를 더 갖고 시작합니다.");
         break;
-    case ECharacterType::CharacterB:
+    case ELobbyCharacterType::CharacterB:
         RangeText = TEXT("폭발 범위 : 2");
         BombText = TEXT("폭탄 갯수 : 2");
         SpeedText = TEXT("이동 속도 : 4");
         Description = TEXT("기동 특화형 - 이동 속도 1단계를 더 갖고 시작합니다.");
         break;
-    case ECharacterType::CharacterC:
+    case ELobbyCharacterType::CharacterC:
         RangeText = TEXT("폭발 범위 : 2");
         BombText = TEXT("폭탄 갯수 : 5");
         SpeedText = TEXT("이동 속도 : 2");
@@ -166,7 +166,7 @@ void USpartaLobbyWidget::UpdateCharacterPreview(ECharacterType CharacterType)
 
 void USpartaLobbyWidget::OnCharacterAClicked()
 {
-    UpdateCharacterPreview(ECharacterType::CharacterA);
+    UpdateCharacterPreview(ELobbyCharacterType::CharacterA);
 
     // 네트워크 컨트롤러에 선택 정보 전송
     APlayerController* PC = GetOwningPlayer();
@@ -175,16 +175,14 @@ void USpartaLobbyWidget::OnCharacterAClicked()
 		ALobbyPlayerController* LobbyPC = Cast<ALobbyPlayerController>(PC);
         if(IsValid(LobbyPC))
         {
-            LobbyPC->ServerSelectCharacter(ECharacterType::CharacterA);
+            LobbyPC->ServerSelectCharacter(ELobbyCharacterType::CharacterA);
         }
-        // PC->GetHUD() 혹은 커스텀 컨트롤러 캐스팅을 통해 RPC 호출을 위임
-        // e.g. PC->ServerSelectCharacter(ECharacterType::CharacterA);
     }
 }
 
 void USpartaLobbyWidget::OnCharacterBClicked()
 {
-    UpdateCharacterPreview(ECharacterType::CharacterB);
+    UpdateCharacterPreview(ELobbyCharacterType::CharacterB);
 
     APlayerController* PC = GetOwningPlayer();
     if (PC)
@@ -192,15 +190,14 @@ void USpartaLobbyWidget::OnCharacterBClicked()
 		ALobbyPlayerController* LobbyPC = Cast<ALobbyPlayerController>(PC);
         if(IsValid(LobbyPC))
         {
-            LobbyPC->ServerSelectCharacter(ECharacterType::CharacterB);
+            LobbyPC->ServerSelectCharacter(ELobbyCharacterType::CharacterB);
 		}
-        // e.g. PC->ServerSelectCharacter(ECharacterType::CharacterB);
     }
 }
 
 void USpartaLobbyWidget::OnCharacterCClicked()
 {
-    UpdateCharacterPreview(ECharacterType::CharacterC);
+    UpdateCharacterPreview(ELobbyCharacterType::CharacterC);
 
     APlayerController* PC = GetOwningPlayer();
     if (PC)
@@ -208,9 +205,8 @@ void USpartaLobbyWidget::OnCharacterCClicked()
 		ALobbyPlayerController* LobbyPC = Cast<ALobbyPlayerController>(PC);
         if(IsValid(LobbyPC))
         {
-			LobbyPC->ServerSelectCharacter(ECharacterType::CharacterC);
+			LobbyPC->ServerSelectCharacter(ELobbyCharacterType::CharacterC);
 		}
-        // e.g. PC->ServerSelectCharacter(ECharacterType::CharacterC);
     }
 }
 
@@ -236,7 +232,6 @@ void USpartaLobbyWidget::OnReadyClicked()
         {
 			LobbyPC->ServerToggleReady();
 		}
-        // e.g. PC->ServerToggleReady();
     }
 }
 
@@ -251,6 +246,5 @@ void USpartaLobbyWidget::OnStartClicked()
 		{
 			LobbyPC->ServerStartMatch();
 		}
-        // e.g. PC->ServerStartMatch();
     }
 }
