@@ -33,6 +33,10 @@ public:
     UFUNCTION(BlueprintPure)
     int32 GetMoveSpeed()  const { return MoveSpeed; }
 
+    // 런타임/C++ 테이블 설정을 위한 Setter 추가
+    UFUNCTION(BlueprintCallable)
+    void SetCharacterStatTable(UDataTable* InTable) { CharacterStatTable = InTable; }
+
     UPROPERTY(BlueprintAssignable)
     FOnStatChanged OnStatChanged;
     

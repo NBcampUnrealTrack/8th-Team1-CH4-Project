@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "SpartaUIDefs.generated.h"
@@ -21,7 +21,7 @@ enum class EMatchResult : uint8
 };
 
 UENUM(BlueprintType)
-enum class ECharacterType : uint8
+enum class ELobbyCharacterType : uint8
 {
     CharacterA  UMETA(DisplayName = "폭발형"),
     CharacterB  UMETA(DisplayName = "속도형"),

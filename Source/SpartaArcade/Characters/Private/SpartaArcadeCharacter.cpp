@@ -11,6 +11,10 @@
 #include "SpartaArcadeBomb.h"
 #include "TimerManager.h"
 #include "Net/UnrealNetwork.h"
+#include "StatComponent.h"
+#include "CombatComponent.h"
+#include "BombPlacerComponent.h"
+#include "Engine/DataTable.h"
 
 ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 {
@@ -46,20 +50,18 @@ ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 
 	// 기본 속성
 	CharacterType = ESpartaArcadeCharacterType::Speed;
-	Hearts = 3;
-	MaxHearts = 3;
-	SpeedLevel = 3;
+
+	// 컴포넌트 기반 아키텍처 적용
+	StatComponent = CreateDefaultSubobject<UStatComponent>(TEXT("StatComponent"));
+	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
+	BombPlacerComponent = CreateDefaultSubobject<UBombPlacerComponent>(TEXT("BombPlacer"));
+
 	BaseMovementSpeed = 300.f;
-	MaxBombs = 3;
-	CurrentActiveBombs = 0;
-	BombRange = 2;
-	bIsShielded = false;
 	FirstAidKits = 0;
-	bIsStunned = false;
-	bIsInvulnerable = false;
 	TeamID = -1; // 기본은 개인전
 
-	GetCharacterMovement()->MaxWalkSpeed = BaseMovementSpeed + (SpeedLevel * 75.0f);
+	// 무브먼트 스피드 제어는 StatComponent 내 OnRep_MoveSpeed 에서 수행
+	// GetCharacterMovement()->MaxWalkSpeed = BaseMovementSpeed + (SpeedLevel * 75.0f);
 
 	// 데디케이티드 서버 네트워크 동기화용 캐릭터 복제 활성화
 	bReplicates = true;
@@ -69,28 +71,42 @@ void ASpartaArcadeCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 선택된 캐릭터 타입에 따른 시작 스탯 특화
+	// 컴포넌트 기반 초기화 및 델리게이트 바인딩
+	FName RowName = FName(TEXT("Default"));
 	switch (CharacterType)
 	{
 	case ESpartaArcadeCharacterType::Explosive:
-		BombRange = 5;
-		MaxBombs = 3;
-		SpeedLevel = 3;
+		RowName = FName(TEXT("Explosive"));
 		break;
 	case ESpartaArcadeCharacterType::Speed:
-		BombRange = 2;
-		MaxBombs = 2;
-		SpeedLevel = 4;
+		RowName = FName(TEXT("Speed"));
 		break;
 	case ESpartaArcadeCharacterType::BombCount:
-		BombRange = 2;
-		MaxBombs = 5;
-		SpeedLevel = 2;
+		RowName = FName(TEXT("BombCount"));
 		break;
 	}
 
-	Hearts = MaxHearts;
-	GetCharacterMovement()->MaxWalkSpeed = BaseMovementSpeed + (SpeedLevel * 75.0f);
+	if (StatComponent)
+	{
+		if (CharacterStatTable)
+		{
+			StatComponent->SetCharacterStatTable(CharacterStatTable);
+		}
+		StatComponent->InitializeFromDataTable(RowName);
+	}
+
+	if (CombatComponent)
+	{
+		if (CombatStatTable)
+		{
+			CombatComponent->InitializeFromDataTable(CombatStatTable);
+		}
+		
+		CombatComponent->OnStun.AddDynamic(this, &ASpartaArcadeCharacter::HandleOnStun);
+		CombatComponent->OnRevived.AddDynamic(this, &ASpartaArcadeCharacter::HandleOnRevived);
+		CombatComponent->OnSelfRevive.AddDynamic(this, &ASpartaArcadeCharacter::HandleOnSelfRevive);
+		CombatComponent->OnEliminated.AddDynamic(this, &ASpartaArcadeCharacter::HandleOnEliminated);
+	}
 }
 
 void ASpartaArcadeCharacter::Tick(float DeltaSeconds)
@@ -101,79 +117,54 @@ void ASpartaArcadeCharacter::Tick(float DeltaSeconds)
 // 하트 체력 감소, 실드 차단 및 체력 0 도달 시 기절 상태 진입 로직 구현
 float ASpartaArcadeCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser)
 {
-	if (bIsInvulnerable || bIsStunned)
+	// CombatComponent에 데미지 처리 위임
+	if (CombatComponent)
 	{
-		return 0.f;
+		if (CombatComponent->CanTakeDamage())
+		{
+			CombatComponent->ApplyDamage();
+			return 1.f;
+		}
 	}
-
-	if (bIsShielded)
-	{
-		bIsShielded = false;
-		return 0.f;
-	}
-
-	// 매 피격마다 정확히 1개의 하트만 감소
-	Hearts = FMath::Clamp(Hearts - 1, 0, MaxHearts);
-
-	if (Hearts <= 0)
-	{
-		bIsStunned = true;
-		GetCharacterMovement()->DisableMovement();
-		
-		// 솔로(TeamID == -1)면 5초, 팀전(TeamID != -1)이면 10초 뒤 자동으로 부활(자가 치유)하는 타이머 세팅
-		float StunDuration = (TeamID == -1) ? 5.0f : 10.0f;
-		GetWorld()->GetTimerManager().SetTimer(StunTimerHandle, this, &ASpartaArcadeCharacter::HandleStunTimeout, StunDuration, false);
-		
-		UE_LOG(LogTemp, Warning, TEXT("%s 기절 상태 진입! (%f초 뒤 자동 회복 예정)"), *GetName(), StunDuration);
-	}
-
-	return 1.f;
+	return 0.f;
 }
 
 // 클래식 봄버맨 타일 일치를 위해 캐릭터의 현재 발밑 좌표를 100단위 그리드로 보정하여 스폰
 void ASpartaArcadeCharacter::PlaceBomb()
 {
-	if (bIsStunned || CurrentActiveBombs >= MaxBombs || !BombClass)
+	// BombPlacerComponent에 폭탄 설치 위임
+	if (BombPlacerComponent)
 	{
-		return;
-	}
-
-	FVector MyLocation = GetActorLocation();
-	
-	// X, Y 좌표를 가장 가까운 100단위 격자 중심으로 정렬
-	float RoundedX = FMath::RoundToFloat(MyLocation.X / 100.f) * 100.f;
-	float RoundedY = FMath::RoundToFloat(MyLocation.Y / 100.f) * 100.f;
-	
-	// 캐릭터의 발밑 높이로 설정
-	float SpawnZ = MyLocation.Z - GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + 50.f;
-	FVector SpawnLocation = FVector(RoundedX, RoundedY, SpawnZ);
-
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-	ASpartaArcadeBomb* NewBomb = GetWorld()->SpawnActor<ASpartaArcadeBomb>(BombClass, SpawnLocation, FRotator::ZeroRotator, SpawnParams);
-	if (NewBomb)
-	{
-		NewBomb->InitializeBomb(this, BombRange);
-		CurrentActiveBombs++;
+		BombPlacerComponent->ServerPlaceBomb();
 	}
 }
 
 // 최대 스탯 상한선(Cap)을 포함하는 아이템 효과 함수
 void ASpartaArcadeCharacter::AddSpeedBoost()
 {
-	SpeedLevel = FMath::Clamp(SpeedLevel + 1, 0, 5); // 이속 최대 5단계
-	GetCharacterMovement()->MaxWalkSpeed = BaseMovementSpeed + (SpeedLevel * 75.0f);
+	// StatComponent에 스탯 성장 위임
+	if (StatComponent)
+	{
+		StatComponent->GrowStat(EBomberStatType::MoveSpeed);
+	}
 }
 
 void ASpartaArcadeCharacter::AddExtraBomb()
 {
-	MaxBombs = FMath::Clamp(MaxBombs + 1, 0, 8); // 폭탄 최대 8개
+	// StatComponent에 스탯 성장 위임
+	if (StatComponent)
+	{
+		StatComponent->GrowStat(EBomberStatType::BombCount);
+	}
 }
 
 void ASpartaArcadeCharacter::IncreaseExplosionRange()
 {
-	BombRange = FMath::Clamp(BombRange + 1, 0, 5); // 사거리 최대 5칸
+	// StatComponent에 스탯 성장 위임
+	if (StatComponent)
+	{
+		StatComponent->GrowStat(EBomberStatType::BombRange);
+	}
 }
 
 void ASpartaArcadeCharacter::AddFirstAidKit()
@@ -183,81 +174,66 @@ void ASpartaArcadeCharacter::AddFirstAidKit()
 
 void ASpartaArcadeCharacter::AddShield()
 {
-	bIsShielded = true;
+	// CombatComponent에 방어막 획득 위임
+	if (CombatComponent)
+	{
+		CombatComponent->GrantShield();
+	}
 }
 
 void ASpartaArcadeCharacter::OnBombExploded()
 {
-	CurrentActiveBombs = FMath::Max(0, CurrentActiveBombs - 1);
+	// 폭탄 카운트 처리는 BombPlacerComponent 내부에서 델리게이트로 수행됨
 }
 
 // 구급 상자를 소모하여 일반 상태에선 자가 치료(하트 회복), 기절 상태에선 자력 부활 처리
 void ASpartaArcadeCharacter::UseFirstAidKit()
 {
+	// CombatComponent와 연동하여 구급상자 소모 로직 수행
 	if (FirstAidKits <= 0)
 	{
 		return;
 	}
 
-	if (bIsStunned)
+	if (CombatComponent)
 	{
-		FirstAidKits--;
-		ReviveCharacter(1); // 하트 1개로 기절 자력 해제
-	}
-	else if (Hearts < MaxHearts)
-	{
-		FirstAidKits--;
-		Hearts = FMath::Clamp(Hearts + 1, 0, MaxHearts);
-	}
-}
-
-// 기절 상태 해제 및 무브먼트 복구, 1초 무적 판정 타이머 설정
-void ASpartaArcadeCharacter::ReviveCharacter(int32 HealthToRestore)
-{
-	bIsStunned = false;
-	Hearts = FMath::Clamp(HealthToRestore, 0, MaxHearts);
-	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
-	GetWorld()->GetTimerManager().ClearTimer(StunTimerHandle);
-
-	// 1초간 무적 상태
-	bIsInvulnerable = true;
-	GetWorld()->GetTimerManager().SetTimer(InvulnerableTimerHandle, this, &ASpartaArcadeCharacter::ResetInvulnerability, 1.0f, false);
-}
-
-void ASpartaArcadeCharacter::ResetInvulnerability()
-{
-	bIsInvulnerable = false;
-}
-
-// 기절 복귀 시간 초과 시 하트 1개로 자동 부활(자가 회복) 처리
-void ASpartaArcadeCharacter::HandleStunTimeout()
-{
-	if (bIsStunned)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("%s 기절 복귀 시간 초과, 자동 부활"), *GetName());
-		ReviveCharacter(1); // 하트 1개로 자동 회복 및 부활
+		if (CombatComponent->GetPlayerState() == EBomberPlayerState::Stunned)
+		{
+			FirstAidKits--;
+			CombatComponent->SelfRevive();
+		}
+		else if (CombatComponent->GetHearts() < CombatComponent->GetMaxHearts())
+		{
+			FirstAidKits--;
+			CombatComponent->Heal(1);
+		}
 	}
 }
+
 
 // 캐릭터 오버랩 시 기절 상태인 다른 플레이어를 판별하여 구조(아군) 혹은 처치(적군) 처리 수행
 void ASpartaArcadeCharacter::NotifyActorBeginOverlap(AActor* OtherActor)
 {
 	Super::NotifyActorBeginOverlap(OtherActor);
 
+	// CombatComponent 기반 구조로 중복 및 의존성 해결
 	ASpartaArcadeCharacter* OtherChar = Cast<ASpartaArcadeCharacter>(OtherActor);
-	if (OtherChar && OtherChar->IsStunned())
+	if (OtherChar && OtherChar->CombatComponent)
 	{
-		// 아군 구조 판정
-		if (TeamID != -1 && TeamID == OtherChar->TeamID)
+		if (OtherChar->CombatComponent->GetPlayerState() == EBomberPlayerState::Stunned)
 		{
-			OtherChar->ReviveCharacter(1);
-			UE_LOG(LogTemp, Log, TEXT("%s 가 아군 %s 를 구출했습니다!"), *GetName(), *OtherChar->GetName());
-		}
-		else
-		{
-			// 적군 처치 판정
-			OtherChar->Destroy();
-			UE_LOG(LogTemp, Log, TEXT("%s 가 기절한 적 %s 를 처치했습니다!"), *GetName(), *OtherChar->GetName());
+			// 아군 구조 판정
+			if (TeamID != -1 && TeamID == OtherChar->TeamID)
+			{
+				OtherChar->CombatComponent->OnOverlapWithAlly(this);
+				UE_LOG(LogTemp, Log, TEXT("%s 가 아군 %s 를 구출했습니다!"), *GetName(), *OtherChar->GetName());
+			}
+			else
+			{
+				// 적군 처치 판정
+				OtherChar->CombatComponent->OnOverlapWithEnemy(this);
+				UE_LOG(LogTemp, Log, TEXT("%s 가 기절한 적 %s 를 처치했습니다!"), *GetName(), *OtherChar->GetName());
+			}
 		}
 	}
 }
@@ -279,8 +255,9 @@ FVector ASpartaArcadeCharacter::GetSnappedKickDirection() const
 // 캐릭터 정면에 인접한 폭탄이 있다면 격자 축 정렬 방향 보내는 기능
 void ASpartaArcadeCharacter::KickBomb()
 {
-	// 기절 상태면 즉시 중단
-	if (bIsStunned) return;
+	// CombatComponent 상태 기반 기절 판단 적용
+	bool bIsStunnedLocal = CombatComponent ? (CombatComponent->GetPlayerState() == EBomberPlayerState::Stunned) : false;
+	if (bIsStunnedLocal) return;
 
 	FVector StartLoc = GetActorLocation();
 	TArray<FHitResult> OutHits;
@@ -309,16 +286,54 @@ void ASpartaArcadeCharacter::KickBomb()
 void ASpartaArcadeCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	
 
-	DOREPLIFETIME(ASpartaArcadeCharacter, Hearts);
-	DOREPLIFETIME(ASpartaArcadeCharacter, MaxHearts);
-	DOREPLIFETIME(ASpartaArcadeCharacter, SpeedLevel);
-	DOREPLIFETIME(ASpartaArcadeCharacter, MaxBombs);
-	DOREPLIFETIME(ASpartaArcadeCharacter, CurrentActiveBombs);
-	DOREPLIFETIME(ASpartaArcadeCharacter, BombRange);
-	DOREPLIFETIME(ASpartaArcadeCharacter, bIsShielded);
 	DOREPLIFETIME(ASpartaArcadeCharacter, FirstAidKits);
-	DOREPLIFETIME(ASpartaArcadeCharacter, bIsStunned);
-	DOREPLIFETIME(ASpartaArcadeCharacter, bIsInvulnerable);
 	DOREPLIFETIME(ASpartaArcadeCharacter, TeamID);
+}
+
+// 컴포넌트 기반 Getter 함수 구현 추가
+float ASpartaArcadeCharacter::GetHP() const
+{
+	return CombatComponent ? (float)CombatComponent->GetHearts() : 0.f;
+}
+
+float ASpartaArcadeCharacter::GetMaxHP() const
+{
+	return CombatComponent ? (float)CombatComponent->GetMaxHearts() : 0.f;
+}
+
+bool ASpartaArcadeCharacter::IsShielded() const
+{
+	return CombatComponent ? CombatComponent->IsShielded() : false;
+}
+
+bool ASpartaArcadeCharacter::IsStunned() const
+{
+	return CombatComponent ? (CombatComponent->GetPlayerState() == EBomberPlayerState::Stunned) : false;
+}
+
+// CombatComponent 이벤트에 대응하는 핸들러 함수 구현 추가
+void ASpartaArcadeCharacter::HandleOnStun()
+{
+	GetCharacterMovement()->DisableMovement();
+	UE_LOG(LogTemp, Warning, TEXT("%s 기절 상태 진입!"), *GetName());
+}
+
+void ASpartaArcadeCharacter::HandleOnRevived()
+{
+	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+	UE_LOG(LogTemp, Log, TEXT("%s 부활/구출 완료!"), *GetName());
+}
+
+void ASpartaArcadeCharacter::HandleOnSelfRevive()
+{
+	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+	UE_LOG(LogTemp, Log, TEXT("%s 자력 부활 완료!"), *GetName());
+}
+
+void ASpartaArcadeCharacter::HandleOnEliminated()
+{
+	UE_LOG(LogTemp, Log, TEXT("%s 게임에서 탈락(소멸)되었습니다."), *GetName());
+	Destroy();
 }

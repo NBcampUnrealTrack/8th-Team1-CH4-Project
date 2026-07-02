@@ -54,6 +54,16 @@ public:
 
     UFUNCTION(BlueprintPure)
     int32 GetHearts() const { return Hearts; }
+
+    // 캐릭터 위임 연동을 위한 Getter 및 Heal 함수 추가
+    UFUNCTION(BlueprintCallable)
+    void Heal(int32 Amount);
+
+    UFUNCTION(BlueprintPure)
+    int32 GetMaxHearts() const { return StartHearts; }
+
+    UFUNCTION(BlueprintPure)
+    bool IsShielded() const { return bHasShield; }
     
     UPROPERTY(BlueprintAssignable)
     FOnCombatEvent OnHit;

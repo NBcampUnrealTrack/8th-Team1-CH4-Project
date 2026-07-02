@@ -1,5 +1,6 @@
 #include "SpartaArcadeBomb.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
 #include "Kismet/GameplayStatics.h"
@@ -16,9 +17,11 @@ ASpartaArcadeBomb::ASpartaArcadeBomb()
 	bReplicates = true;
 	SetReplicateMovement(true);
 
+	//  루트 컴포넌트를 기존과 같이 MeshComponent로 원복하여 BlockAll을 기본으로 동작시킴
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
 	RootComponent = MeshComponent;
 	MeshComponent->SetCollisionProfileName(TEXT("BlockAll"));
+	MeshComponent->SetGenerateOverlapEvents(false);
 
 	ExplosionDelay = 3.0f;
 	FirePower = 1;
@@ -44,6 +47,28 @@ void ASpartaArcadeBomb::BeginPlay()
 	
 	// 폭발 시간 카운트다운 타이머 등록
 	GetWorld()->GetTimerManager().SetTimer(ExplosionTimerHandle, this, &ASpartaArcadeBomb::Explode, ExplosionDelay, false);
+
+	// 스폰 시점에 이 폭탄의 2D 평면 영역(반경 80유닛 이내)에 겹쳐 있는 캐릭터들을 완벽히 감지하여 충돌 무시 설정
+	TArray<AActor*> FoundCharacters;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ASpartaArcadeCharacter::StaticClass(), FoundCharacters);
+	
+	FVector MyLoc = GetActorLocation();
+	for (AActor* Actor : FoundCharacters)
+	{
+		ASpartaArcadeCharacter* Character = Cast<ASpartaArcadeCharacter>(Actor);
+		if (Character)
+		{
+			// Z축 높이 값을 배제하고 오직 XY 평면 기준 2D 평면 거리만 판정하도록 Dist2D 사용
+			float Dist2D = FVector::Dist2D(MyLoc, Character->GetActorLocation());
+			// 캐릭터 캡슐 반경 42.f + 알파 마진을 고려해 스폰 시 80유닛 이내 겹친 자들을 감지
+			if (Dist2D < 80.f)
+			{
+				IgnoredCharacters.Add(Character);
+				// 물리 관통 솔버(Penetration Solver)의 튕겨내기 버그를 피하기 위해 캡슐 레벨에서 충돌을 완전히 무시
+				Character->GetCapsuleComponent()->IgnoreActorWhenMoving(this, true);
+			}
+		}
+	}
 }
 
 void ASpartaArcadeBomb::InitializeBomb(ASpartaArcadeCharacter* InInstigator, int32 InFirePower)
@@ -88,6 +113,17 @@ void ASpartaArcadeBomb::Explode()
 	{
 		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, ExplosionVFX, StartLoc);
 	}
+	// 케스케이드 파티클 시스템도 지정된 경우 함께 스폰하도록 연동 추가
+	if (ExplosionCascadeVFX)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ExplosionCascadeVFX, StartLoc);
+	}
+
+	// 폭발 사운드 에셋이 지정되어 있다면 위치에서 사운드 재생
+	if (ExplosionSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, ExplosionSound, StartLoc);
+	}
 
 	ApplyCenterDamage(StartLoc);
 
@@ -101,6 +137,18 @@ void ASpartaArcadeBomb::Explode()
 	if (InstigatorCharacter)
 	{
 		InstigatorCharacter->OnBombExploded();
+	}
+
+	// 폭발 완료 델리게이트 호출 추가
+	OnBombExploded.ExecuteIfBound();
+
+	// 아직 해제되지 않은 충돌 무시 관계가 남았다면 액터 파괴 전에 깔끔하게 원상 복귀
+	for (ASpartaArcadeCharacter* Character : IgnoredCharacters)
+	{
+		if (IsValid(Character) && Character->GetCapsuleComponent())
+		{
+			Character->GetCapsuleComponent()->IgnoreActorWhenMoving(this, false);
+		}
 	}
 
 	Destroy();
@@ -166,6 +214,11 @@ void ASpartaArcadeBomb::PerformExplosionDirection(const FVector& Direction)
 		{
 			UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, ExplosionVFX, TargetLoc);
 		}
+		// 각 분기 경로마다 케스케이드 파티클도 지정된 경우 스폰하도록 연동 추가
+		if (ExplosionCascadeVFX)
+		{
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ExplosionCascadeVFX, TargetLoc);
+		}
 
 		if (bHit && HitResult.GetActor())
 		{
@@ -181,6 +234,26 @@ void ASpartaArcadeBomb::PerformExplosionDirection(const FVector& Direction)
 void ASpartaArcadeBomb::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	// 2D 거리를 수동 검사하여 캐릭터가 안전하게 영역을 벗어났을 때 충돌을 켬 (Z축 및 튕김 방지)
+	for (int32 i = IgnoredCharacters.Num() - 1; i >= 0; --i)
+	{
+		ASpartaArcadeCharacter* Character = IgnoredCharacters[i];
+		if (IsValid(Character))
+		{
+			float Dist2D = FVector::Dist2D(GetActorLocation(), Character->GetActorLocation());
+			// 캐릭터 캡슐 반경(42.f)과 폭탄 물리 반경을 합해 안전한 이탈 거리인 90.f 유닛 이상 멀어지면 충돌 무시 제거
+			if (Dist2D >= 90.f)
+			{
+				Character->GetCapsuleComponent()->IgnoreActorWhenMoving(this, false);
+				IgnoredCharacters.RemoveAt(i);
+			}
+		}
+		else
+		{
+			IgnoredCharacters.RemoveAt(i);
+		}
+	}
 
 	if (!HasAuthority() || !bIsRolling)
 	{
