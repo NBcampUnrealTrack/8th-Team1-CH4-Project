@@ -262,13 +262,25 @@ void ASpartaArcadeCharacter::NotifyActorBeginOverlap(AActor* OtherActor)
 	}
 }
 
+FVector ASpartaArcadeCharacter::GetSnappedKickDirection() const
+{
+	FVector KickDir = GetActorForwardVector();
+	KickDir.Z = 0.f;
+	KickDir.Normalize();
+	
+	if (FMath::Abs(KickDir.X) > FMath::Abs(KickDir.Y))
+	{
+		return FVector(FMath::Sign(KickDir.X), 0.f, 0.f);
+	}
+	
+	return FVector(0.f, FMath::Sign(KickDir.Y), 0.f);
+}
+
 // 캐릭터 정면에 인접한 폭탄이 있다면 격자 축 정렬 방향 보내는 기능
 void ASpartaArcadeCharacter::KickBomb()
 {
-	if (bIsStunned)
-	{
-		return;
-	}
+	// 기절 상태면 즉시 중단
+	if (bIsStunned) return;
 
 	FVector StartLoc = GetActorLocation();
 	TArray<FHitResult> OutHits;
@@ -276,36 +288,20 @@ void ASpartaArcadeCharacter::KickBomb()
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(this);
 
-	if (GetWorld()->SweepMultiByChannel(OutHits, StartLoc, StartLoc + FVector(0.f, 0.f, 1.f), FQuat::Identity, ECC_Visibility, DetectionSphere, Params))
+	// 스윕 검사에 실패했으면 즉시 중단
+	bool bHasHits = GetWorld()->SweepMultiByChannel(OutHits, StartLoc, StartLoc + FVector(0.f, 0.f, 1.f),
+		FQuat::Identity, ECC_Visibility, DetectionSphere, Params);
+	if (!bHasHits) return;
+
+	for (const FHitResult& Hit : OutHits)
 	{
-		for (const FHitResult& Hit : OutHits)
-		{
-			AActor* HitActor = Hit.GetActor();
-			if (HitActor && HitActor->IsA(ASpartaArcadeBomb::StaticClass()))
-			{
-				ASpartaArcadeBomb* Bomb = Cast<ASpartaArcadeBomb>(HitActor);
-				if (Bomb && !Bomb->IsRolling())
-				{
-					FVector KickDir = GetActorForwardVector();
-					KickDir.Z = 0.f;
-					KickDir.Normalize();
+		ASpartaArcadeBomb* Bomb = Cast<ASpartaArcadeBomb>(Hit.GetActor());
+		if (!Bomb || Bomb->IsRolling()) continue;
 
-					// 캐릭터 조준 방향에 맞춰 십자 축(상/하/좌/우) 직진 방향으로 보정 스냅
-					if (FMath::Abs(KickDir.X) > FMath::Abs(KickDir.Y))
-					{
-						KickDir = FVector(FMath::Sign(KickDir.X), 0.f, 0.f);
-					}
-					else
-					{
-						KickDir = FVector(0.f, FMath::Sign(KickDir.Y), 0.f);
-					}
-
-					Bomb->Kick(KickDir);
-					UE_LOG(LogTemp, Log, TEXT("%s 가 폭탄을 %s 방향으로 찼습니다!"), *GetName(), *KickDir.ToString());
-					break;
-				}
-			}
-		}
+		// 헬퍼 함수 호출
+		FVector KickDir = GetSnappedKickDirection();
+		Bomb->Kick(KickDir);
+		UE_LOG(LogTemp, Log, TEXT("%s 가 폭탄을 %s 방향으로 찼습니다!"), *GetName(), *KickDir.ToString());break;
 	}
 }
 

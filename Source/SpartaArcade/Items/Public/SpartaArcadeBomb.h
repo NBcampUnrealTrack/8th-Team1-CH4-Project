@@ -60,11 +60,17 @@ protected:
 	bool bIsRolling;
 	FVector RollDirection;
 	
+	// 중복 폭발로 인한 Stack Overflow 방지 플래그
+	bool bIsExploded;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay|Rolling")
 	float RollSpeed;
 
 	// 특정 방향으로 폭발 광선을 전파하여 데미지/파괴 처리하는 서브 로직
 	void PerformExplosionDirection(const FVector& Direction);
+	
+	void ApplyCenterDamage(const FVector& Center);
+	bool HandleExplosionHit(AActor* HitActor);
 
 public:
 	//  유폭 연쇄 처리를 위한 폭발 실행 함수
