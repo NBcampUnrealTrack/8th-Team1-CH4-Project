@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "SpartaUIDefs.generated.h"
@@ -37,17 +37,24 @@ enum class EItemType : uint8
     Shield      UMETA(DisplayName = "방어막")
 };
 
+UENUM(BlueprintType)
+enum class EGameModeType : uint8
+{
+    Solo    UMETA(DisplayName = "개인전"),
+    Team    UMETA(DisplayName = "팀전")
+};
+
 USTRUCT(BlueprintType)
 struct FMatchPlayerResult
 {
     GENERATED_BODY()
 
     UPROPERTY(BlueprintReadOnly, Category = "UI")
-    FString PlayerName;
+    FString PlayerName = TEXT("");
 
     UPROPERTY(BlueprintReadOnly, Category = "UI")
-    int32 Rank;
+    int32 Rank = 0;
 
     UPROPERTY(BlueprintReadOnly, Category = "UI")
-    int32 SurvivalTime;
+    int32 SurvivalTime = 0;
 };
