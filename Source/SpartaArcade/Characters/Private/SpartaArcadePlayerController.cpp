@@ -19,6 +19,19 @@ ASpartaArcadePlayerController::ASpartaArcadePlayerController()
 void ASpartaArcadePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (IsLocalController() == false)
+	{
+		return;
+	}
+
+	if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+	{
+		Subsystem->AddMappingContext(DefaultMappingContext, 0);
+	}
+
+	FInputModeGameOnly GameOnly;
+	SetInputMode(GameOnly);
 }
 
 void ASpartaArcadePlayerController::SetupInputComponent()
@@ -72,14 +85,9 @@ void ASpartaArcadePlayerController::OnMoveTriggered(const FInputActionValue& Val
 	APawn* ControlledPawn = GetPawn();
 	if (ControlledPawn != nullptr)
 	{
-		const FRotator Rotation = GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
-
-		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-
-		ControlledPawn->AddMovementInput(ForwardDirection, MovementVector.Y);
-		ControlledPawn->AddMovementInput(RightDirection, MovementVector.X);
+		//  컨트롤러 회전 방향에 영향받지 않고 일관되게 상/하/좌/우(월드 기준)로 이동하도록 변경
+		ControlledPawn->AddMovementInput(FVector::ForwardVector, MovementVector.Y);
+		ControlledPawn->AddMovementInput(FVector::RightVector, MovementVector.X);
 	}
 }
 

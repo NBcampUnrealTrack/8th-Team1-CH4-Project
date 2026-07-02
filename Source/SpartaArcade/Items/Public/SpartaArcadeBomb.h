@@ -7,6 +7,9 @@
 class ASpartaArcadeCharacter;
 class UNiagaraSystem;
 
+// UBombPlacerComponent 등 외부 연동을 위한 폭발 델리게이트 선언
+DECLARE_DELEGATE(FOnBombExploded);
+
 UCLASS()
 class SPARTAARCADE_API ASpartaArcadeBomb : public AActor
 {
@@ -14,6 +17,9 @@ class SPARTAARCADE_API ASpartaArcadeBomb : public AActor
 	
 public:	
 	ASpartaArcadeBomb();
+
+	// 폭발 완료 델리게이트 멤버 추가
+	FOnBombExploded OnBombExploded;
 	
 	virtual void Tick(float DeltaTime) override;
 
@@ -26,6 +32,10 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+
+	// Removed: 물리 및 Z축 오작동을 방지하기 위해 사용하지 않는 구체 콜라이더 제거
+	// UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	// class USphereComponent* CollisionComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* MeshComponent;
@@ -50,21 +60,43 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Visuals")
 	UNiagaraSystem* ExplosionVFX;
 
+	// 구형 케스케이드 파티클 시스템 멤버 속성
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Visuals")
+	UParticleSystem* ExplosionCascadeVFX;
+
+	// 폭발 시 재생할 사운드 에셋 속성
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio")
+	class USoundBase* ExplosionSound;
+
+	// Modified: 2D 거리 수동 판정을 기반으로 충돌 무시를 관리할 캐릭터 목록 추가
+	UPROPERTY()
+	TArray<class ASpartaArcadeCharacter*> IgnoredCharacters;
+
 	FTimerHandle ExplosionTimerHandle;
 
 	// 폭탄을 배치한 주동자 캐릭터
 	UPROPERTY()
 	ASpartaArcadeCharacter* InstigatorCharacter;
 
-	// 굴리기 운동 상태를 추적하기 위한 변수 추가
+	// 굴리기 운동 상태를 추적하기 위한 변수
 	bool bIsRolling;
 	FVector RollDirection;
+	
+	// 중복 폭발로 인한 Stack Overflow 방지 플래그
+	bool bIsExploded;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay|Rolling")
 	float RollSpeed;
 
 	// 특정 방향으로 폭발 광선을 전파하여 데미지/파괴 처리하는 서브 로직
 	void PerformExplosionDirection(const FVector& Direction);
+	
+	void ApplyCenterDamage(const FVector& Center);
+	bool HandleExplosionHit(AActor* HitActor);
+
+	// Removed: 튕김 문제를 완전히 개선하기 위해 사용하지 않는 EndOverlap 핸들러 제거
+	// UFUNCTION()
+	// void OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
 public:
 	//  유폭 연쇄 처리를 위한 폭발 실행 함수
