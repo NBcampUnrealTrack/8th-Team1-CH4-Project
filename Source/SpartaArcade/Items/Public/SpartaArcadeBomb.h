@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -68,6 +68,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio")
 	class USoundBase* ExplosionSound;
 
+	// 폭발 좌표를 저장하여 해당 좌표에서 애니메이션 재생
+	TArray<FVector> ExplosionLocations;
+
 	// Modified: 2D 거리 수동 판정을 기반으로 충돌 무시를 관리할 캐릭터 목록 추가
 	UPROPERTY()
 	TArray<class ASpartaArcadeCharacter*> IgnoredCharacters;
@@ -93,6 +96,10 @@ protected:
 	
 	void ApplyCenterDamage(const FVector& Center);
 	bool HandleExplosionHit(AActor* HitActor);
+
+	// 폭발 이펙트 재생 멀티캐스트 RPC
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayExplosionEffects(const TArray<FVector>& Locations);
 
 	// Removed: 튕김 문제를 완전히 개선하기 위해 사용하지 않는 EndOverlap 핸들러 제거
 	// UFUNCTION()

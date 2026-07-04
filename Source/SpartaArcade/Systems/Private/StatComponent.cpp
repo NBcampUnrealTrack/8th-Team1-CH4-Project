@@ -1,24 +1,24 @@
-#include "StatComponent.h"
-// #include "Net/UnrealNetwork.h"
+﻿#include "StatComponent.h"
+#include "Net/UnrealNetwork.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 UStatComponent::UStatComponent()
 {
-    // SetIsReplicatedByDefault(true);
+    SetIsReplicatedByDefault(true);
 
     PrimaryComponentTick.bCanEverTick = false;
 }
 
-// void UStatComponent::GetLifetimeReplicatedProps(
-//     TArray<FLifetimeProperty>& OutLifetimeProps) const
-// {
-//     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-//
-//     DOREPLIFETIME(UStatComponent, BombRange);
-//     DOREPLIFETIME(UStatComponent, BombCount);
-//     DOREPLIFETIME(UStatComponent, MoveSpeed);
-// }
+void UStatComponent::GetLifetimeReplicatedProps(
+    TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+    DOREPLIFETIME(UStatComponent, BombRange);
+    DOREPLIFETIME(UStatComponent, BombCount);
+    DOREPLIFETIME(UStatComponent, MoveSpeed);
+}
 
 void UStatComponent::BeginPlay()
 {
@@ -27,7 +27,7 @@ void UStatComponent::BeginPlay()
 
 void UStatComponent::InitializeFromDataTable(FName CharacterRowName)
 {
-    // if (!GetOwner()->HasAuthority()) return;
+    if (!GetOwner()->HasAuthority()) return;
 
     if (!IsValid(CharacterStatTable))
     {
@@ -58,7 +58,7 @@ void UStatComponent::InitializeFromDataTable(FName CharacterRowName)
 
 void UStatComponent::GrowStat(EBomberStatType StatType)
 {
-    // if (!GetOwner()->HasAuthority()) return;
+    if (!GetOwner()->HasAuthority()) return;
 
     switch (StatType)
     {

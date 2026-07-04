@@ -1,22 +1,23 @@
-#include "CombatComponent.h"
-// #include "Net/UnrealNetwork.h"
+﻿#include "CombatComponent.h"
+#include "Net/UnrealNetwork.h"
 
 UCombatComponent::UCombatComponent()
 {
-    // SetIsReplicatedByDefault(true);
+    SetIsReplicatedByDefault(true);
 
     PrimaryComponentTick.bCanEverTick = false;
 }
 
-// void UCombatComponent::GetLifetimeReplicatedProps(
-//     TArray<FLifetimeProperty>& OutLifetimeProps) const
-// {
-//     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-//
-//     DOREPLIFETIME(UCombatComponent, Hearts);
-//     DOREPLIFETIME(UCombatComponent, CurrentState);
-//     DOREPLIFETIME(UCombatComponent, bInvincible);
-// }
+void UCombatComponent::GetLifetimeReplicatedProps(
+    TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+    DOREPLIFETIME(UCombatComponent, Hearts);
+    DOREPLIFETIME(UCombatComponent, CurrentState);
+    DOREPLIFETIME(UCombatComponent, bInvincible);
+	DOREPLIFETIME(UCombatComponent, bHasShield);
+}
 
 void UCombatComponent::BeginPlay()
 {
@@ -57,7 +58,7 @@ void UCombatComponent::InitializeFromDataTable(UDataTable* InCombatStatTable)
 
 void UCombatComponent::ApplyDamage()
 {
-    // if (!GetOwner()->HasAuthority()) return;
+    if (!GetOwner()->HasAuthority()) return;
 
     //무적 중 피격 무효
     if (bInvincible) return;
@@ -140,7 +141,7 @@ void UCombatComponent::Revive()
 
 void UCombatComponent::SelfRevive()
 {
-    // if (!GetOwner()->HasAuthority()) return;
+    if (!GetOwner()->HasAuthority()) return;
 
     if (CurrentState != EBomberPlayerState::Stunned) return;
 
@@ -155,7 +156,7 @@ void UCombatComponent::SelfRevive()
 void UCombatComponent::InstantEliminate()
 {
     //자기장 압사 - 기절 없이 즉시 탈락
-    // if (!GetOwner()->HasAuthority()) return;
+    if (!GetOwner()->HasAuthority()) return;
 
     GetWorld()->GetTimerManager().ClearTimer(StunTimerHandle);
 
@@ -178,7 +179,7 @@ void UCombatComponent::ResetDamageFlag()
 //충돌 처리 
 void UCombatComponent::OnOverlapWithEnemy(AActor* Enemy)
 {
-    // if (!GetOwner()->HasAuthority()) return;
+    if (!GetOwner()->HasAuthority()) return;
 
     if (!IsValid(Enemy)) return;
 
@@ -190,7 +191,7 @@ void UCombatComponent::OnOverlapWithEnemy(AActor* Enemy)
 
 void UCombatComponent::OnOverlapWithAlly(AActor* Ally)
 {
-    // if (!GetOwner()->HasAuthority()) return;
+    if (!GetOwner()->HasAuthority()) return;
 
     if (!IsValid(Ally)) return;
 
@@ -207,6 +208,11 @@ void UCombatComponent::OnRep_Hearts()
 void UCombatComponent::OnRep_CurrentState()
 {
     // 애니메이션 갱신용 - 상태 변경 시 자동 호출됨
+}
+
+void UCombatComponent::OnRep_HasShield()
+{
+    // UI 갱신용 - 방어막 상태 변경 시 자동 호출됨
 }
 
 // 캐릭터 위임 연동을 위한 Heal 함수 구현 추가

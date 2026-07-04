@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
@@ -40,8 +40,8 @@ public:
     UPROPERTY(BlueprintAssignable)
     FOnStatChanged OnStatChanged;
     
-    // virtual void GetLifetimeReplicatedProps(
-    //     TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+    virtual void GetLifetimeReplicatedProps(
+        TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
     virtual void BeginPlay() override;
@@ -49,16 +49,13 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category="Data")
     TObjectPtr<UDataTable> CharacterStatTable;
     
-    // UPROPERTY(ReplicatedUsing=OnRep_BombRange)
-    UPROPERTY()
+    UPROPERTY(ReplicatedUsing=OnRep_BombRange)
     int32 BombRange = 2;
 
-    // UPROPERTY(ReplicatedUsing=OnRep_BombCount)
-    UPROPERTY()
+    UPROPERTY(ReplicatedUsing=OnRep_BombCount)
     int32 BombCount = 3;
 
-    // UPROPERTY(ReplicatedUsing=OnRep_MoveSpeed)
-    UPROPERTY()
+    UPROPERTY(ReplicatedUsing=OnRep_MoveSpeed)
     int32 MoveSpeed = 3;
 
     int32 MaxBombRange = 5;

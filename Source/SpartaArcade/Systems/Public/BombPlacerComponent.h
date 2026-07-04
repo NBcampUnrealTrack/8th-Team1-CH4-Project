@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
@@ -15,8 +15,7 @@ class SPARTAARCADE_API UBombPlacerComponent : public UActorComponent
 public:
 	UBombPlacerComponent();
 
-	// UFUNCTION(Server, Reliable)
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(Server, Reliable)
 	void ServerPlaceBomb();
 
 protected:
@@ -32,14 +31,13 @@ private:
 	bool CanPlaceBomb() const;
 	void OnBombExploded();
 
-	// UPROPERTY(Replicated)
-	UPROPERTY()
+	UPROPERTY(Replicated)
 	int32 CurrentPlacedBombs = 0;
 
 	UPROPERTY()
 	TObjectPtr<UStatComponent> CachedStatComponent;
 
 public:
-	// virtual void GetLifetimeReplicatedProps(
-	//     TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void GetLifetimeReplicatedProps(
+	    TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 };

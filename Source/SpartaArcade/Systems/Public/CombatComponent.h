@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
@@ -83,8 +83,8 @@ public:
     UPROPERTY(BlueprintAssignable)
     FOnCombatEvent OnShieldBlock;
 
-    // virtual void GetLifetimeReplicatedProps(
-    //     TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+    virtual void GetLifetimeReplicatedProps(
+         TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
     virtual void BeginPlay() override;
@@ -93,19 +93,16 @@ protected:
     TObjectPtr<UDataTable> CombatStatTable;
 
     // 상태 변수 
-    // UPROPERTY(ReplicatedUsing=OnRep_Hearts)
-    UPROPERTY()
+    UPROPERTY(ReplicatedUsing=OnRep_Hearts)
     int32 Hearts;
 
-    // UPROPERTY(ReplicatedUsing=OnRep_CurrentState)
-    UPROPERTY()
+    UPROPERTY(ReplicatedUsing=OnRep_CurrentState)
     EBomberPlayerState CurrentState = EBomberPlayerState::Alive;
 
-    // UPROPERTY(Replicated)
-    UPROPERTY()
+    UPROPERTY(Replicated)
     bool bInvincible = false;
     
-    UPROPERTY()
+    UPROPERTY(ReplicatedUsing=OnRep_HasShield)
     bool bHasShield = false;
 
 private:
@@ -122,6 +119,9 @@ private:
 
     UFUNCTION()
     void OnRep_CurrentState();
+
+    UFUNCTION()
+	void OnRep_HasShield();
 
     // 수치 (DataTable에서 로드)
     int32 StartHearts = 3;
