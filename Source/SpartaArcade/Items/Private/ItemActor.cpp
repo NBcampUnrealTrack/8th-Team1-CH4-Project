@@ -1,4 +1,4 @@
-#include "ItemActor.h"
+﻿#include "ItemActor.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "StatComponent.h"
@@ -18,7 +18,7 @@ AItemActor::AItemActor()
     ItemMesh->SetupAttachment(CollisionSphere);
     ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-    // bReplicates = true;
+    bReplicates = true;
 }
 
 void AItemActor::BeginPlay()
@@ -38,7 +38,7 @@ void AItemActor::NotifyActorBeginOverlap(AActor* OtherActor)
 {
     Super::NotifyActorBeginOverlap(OtherActor);
 
-    // if (!HasAuthority()) return;
+    if (!HasAuthority()) return;
 
     if (!IsValid(ItemDataTable)) return;
 

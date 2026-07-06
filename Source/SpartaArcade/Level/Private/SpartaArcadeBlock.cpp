@@ -1,4 +1,4 @@
-#include "SpartaArcadeBlock.h"
+﻿#include "SpartaArcadeBlock.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 #include "SpartaArcadeItem.h"
@@ -28,6 +28,11 @@ void ASpartaArcadeBlock::BeginPlay()
 // 아이템 랜덤 스폰
 void ASpartaArcadeBlock::DestroyBlock()
 {
+	if (HasAuthority() == false)
+	{
+		return;
+	}
+
 	if (ItemSpawnClass)
 	{
 		float Roll = FMath::FRandRange(0.f, 100.f);

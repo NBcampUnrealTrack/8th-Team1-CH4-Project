@@ -1,4 +1,4 @@
-#include "SpartaArcadeItem.h"
+﻿#include "SpartaArcadeItem.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "SpartaArcadeCharacter.h"
@@ -51,11 +51,17 @@ void ASpartaArcadeItem::Tick(float DeltaTime)
 	AddActorLocalRotation(FRotator(0.f, RotationSpeed * DeltaTime, 0.f));
 }
 
+void ASpartaArcadeItem::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ASpartaArcadeItem, ItemType);
+}
+
 void ASpartaArcadeItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, 
                                       UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, 
                                       bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (OtherActor && OtherActor != this)
+	if (HasAuthority() && OtherActor && OtherActor != this)
 	{
 		ASpartaArcadeCharacter* Character = Cast<ASpartaArcadeCharacter>(OtherActor);
 		if (Character)
@@ -81,7 +87,6 @@ void ASpartaArcadeItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AAct
 			default:
 				break;
 			}
-
 			Destroy();
 		}
 	}
@@ -90,5 +95,8 @@ void ASpartaArcadeItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AAct
 // 블록에서 아이템 생성 시 생성 아이템의 종류를 지정하기 위한 Setter 함수 구현
 void ASpartaArcadeItem::SetItemType(ESpartaArcadeItemType InType)
 {
-	ItemType = InType;
+	if (HasAuthority())
+	{
+		ItemType = InType;
+	}
 }

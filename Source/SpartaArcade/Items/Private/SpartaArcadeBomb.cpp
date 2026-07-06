@@ -7,6 +7,7 @@
 #include "NiagaraFunctionLibrary.h"
 #include "SpartaArcadeCharacter.h"
 #include "SpartaArcadeBlock.h"
+#include "BreakableBox.h"
 
 ASpartaArcadeBomb::ASpartaArcadeBomb()
 {
@@ -168,6 +169,11 @@ bool ASpartaArcadeBomb::HandleExplosionHit(AActor* HitActor)
 	if (ASpartaArcadeBlock* Block = Cast<ASpartaArcadeBlock>(HitActor))
 	{
 		Block->DestroyBlock();
+		return true;
+	}
+	if(ABreakableBox* BreakableBox = Cast<ABreakableBox>(HitActor))
+	{
+		BreakableBox->TakeExplosionDamage_Implementation();
 		return true;
 	}
 
