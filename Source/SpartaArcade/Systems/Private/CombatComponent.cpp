@@ -219,6 +219,10 @@ void UCombatComponent::OnOverlapWithAlly(AActor* Ally)
 void UCombatComponent::OnRep_HasShield()
 {
     // UI 갱신용 - 방어막 상태 변경 시 자동 호출됨
+    if(OnbHasShieldChanged.IsBound())
+    {
+        OnbHasShieldChanged.Broadcast(bHasShield);
+	}
 }
 
 // 캐릭터 위임 연동을 위한 Heal 함수 구현 추가
@@ -227,4 +231,9 @@ void UCombatComponent::Heal(int32 Amount)
     if (SpartaPlayerState->GetCurrentState() != EBomberPlayerState::Alive) return;
     SpartaPlayerState->SetHearts(FMath::Clamp(SpartaPlayerState->GetHearts() + Amount, 0, SpartaPlayerState->GetStartHearts()));
     OnHit.Broadcast(); // UI 갱신을 위해 브로드캐스트
+}
+
+void UCombatComponent::BroadcastCurrentState()
+{
+    OnRep_HasShield();
 }

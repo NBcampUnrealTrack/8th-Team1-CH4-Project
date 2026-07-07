@@ -99,3 +99,16 @@ void UBombPlacerComponent::OnBombExploded()
 {
 	CurrentPlacedBombs--;
 }
+
+void UBombPlacerComponent::OnRep_CurrentPlacedBombs()
+{
+	if(OnCurrentPlacedBombsChanged.IsBound())
+	{
+		OnCurrentPlacedBombsChanged.Broadcast(CurrentPlacedBombs);
+	}
+}
+
+void UBombPlacerComponent::BroadcastCurrentState()
+{
+	OnRep_CurrentPlacedBombs();
+}

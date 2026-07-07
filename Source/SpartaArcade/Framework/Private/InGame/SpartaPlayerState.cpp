@@ -3,6 +3,7 @@
 
 #include "InGame/SpartaPlayerState.h"
 #include "Net/UnrealNetwork.h"
+#include "Systems/Public/BomberTypes.h"
 
 void ASpartaPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -101,11 +102,23 @@ int32 ASpartaPlayerState::GetSelfReviveHearts() const
 
 void ASpartaPlayerState::OnRep_Hearts()
 {
-	
+	if (OnHeartsChanged.IsBound())
+	{
+		OnHeartsChanged.Broadcast(Hearts, StartHearts);
+	}
 }
 
 void ASpartaPlayerState::OnRep_CurrentState()
 {
-	
+	if (OnStunStateChanged.IsBound())
+	{
+		OnStunStateChanged.Broadcast(CurrentState == EBomberPlayerState::Stunned);
+	}
 }
 	
+
+void ASpartaPlayerState::BroadcastCurrentState()
+{
+	OnRep_Hearts();
+	OnRep_CurrentState();
+}

@@ -16,6 +16,8 @@
 #include "BombPlacerComponent.h"
 #include "Engine/DataTable.h"
 #include "Framework/Public/InGame/SpartaPlayerState.h"
+#include "SpartaArcadePlayerController.h"
+#include "UI/Public/SpartaHUDWidget.h"
 
 ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 {
@@ -95,7 +97,7 @@ float ASpartaArcadeCharacter::TakeDamage(float DamageAmount, struct FDamageEvent
 
 void ASpartaArcadeCharacter::InitializeCharacterComponents()
 {
-	if (!IsValid(GetPlayerState()) || !IsValid(StatComponent) || !IsValid(CombatComponent))
+	if (!IsValid(GetPlayerState()) || !IsValid(StatComponent) || !IsValid(CombatComponent) || !IsValid(BombPlacerComponent))
 	{
 		if(InitializedComponentsCount >= MaxInitializedComponentsCount)
 		{
@@ -140,16 +142,32 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 
 	if (CombatComponent)
 	{
+		CombatComponent->InitializePlayerState(GetPlayerState());
+
 		if (CombatStatTable)
 		{
 			CombatComponent->InitializeFromDataTable(CombatStatTable);
 		}
-		CombatComponent->InitializePlayerState(GetPlayerState());
 
 		CombatComponent->OnStun.AddDynamic(this, &ASpartaArcadeCharacter::HandleOnStun);
 		CombatComponent->OnRevived.AddDynamic(this, &ASpartaArcadeCharacter::HandleOnRevived);
 		CombatComponent->OnSelfRevive.AddDynamic(this, &ASpartaArcadeCharacter::HandleOnSelfRevive);
 		CombatComponent->OnEliminated.AddDynamic(this, &ASpartaArcadeCharacter::HandleOnEliminated);
+	}
+
+	if (IsLocallyControlled())
+	{
+		if (ASpartaArcadePlayerController* PC = Cast<ASpartaArcadePlayerController>(GetController()))
+		{
+			if (USpartaHUDWidget* HUDWidget = Cast<USpartaHUDWidget>(PC->HUDUIWidgetInstance))
+			{
+				HUDWidget->InitializeHUD(SpartaPlayerState, StatComponent, CombatComponent, BombPlacerComponent);
+				SpartaPlayerState->BroadcastCurrentState();
+				StatComponent->BroadcastCurrentState();
+				CombatComponent->BroadcastCurrentState();
+				BombPlacerComponent->BroadcastCurrentState();
+			}
+		}
 	}
 }
 // 클래식 봄버맨 타일 일치를 위해 캐릭터의 현재 발밑 좌표를 100단위 그리드로 보정하여 스폰

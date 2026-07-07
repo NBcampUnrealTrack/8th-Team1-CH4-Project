@@ -6,6 +6,12 @@
 #include "GameFramework/PlayerState.h"
 #include "SpartaPlayerState.generated.h"
 
+// 체력
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHeartsChangedSignature, int32, CurrentHearts, int32, MaxHearts);
+
+// 기절
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStunStateChangedSignature, bool, bIsActive);
+
 enum class ESpartaArcadeCharacterType : uint8;
 enum class EBomberPlayerState : uint8;
 /**
@@ -63,6 +69,18 @@ public:
 	void OnRep_Hearts();
 	UFUNCTION()
 	void OnRep_CurrentState();
+
+	void BroadcastCurrentState();
+
+	// -------------------------------------------------------
+	// Delegates
+	// 체력 
+	UPROPERTY(BlueprintAssignable, Category = "Events | UI")
+	FOnHeartsChangedSignature OnHeartsChanged;
+
+	// 기절
+	UPROPERTY(BlueprintAssignable, Category = "Events | UI")
+	FOnStunStateChangedSignature OnStunStateChanged;
 
 protected:
 

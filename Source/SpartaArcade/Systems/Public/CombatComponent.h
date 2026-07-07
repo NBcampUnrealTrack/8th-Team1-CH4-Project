@@ -7,6 +7,7 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCombatEvent);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnbHasShieldChangedSignature, bool, bHasShield);
 
 UCLASS(ClassGroup=(Bomber), meta=(BlueprintSpawnableComponent))
 class SPARTAARCADE_API UCombatComponent : public UActorComponent
@@ -74,11 +75,15 @@ public:
     UPROPERTY(BlueprintAssignable)
     FOnCombatEvent OnShieldBlock;
 
+    UPROPERTY(BlueprintAssignable, Category = "Events | UI")
+	FOnbHasShieldChangedSignature OnbHasShieldChanged;
+
     virtual void GetLifetimeReplicatedProps(
          TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
     void InitializePlayerState(APlayerState* NewPlayerState);
     
+    void BroadcastCurrentState();
 
 protected:
     virtual void BeginPlay() override;

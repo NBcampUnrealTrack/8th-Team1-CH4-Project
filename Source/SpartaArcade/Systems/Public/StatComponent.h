@@ -10,6 +10,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(
     EBomberStatType, StatType,
     int32, NewValue);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnStatChangedSignature, int32, NewBombCount, float, NewBombRange, float, NewMoveSpeed);
+
 UCLASS(ClassGroup=(Bomber), meta=(BlueprintSpawnableComponent))
 class SPARTAARCADE_API UStatComponent : public UActorComponent
 {
@@ -39,9 +41,14 @@ public:
 
     UPROPERTY(BlueprintAssignable)
     FOnStatChanged OnStatChanged;
-    
+
+    UPROPERTY(BlueprintAssignable, Category = "Events | UI")
+    FOnStatChangedSignature OnStatsChanged;
+
     virtual void GetLifetimeReplicatedProps(
         TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	void BroadcastCurrentState();
 
 protected:
     virtual void BeginPlay() override;

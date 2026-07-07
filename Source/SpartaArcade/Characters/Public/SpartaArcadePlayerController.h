@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Templates/SubclassOf.h"
@@ -38,6 +38,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* UseFirstAidKitAction;
 
+
+	// 테스트를 위한 HUD UI 위젯 클래스 및 인스턴스
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
+	TSubclassOf<UUserWidget> HUDUIWidgetClass;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
+	TObjectPtr<UUserWidget> HUDUIWidgetInstance;
+
 protected:
 
 	virtual void SetupInputComponent() override;
@@ -60,4 +68,5 @@ protected:
 
 	UFUNCTION(Server, Reliable)
 	void ServerUseFirstAidKit();
+
 };

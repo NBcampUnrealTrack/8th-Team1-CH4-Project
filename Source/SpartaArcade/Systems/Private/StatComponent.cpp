@@ -86,11 +86,23 @@ void UStatComponent::GrowStat(EBomberStatType StatType)
 void UStatComponent::OnRep_BombRange()
 {
     OnStatChanged.Broadcast(EBomberStatType::BombRange, BombRange);
+
+	// UI 업데이트 델리게이트
+    if (OnStatsChanged.IsBound())
+    {
+		OnStatsChanged.Broadcast(BombCount, BombRange, MoveSpeed);
+    }
 }
 
 void UStatComponent::OnRep_BombCount()
 {
     OnStatChanged.Broadcast(EBomberStatType::BombCount, BombCount);
+
+    // UI 업데이트 델리게이트
+    if (OnStatsChanged.IsBound())
+    {
+        OnStatsChanged.Broadcast(BombCount, BombRange, MoveSpeed);
+    }
 }
 
 void UStatComponent::OnRep_MoveSpeed()
@@ -107,4 +119,17 @@ void UStatComponent::OnRep_MoveSpeed()
     MoveComp->MaxWalkSpeed = BaseSpeed + (MoveSpeed * SpeedPerLevel);
 
     OnStatChanged.Broadcast(EBomberStatType::MoveSpeed, MoveSpeed);
+
+    // UI 업데이트 델리게이트
+    if(OnStatsChanged.IsBound())
+    {
+        OnStatsChanged.Broadcast(BombCount, BombRange, MoveSpeed);
+	}
+}
+
+void UStatComponent::BroadcastCurrentState()
+{
+	OnRep_BombRange();
+	OnRep_BombCount();
+	OnRep_MoveSpeed();
 }
