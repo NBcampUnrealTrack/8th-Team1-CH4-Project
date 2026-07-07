@@ -6,23 +6,29 @@
 #include "GameFramework/PlayerState.h"
 #include "LobbyPlayerState.generated.h"
 
-enum class ELobbyCharacterType : uint8;
+enum class ESpartaArcadeCharacterType : uint8;
 
 UCLASS()
 class SPARTAARCADE_API ALobbyPlayerState : public APlayerState
 {
 	GENERATED_BODY()
 
+protected:
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	virtual void CopyProperties(APlayerState* PlayerState) override;
+
 public:
 	ALobbyPlayerState();
-
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	UPROPERTY(ReplicatedUsing = OnRep_LobbyStateChanged)
 	bool bIsReady;
 
 	UPROPERTY(ReplicatedUsing = OnRep_LobbyStateChanged)
-	ELobbyCharacterType SelectedCharacterType;
+	ESpartaArcadeCharacterType SelectedCharacterType;
+
+	UPROPERTY(ReplicatedUsing = OnRep_LobbyStateChanged)
+	int32 TeamID;
 
 	UFUNCTION()
 	void OnRep_LobbyStateChanged();

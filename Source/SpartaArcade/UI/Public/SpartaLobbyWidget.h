@@ -1,8 +1,8 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "SpartaUIDefs.h"
+#include "Characters/Public/SpartaArcadeCharacter.h"
 #include "SpartaLobbyWidget.generated.h"
 
 class UScrollBox;
@@ -67,7 +67,7 @@ public:
     void SetStartButtonVisibility(bool bIsHost, bool bCanStart);
 
     UFUNCTION(BlueprintCallable, Category = "UI | Lobby")
-    void UpdateCharacterPreview(ELobbyCharacterType CharacterType);
+    void UpdateCharacterPreview(ESpartaArcadeCharacterType CharacterType);
 
 protected:
     // 네트워크/로비 파트로 요청 전달
@@ -88,6 +88,6 @@ protected:
 
 private:
     // 로컬 선택 상태
-    ELobbyCharacterType SelectedCharacterType = ELobbyCharacterType::CharacterA;
+    ESpartaArcadeCharacterType SelectedCharacterType = ESpartaArcadeCharacterType::Explosive;
     bool bIsReady = false;
 };

@@ -6,7 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "LobbyPlayerController.generated.h"
 
-enum class ELobbyCharacterType : uint8;
+enum class ESpartaArcadeCharacterType : uint8;
 
 UCLASS()
 class SPARTAARCADE_API ALobbyPlayerController : public APlayerController
@@ -17,7 +17,7 @@ public:
     virtual void BeginPlay() override;
 
     UFUNCTION(Server, Reliable, WithValidation)
-    void ServerSelectCharacter(ELobbyCharacterType NewType);
+    void ServerSelectCharacter(ESpartaArcadeCharacterType NewType);
 
     UFUNCTION(Server, Reliable, WithValidation)
     void ServerToggleReady();

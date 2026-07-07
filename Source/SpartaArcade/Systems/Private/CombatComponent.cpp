@@ -1,5 +1,6 @@
 ﻿#include "CombatComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "Framework/Public/InGame/SpartaPlayerState.h"
 
 UCombatComponent::UCombatComponent()
 {
@@ -13,8 +14,6 @@ void UCombatComponent::GetLifetimeReplicatedProps(
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-    DOREPLIFETIME(UCombatComponent, Hearts);
-    DOREPLIFETIME(UCombatComponent, CurrentState);
     DOREPLIFETIME(UCombatComponent, bInvincible);
 	DOREPLIFETIME(UCombatComponent, bHasShield);
 }
@@ -22,6 +21,19 @@ void UCombatComponent::GetLifetimeReplicatedProps(
 void UCombatComponent::BeginPlay()
 {
     Super::BeginPlay();
+}
+
+void UCombatComponent::InitializePlayerState(APlayerState* NewPlayerState)
+{
+    if (!IsValid(NewPlayerState)) return;
+
+    SpartaPlayerState = Cast<ASpartaPlayerState>(NewPlayerState);
+
+    if (!IsValid(SpartaPlayerState))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("CombatComponent: PlayerState가 SpartaPlayerState가 아니에요!"));
+        return;
+    }
 }
 
 void UCombatComponent::InitializeFromDataTable(UDataTable* InCombatStatTable)
@@ -45,13 +57,16 @@ void UCombatComponent::InitializeFromDataTable(UDataTable* InCombatStatTable)
 
     FCombatStatRow* Row = Rows[0];
 
-    StartHearts = Row->StartHearts;
+    if(IsValid(SpartaPlayerState))
+    {
+        SpartaPlayerState->SetStartHearts(Row->StartHearts);
+        SpartaPlayerState->SetSelfReviveHearts(Row->SelfReviveHearts);
+        SpartaPlayerState->SetHearts(Row->StartHearts);
+        SpartaPlayerState->SetCurrentState(EBomberPlayerState::Alive);
+	}
+
     StunDuration = Row->StunDuration;
     InvincibleDuration = Row->InvincibleDuration;
-    SelfReviveHearts = Row->SelfReviveHearts;
-
-    Hearts = StartHearts;
-    CurrentState = EBomberPlayerState::Alive;
 }
 
 // 핵심 피격 처리 
@@ -75,18 +90,18 @@ void UCombatComponent::ApplyDamage()
     }
 
     // 기절 중 재피격은 무시 
-    if (CurrentState == EBomberPlayerState::Stunned) return;
-    if (CurrentState == EBomberPlayerState::Eliminated) return;
+    if (SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Stunned) return;
+    if (SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Eliminated) return;
 
     bDamageThisFrame = true;
 
     GetWorld()->GetTimerManager().SetTimerForNextTick(
         FTimerDelegate::CreateUObject(this, &UCombatComponent::ResetDamageFlag));
 
-    Hearts--;
+    SpartaPlayerState->SetHearts(SpartaPlayerState->GetHearts() - 1);
     OnHit.Broadcast();
 
-    if (Hearts <= 0)
+    if (SpartaPlayerState->GetHearts() <= 0)
     {
         EnterStun();
     }
@@ -94,7 +109,7 @@ void UCombatComponent::ApplyDamage()
 
 bool UCombatComponent::CanTakeDamage() const
 {
-    return CurrentState != EBomberPlayerState::Eliminated;
+    return SpartaPlayerState->GetCurrentState() != EBomberPlayerState::Eliminated;
 }
 
 void UCombatComponent::GrantShield()
@@ -106,7 +121,7 @@ void UCombatComponent::GrantShield()
 
 void UCombatComponent::EnterStun()
 {
-    CurrentState = EBomberPlayerState::Stunned;
+    SpartaPlayerState->SetCurrentState(EBomberPlayerState::Stunned);
     OnStun.Broadcast();
 
     GetWorld()->GetTimerManager().SetTimer(
@@ -117,7 +132,7 @@ void UCombatComponent::Eliminate()
 {
     GetWorld()->GetTimerManager().ClearTimer(StunTimerHandle);
 
-    CurrentState = EBomberPlayerState::Eliminated;
+    SpartaPlayerState->SetCurrentState(EBomberPlayerState::Eliminated);
     OnEliminated.Broadcast();
 
     // GameMode에 CheckMatchEnd() 호출 연결 필요
@@ -128,8 +143,8 @@ void UCombatComponent::Revive()
 {
     GetWorld()->GetTimerManager().ClearTimer(StunTimerHandle);
 
-    Hearts = StartHearts;
-    CurrentState = EBomberPlayerState::Alive;
+    SpartaPlayerState->SetHearts(SpartaPlayerState->GetStartHearts());
+    SpartaPlayerState->SetCurrentState(EBomberPlayerState::Alive);
     bInvincible = true;
 
     OnRevived.Broadcast();
@@ -143,12 +158,12 @@ void UCombatComponent::SelfRevive()
 {
     if (!GetOwner()->HasAuthority()) return;
 
-    if (CurrentState != EBomberPlayerState::Stunned) return;
+    if (SpartaPlayerState->GetCurrentState() != EBomberPlayerState::Stunned) return;
 
     GetWorld()->GetTimerManager().ClearTimer(StunTimerHandle);
 
-    Hearts = SelfReviveHearts;
-    CurrentState = EBomberPlayerState::Alive;
+    SpartaPlayerState->SetHearts(SpartaPlayerState->GetSelfReviveHearts());
+    SpartaPlayerState->SetCurrentState(EBomberPlayerState::Alive);
 
     OnSelfRevive.Broadcast();
 }
@@ -160,7 +175,7 @@ void UCombatComponent::InstantEliminate()
 
     GetWorld()->GetTimerManager().ClearTimer(StunTimerHandle);
 
-    CurrentState = EBomberPlayerState::Eliminated;
+    SpartaPlayerState->SetCurrentState(EBomberPlayerState::Eliminated);
     OnEliminated.Broadcast();
 
     // GameMode에 CheckMatchEnd() 호출 연결 필요
@@ -183,7 +198,7 @@ void UCombatComponent::OnOverlapWithEnemy(AActor* Enemy)
 
     if (!IsValid(Enemy)) return;
 
-    if (CurrentState == EBomberPlayerState::Stunned)
+    if (SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Stunned)
     {
         Eliminate();
     }
@@ -195,19 +210,10 @@ void UCombatComponent::OnOverlapWithAlly(AActor* Ally)
 
     if (!IsValid(Ally)) return;
 
-    if (CurrentState == EBomberPlayerState::Stunned)
+    if (SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Stunned)
     {
         Revive();
     }
-}
-void UCombatComponent::OnRep_Hearts()
-{
-    // UI 갱신용 - Hearts 변경 시 자동 호출됨
-}
-
-void UCombatComponent::OnRep_CurrentState()
-{
-    // 애니메이션 갱신용 - 상태 변경 시 자동 호출됨
 }
 
 void UCombatComponent::OnRep_HasShield()
@@ -218,7 +224,7 @@ void UCombatComponent::OnRep_HasShield()
 // 캐릭터 위임 연동을 위한 Heal 함수 구현 추가
 void UCombatComponent::Heal(int32 Amount)
 {
-    if (CurrentState != EBomberPlayerState::Alive) return;
-    Hearts = FMath::Clamp(Hearts + Amount, 0, StartHearts);
+    if (SpartaPlayerState->GetCurrentState() != EBomberPlayerState::Alive) return;
+    SpartaPlayerState->SetHearts(FMath::Clamp(SpartaPlayerState->GetHearts() + Amount, 0, SpartaPlayerState->GetStartHearts()));
     OnHit.Broadcast(); // UI 갱신을 위해 브로드캐스트
 }

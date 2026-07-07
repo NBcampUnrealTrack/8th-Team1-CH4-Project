@@ -3,12 +3,13 @@
 
 #include "Lobby/LobbyPlayerState.h"
 #include "Net/UnrealNetwork.h"
-#include "SpartaUIDefs.h"
+#include "Characters/Public/SpartaArcadeCharacter.h"
 #include "Lobby/LobbyGameStateBase.h"
-
+#include "InGame/SpartaPlayerState.h"
 ALobbyPlayerState::ALobbyPlayerState() 
 	: bIsReady(false)
-	, SelectedCharacterType(ELobbyCharacterType::CharacterA)
+	, SelectedCharacterType(ESpartaArcadeCharacterType::Explosive)
+	, TeamID(-1)
 {
 	bReplicates = true;
 }
@@ -18,6 +19,17 @@ void ALobbyPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(ALobbyPlayerState, bIsReady);
 	DOREPLIFETIME(ALobbyPlayerState, SelectedCharacterType);
+	DOREPLIFETIME(ALobbyPlayerState, TeamID);
+}
+
+void ALobbyPlayerState::CopyProperties(APlayerState* PlayerState)
+{
+	Super::CopyProperties(PlayerState);
+	if (ASpartaPlayerState* SpartaPlayerState = Cast<ASpartaPlayerState>(PlayerState))
+	{
+		SpartaPlayerState->SetCharacterType(SelectedCharacterType);
+		SpartaPlayerState->SetTeamID(TeamID);
+	}
 }
 
 void ALobbyPlayerState::OnRep_LobbyStateChanged()

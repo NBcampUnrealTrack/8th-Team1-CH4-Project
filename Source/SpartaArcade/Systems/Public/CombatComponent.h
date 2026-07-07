@@ -49,18 +49,9 @@ public:
     UFUNCTION(BlueprintCallable)
     void GrantShield();
 
-    UFUNCTION(BlueprintPure)
-    EBomberPlayerState GetPlayerState() const { return CurrentState; }
-
-    UFUNCTION(BlueprintPure)
-    int32 GetHearts() const { return Hearts; }
-
     // 캐릭터 위임 연동을 위한 Getter 및 Heal 함수 추가
     UFUNCTION(BlueprintCallable)
     void Heal(int32 Amount);
-
-    UFUNCTION(BlueprintPure)
-    int32 GetMaxHearts() const { return StartHearts; }
 
     UFUNCTION(BlueprintPure)
     bool IsShielded() const { return bHasShield; }
@@ -86,6 +77,9 @@ public:
     virtual void GetLifetimeReplicatedProps(
          TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+    void InitializePlayerState(APlayerState* NewPlayerState);
+    
+
 protected:
     virtual void BeginPlay() override;
 
@@ -93,17 +87,14 @@ protected:
     TObjectPtr<UDataTable> CombatStatTable;
 
     // 상태 변수 
-    UPROPERTY(ReplicatedUsing=OnRep_Hearts)
-    int32 Hearts;
-
-    UPROPERTY(ReplicatedUsing=OnRep_CurrentState)
-    EBomberPlayerState CurrentState = EBomberPlayerState::Alive;
-
     UPROPERTY(Replicated)
     bool bInvincible = false;
     
     UPROPERTY(ReplicatedUsing=OnRep_HasShield)
     bool bHasShield = false;
+
+    UPROPERTY()
+    TObjectPtr<class ASpartaPlayerState> SpartaPlayerState;
 
 private:
     void EnterStun();
@@ -115,20 +106,12 @@ private:
     void ResetDamageFlag();
 
     UFUNCTION()
-    void OnRep_Hearts();
-
-    UFUNCTION()
-    void OnRep_CurrentState();
-
-    UFUNCTION()
 	void OnRep_HasShield();
 
     // 수치 (DataTable에서 로드)
-    int32 StartHearts = 3;
     float StunDuration = 3.f;
     float InvincibleDuration = 1.f;
-    int32 SelfReviveHearts = 1;
-
+    
     FTimerHandle StunTimerHandle;
     FTimerHandle InvincibleTimerHandle;
 };
