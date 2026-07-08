@@ -7,7 +7,12 @@ public class SpartaArcade : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 		
-        PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "NavigationSystem", "AIModule", "Niagara", "EnhancedInput", "UMG", "Slate", "SlateCore" });
+        PublicDependencyModuleNames.AddRange(new string[] { 
+			"Core", "CoreUObject", "Engine", "InputCore", 
+			"NavigationSystem", "AIModule", "Niagara", 
+			"EnhancedInput", "UMG", "Slate", "SlateCore",
+			"OnlineSubsystem", "OnlineSubsystemEOS", "OnlineSubsystemUtils"
+        });
         
         PublicIncludePaths.AddRange(new string[]
         {
