@@ -76,13 +76,13 @@ void ASpartaArcadeCharacter::BeginPlay()
 	switch (CharacterType)
 	{
 	case ESpartaArcadeCharacterType::Explosive:
-		RowName = FName(TEXT("Explosive"));
+		RowName = FName(TEXT("Row_Explosion"));
 		break;
 	case ESpartaArcadeCharacterType::Speed:
-		RowName = FName(TEXT("Speed"));
+		RowName = FName(TEXT("Row_Speed"));
 		break;
 	case ESpartaArcadeCharacterType::BombCount:
-		RowName = FName(TEXT("BombCount"));
+		RowName = FName(TEXT("Row_BombCount"));
 		break;
 	}
 
@@ -117,12 +117,30 @@ void ASpartaArcadeCharacter::Tick(float DeltaSeconds)
 // 하트 체력 감소, 실드 차단 및 체력 0 도달 시 기절 상태 진입 로직 구현
 float ASpartaArcadeCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser)
 {
+	// [디버그 로그 추가] - 데미지 수신이 되는지 확인!
+	UE_LOG(LogTemp, Warning, TEXT("ASpartaArcadeCharacter::TakeDamage 호출됨! 피해량: %f, 원인 제공자: %s"), DamageAmount, DamageCauser ? *DamageCauser->GetName() : TEXT("None"));
 	// CombatComponent에 데미지 처리 위임
 	if (CombatComponent)
 	{
 		if (CombatComponent->CanTakeDamage())
 		{
 			CombatComponent->ApplyDamage();
+			
+			if (GetCapsuleComponent())
+			{
+				// 피해를 입는 즉시 캡슐의 Visibility 채널을 Ignore(무시)로 전환하여 0.2초간 무적 상태로 만듭니다.
+				GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
+				
+				// 0.2초 타이머 작동 후 RestoreCollisionResponse 실행하여 원복
+				GetWorld()->GetTimerManager().SetTimer(
+					CollisionRestoreTimerHandle,
+					this,
+					&ASpartaArcadeCharacter::RestoreCollisionResponse,
+					0.2f,
+					false
+				);
+			}
+			
 			return 1.f;
 		}
 	}
@@ -275,6 +293,26 @@ void ASpartaArcadeCharacter::KickBomb()
 		ASpartaArcadeBomb* Bomb = Cast<ASpartaArcadeBomb>(Hit.GetActor());
 		if (!Bomb || Bomb->IsRolling()) continue;
 
+		// 캐릭터에서 폭탄까지의 2D 방향 벡터 계산
+		FVector CharacterLoc = GetActorLocation();
+		FVector BombLoc = Bomb->GetActorLocation();
+		FVector DirToBomb = BombLoc - CharacterLoc;
+		DirToBomb.Z = 0.f;
+		DirToBomb.Normalize();
+
+		// 캐릭터의 전방 방향 벡터 획득
+		FVector ForwardVec = GetActorForwardVector();
+		ForwardVec.Z = 0.f;
+		ForwardVec.Normalize();
+
+		float DotResult = FVector::DotProduct(ForwardVec, DirToBomb);
+
+		// 전방 45도 범위를 벗어나면 차기 무시 (Early Continue)
+		if (DotResult < 0.7f)
+		{
+			continue;
+		}
+		
 		// 헬퍼 함수 호출
 		FVector KickDir = GetSnappedKickDirection();
 		Bomb->Kick(KickDir);
@@ -336,4 +374,17 @@ void ASpartaArcadeCharacter::HandleOnEliminated()
 {
 	UE_LOG(LogTemp, Log, TEXT("%s 게임에서 탈락(소멸)되었습니다."), *GetName());
 	Destroy();
+}
+
+void ASpartaArcadeCharacter::RestoreCollisionResponse()
+{
+	if (GetCapsuleComponent())
+	{
+		// Visibility 채널을 다시 Block(차단)으로 돌려놓아 피해를 입을 수 있게 만듭니다.
+
+		GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+
+		UE_LOG(LogTemp, Warning, TEXT("%s 의 폭풍 콜리전 채널이 Block(활성화) 상태로 복구되었습니다."), *GetName());
+
+	}
 }

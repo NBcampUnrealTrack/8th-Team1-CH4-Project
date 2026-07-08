@@ -51,12 +51,18 @@ void UCombatComponent::InitializeFromDataTable(UDataTable* InCombatStatTable)
 
     Hearts = StartHearts;
     CurrentState = EBomberPlayerState::Alive;
+
+    // [디버그 로그 추가] - 테이블에서 실제로 읽어들인 하트 수량 로깅
+    UE_LOG(LogTemp, Warning, TEXT("CombatComponent 초기화 완료! StartHearts: %d, StunDuration: %f"), StartHearts, StunDuration);
 }
 
 // 핵심 피격 처리 
 
 void UCombatComponent::ApplyDamage()
 {
+    // [디버그 로그 추가] - 피격 시작 시점의 현재 하트 수량 로깅
+    UE_LOG(LogTemp, Warning, TEXT("UCombatComponent::ApplyDamage 진입! 현재 Hearts: %d, 무적 여부: %s"), Hearts, bInvincible ? TEXT("True") : TEXT("False"));
+
     // if (!GetOwner()->HasAuthority()) return;
 
     //무적 중 피격 무효
