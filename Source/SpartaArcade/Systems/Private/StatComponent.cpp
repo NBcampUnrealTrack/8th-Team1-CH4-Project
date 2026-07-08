@@ -66,19 +66,21 @@ void UStatComponent::GrowStat(EBomberStatType StatType)
         if (BombRange >= MaxBombRange) return;
         BombRange++;
         OnStatChanged.Broadcast(StatType, BombRange);
+		OnRep_BombRange();
         break;
 
     case EBomberStatType::BombCount:
         if (BombCount >= MaxBombCount) return;
         BombCount++;
         OnStatChanged.Broadcast(StatType, BombCount);
+		OnRep_BombCount();
         break;
 
     case EBomberStatType::MoveSpeed:
         if (MoveSpeed >= MaxMoveSpeed) return;
         MoveSpeed++;
-        OnRep_MoveSpeed();
         OnStatChanged.Broadcast(StatType, MoveSpeed);
+        OnRep_MoveSpeed();
         break;
     }
 }

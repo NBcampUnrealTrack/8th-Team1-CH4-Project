@@ -81,6 +81,8 @@ void ALobbyPlayerController::ServerStartMatch_Implementation()
 	if (IsValid(LobbyGameMode) == true)
 	{
 		LobbyGameMode->StartInGameMatch();
+
+		
 	}
 }
 

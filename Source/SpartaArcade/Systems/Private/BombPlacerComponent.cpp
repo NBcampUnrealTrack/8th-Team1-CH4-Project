@@ -86,6 +86,7 @@ void UBombPlacerComponent::ServerPlaceBomb_Implementation()
 	ASpartaArcadeCharacter* OwnerArcadeCharacter = Cast<ASpartaArcadeCharacter>(GetOwner());
 	NewBomb->InitializeBomb(OwnerArcadeCharacter, ExplosionRange);
 	CurrentPlacedBombs++;
+	OnRep_CurrentPlacedBombs();
 }
 
 bool UBombPlacerComponent::CanPlaceBomb() const
@@ -98,6 +99,7 @@ bool UBombPlacerComponent::CanPlaceBomb() const
 void UBombPlacerComponent::OnBombExploded()
 {
 	CurrentPlacedBombs--;
+	OnRep_CurrentPlacedBombs();
 }
 
 void UBombPlacerComponent::OnRep_CurrentPlacedBombs()

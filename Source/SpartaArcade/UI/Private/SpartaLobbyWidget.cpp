@@ -40,6 +40,12 @@ void USpartaLobbyWidget::NativeConstruct()
     {
         CountdownTextBlock->SetVisibility(ESlateVisibility::Collapsed);
     }
+
+	// StartButton 기본 숨김 처리
+    if(StartButton)
+    {
+        StartButton->SetVisibility(ESlateVisibility::Collapsed);
+	}
 }
 
 void USpartaLobbyWidget::NativeDestruct()

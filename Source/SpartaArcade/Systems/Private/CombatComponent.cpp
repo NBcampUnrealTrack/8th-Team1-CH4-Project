@@ -86,6 +86,7 @@ void UCombatComponent::ApplyDamage()
     {
         bHasShield = false;
         OnShieldBlock.Broadcast();
+		OnRep_HasShield();
         return;
     }
 
@@ -115,6 +116,7 @@ bool UCombatComponent::CanTakeDamage() const
 void UCombatComponent::GrantShield()
 {
     bHasShield = true;
+	OnRep_HasShield();
 }
 
 //상태 전이 함수들 

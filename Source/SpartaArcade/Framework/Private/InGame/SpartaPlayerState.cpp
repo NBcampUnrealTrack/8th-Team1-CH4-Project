@@ -59,6 +59,7 @@ void ASpartaPlayerState::SetHearts(int32 NewHearts)
 	if (HasAuthority())
 	{
 		Hearts = NewHearts;
+		OnRep_Hearts();
 	}
 }
 
@@ -72,6 +73,7 @@ void ASpartaPlayerState::SetCurrentState(EBomberPlayerState NewState)
 	if(HasAuthority())
 	{
 		CurrentState = NewState;
+		OnRep_CurrentState();
 	}
 }
 
