@@ -1,7 +1,9 @@
 ﻿#include "ItemActor.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "ItemDropComponent.h"
 #include "StatComponent.h"
+#include "GameplayEffect.h"
 
 AItemActor::AItemActor()
 {
@@ -44,6 +46,11 @@ void AItemActor::NotifyActorBeginOverlap(AActor* OtherActor)
 
     UStatComponent* StatComp = OtherActor->FindComponentByClass<UStatComponent>();
     if (!IsValid(StatComp)) return;
+    
+    if (IsValid(GameplayEffectClass))
+    {
+        UItemDropComponent::ApplyItemEffect(OtherActor, GameplayEffectClass);
+    }
 
     FItemDataRow* Row = ItemDataTable->FindRow<FItemDataRow>(
         ItemRowName, TEXT("NotifyActorBeginOverlap"));
@@ -71,7 +78,7 @@ void AItemActor::NotifyActorBeginOverlap(AActor* OtherActor)
         break;
 
     case EBomberItemType::MedKit:
-        // ombatComponent 만들면 하트 회복 로직 연결
+        // CombatComponent 만들면 하트 회복 로직 연결
         break;
 
     case EBomberItemType::Shield:

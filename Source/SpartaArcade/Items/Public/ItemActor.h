@@ -7,6 +7,7 @@
 
 class USphereComponent;
 class UStaticMeshComponent;
+class UGameplayEffect;
 
 UCLASS()
 class SPARTAARCADE_API AItemActor : public AActor
@@ -17,6 +18,9 @@ public:
 	AItemActor();
 
 	void InitializeItem(FName InItemRowName, UDataTable* InItemDataTable);
+	
+	UPROPERTY(EditDefaultsOnly, Category="GAS")
+	TSubclassOf<UGameplayEffect> GameplayEffectClass;
 
 protected:
 	virtual void BeginPlay() override;

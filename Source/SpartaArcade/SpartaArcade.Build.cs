@@ -11,8 +11,11 @@ public class SpartaArcade : ModuleRules
 			"Core", "CoreUObject", "Engine", "InputCore", 
 			"NavigationSystem", "AIModule", "Niagara", 
 			"EnhancedInput", "UMG", "Slate", "SlateCore",
-			"OnlineSubsystem", "OnlineSubsystemEOS", "OnlineSubsystemUtils"
+			"OnlineSubsystem", "OnlineSubsystemEOS", "OnlineSubsystemUtils",
+            "GameplayAbilities", "GameplayTags", "GameplayTasks"
         });
+        PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "NavigationSystem", "AIModule", "Niagara", "EnhancedInput", "UMG", "Slate", "SlateCore", 
+	        "GameplayAbilities", "GameplayTags", "GameplayTasks" });
         
         PublicIncludePaths.AddRange(new string[]
         {
