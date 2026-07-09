@@ -1,4 +1,4 @@
-#include "ExplosionComponent.h"
+﻿#include "ExplosionComponent.h"
 #include "Damageable.h"
 #include "Kismet/KismetSystemLibrary.h"
 
@@ -9,7 +9,7 @@ UExplosionComponent::UExplosionComponent()
 
 void UExplosionComponent::StartExplosion(int32 ExplosionRange, float TileSize)
 {
-    // if (!GetOwner()->HasAuthority()) return;
+    if (!GetOwner()->HasAuthority()) return;
 
     TArray<FVector> Directions = {
         FVector(1.f, 0.f, 0.f),

@@ -150,6 +150,7 @@ void ALobbyGameModeBase::StartInGameMatch()
 	if (IsValid(LobbyGameState))
 	{
 		LobbyGameState->StartCountdownTime = StartCountdownTimeRemaining;
+		LobbyGameState->OnRep_StartCountdownTime();
 		GetWorldTimerManager().SetTimer(StartCountdownTimerHandle, this, &ALobbyGameModeBase::UpdateMatchStartCountdown, 1.0f, true);
 	}
 }

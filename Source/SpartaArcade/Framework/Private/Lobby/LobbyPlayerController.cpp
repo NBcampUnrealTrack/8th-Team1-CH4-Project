@@ -40,7 +40,7 @@ void ALobbyPlayerController::BeginPlay()
 }
 
 // 캐릭터 변경 요청을 서버로 전송하는 함수
-void ALobbyPlayerController::ServerSelectCharacter_Implementation(ELobbyCharacterType NewType)
+void ALobbyPlayerController::ServerSelectCharacter_Implementation(ESpartaArcadeCharacterType NewType)
 {
 	ALobbyPlayerState* LobbyPlayerState = GetPlayerState<ALobbyPlayerState>();
 	if (IsValid(LobbyPlayerState) == true)
@@ -53,7 +53,7 @@ void ALobbyPlayerController::ServerSelectCharacter_Implementation(ELobbyCharacte
 	}
 }
 
-bool ALobbyPlayerController::ServerSelectCharacter_Validate(ELobbyCharacterType NewType)
+bool ALobbyPlayerController::ServerSelectCharacter_Validate(ESpartaArcadeCharacterType NewType)
 {
 	return true;
 }
@@ -81,6 +81,8 @@ void ALobbyPlayerController::ServerStartMatch_Implementation()
 	if (IsValid(LobbyGameMode) == true)
 	{
 		LobbyGameMode->StartInGameMatch();
+
+		
 	}
 }
 

@@ -1,25 +1,25 @@
-#include "BombPlacerComponent.h"
+﻿#include "BombPlacerComponent.h"
 #include "StatComponent.h"
 #include "SpartaArcadeBomb.h"
 #include "GameFramework/Character.h"
 #include "Components/CapsuleComponent.h"
 #include "SpartaArcadeCharacter.h"
 #include "Kismet/GameplayStatics.h"
-// #include "Net/UnrealNetwork.h"
+#include "Net/UnrealNetwork.h"
 
 UBombPlacerComponent::UBombPlacerComponent()
 {
-	// SetIsReplicatedByDefault(true);
+	SetIsReplicatedByDefault(true);
 
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
-// void UBombPlacerComponent::GetLifetimeReplicatedProps(
-//     TArray<FLifetimeProperty>& OutLifetimeProps) const
-// {
-//     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-//     DOREPLIFETIME(UBombPlacerComponent, CurrentPlacedBombs);
-// }
+void UBombPlacerComponent::GetLifetimeReplicatedProps(
+	TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+     DOREPLIFETIME(UBombPlacerComponent, CurrentPlacedBombs);
+}
 
 void UBombPlacerComponent::BeginPlay()
 {
@@ -28,7 +28,7 @@ void UBombPlacerComponent::BeginPlay()
 	CachedStatComponent = GetOwner()->FindComponentByClass<UStatComponent>();
 }
 
-void UBombPlacerComponent::ServerPlaceBomb()
+void UBombPlacerComponent::ServerPlaceBomb_Implementation()
 {
 	if (!CanPlaceBomb()) return;
 	if (!IsValid(BombClass)) return;
@@ -86,6 +86,7 @@ void UBombPlacerComponent::ServerPlaceBomb()
 	ASpartaArcadeCharacter* OwnerArcadeCharacter = Cast<ASpartaArcadeCharacter>(GetOwner());
 	NewBomb->InitializeBomb(OwnerArcadeCharacter, ExplosionRange);
 	CurrentPlacedBombs++;
+	OnRep_CurrentPlacedBombs();
 }
 
 bool UBombPlacerComponent::CanPlaceBomb() const
@@ -105,4 +106,18 @@ bool UBombPlacerComponent::CanPlaceBomb() const
 void UBombPlacerComponent::OnBombExploded()
 {
 	CurrentPlacedBombs--;
+	OnRep_CurrentPlacedBombs();
+}
+
+void UBombPlacerComponent::OnRep_CurrentPlacedBombs()
+{
+	if(OnCurrentPlacedBombsChanged.IsBound())
+	{
+		OnCurrentPlacedBombsChanged.Broadcast(CurrentPlacedBombs);
+	}
+}
+
+void UBombPlacerComponent::BroadcastCurrentState()
+{
+	OnRep_CurrentPlacedBombs();
 }

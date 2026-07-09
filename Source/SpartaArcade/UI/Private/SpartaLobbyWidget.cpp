@@ -1,4 +1,4 @@
-#include "SpartaLobbyWidget.h"
+﻿#include "SpartaLobbyWidget.h"
 #include "Components/ScrollBox.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
@@ -33,13 +33,19 @@ void USpartaLobbyWidget::NativeConstruct()
     }
 
     // 기본 프리뷰 세팅
-    UpdateCharacterPreview(ELobbyCharacterType::CharacterA);
+    UpdateCharacterPreview(ESpartaArcadeCharacterType::Explosive);
     
     // 카운트다운 기본 숨김 처리
     if (CountdownTextBlock)
     {
         CountdownTextBlock->SetVisibility(ESlateVisibility::Collapsed);
     }
+
+	// StartButton 기본 숨김 처리
+    if(StartButton)
+    {
+        StartButton->SetVisibility(ESlateVisibility::Collapsed);
+	}
 }
 
 void USpartaLobbyWidget::NativeDestruct()
@@ -113,7 +119,7 @@ void USpartaLobbyWidget::SetStartButtonVisibility(bool bIsHost, bool bCanStart)
     }
 }
 
-void USpartaLobbyWidget::UpdateCharacterPreview(ELobbyCharacterType CharacterType)
+void USpartaLobbyWidget::UpdateCharacterPreview(ESpartaArcadeCharacterType CharacterType)
 {
     SelectedCharacterType = CharacterType;
 
@@ -126,19 +132,19 @@ void USpartaLobbyWidget::UpdateCharacterPreview(ELobbyCharacterType CharacterTyp
     // 최종 기획에 맞게 수치 수정
     switch (CharacterType)
     {
-    case ELobbyCharacterType::CharacterA:
+    case ESpartaArcadeCharacterType::Explosive:
         RangeText = TEXT("폭발 범위 : 5");
         BombText = TEXT("폭탄 갯수 : 3");
         SpeedText = TEXT("이동 속도 : 3");
         Description = TEXT("화력 특화형 - 폭발 범위 1단계를 더 갖고 시작합니다.");
         break;
-    case ELobbyCharacterType::CharacterB:
+    case ESpartaArcadeCharacterType::Speed:
         RangeText = TEXT("폭발 범위 : 2");
         BombText = TEXT("폭탄 갯수 : 2");
         SpeedText = TEXT("이동 속도 : 4");
         Description = TEXT("기동 특화형 - 이동 속도 1단계를 더 갖고 시작합니다.");
         break;
-    case ELobbyCharacterType::CharacterC:
+    case ESpartaArcadeCharacterType::BombCount:
         RangeText = TEXT("폭발 범위 : 2");
         BombText = TEXT("폭탄 갯수 : 5");
         SpeedText = TEXT("이동 속도 : 2");
@@ -166,7 +172,7 @@ void USpartaLobbyWidget::UpdateCharacterPreview(ELobbyCharacterType CharacterTyp
 
 void USpartaLobbyWidget::OnCharacterAClicked()
 {
-    UpdateCharacterPreview(ELobbyCharacterType::CharacterA);
+    UpdateCharacterPreview(ESpartaArcadeCharacterType::Explosive);
 
     // 네트워크 컨트롤러에 선택 정보 전송
     APlayerController* PC = GetOwningPlayer();
@@ -175,14 +181,14 @@ void USpartaLobbyWidget::OnCharacterAClicked()
 		ALobbyPlayerController* LobbyPC = Cast<ALobbyPlayerController>(PC);
         if(IsValid(LobbyPC))
         {
-            LobbyPC->ServerSelectCharacter(ELobbyCharacterType::CharacterA);
+            LobbyPC->ServerSelectCharacter(ESpartaArcadeCharacterType::Explosive);
         }
     }
 }
 
 void USpartaLobbyWidget::OnCharacterBClicked()
 {
-    UpdateCharacterPreview(ELobbyCharacterType::CharacterB);
+    UpdateCharacterPreview(ESpartaArcadeCharacterType::Speed);
 
     APlayerController* PC = GetOwningPlayer();
     if (PC)
@@ -190,14 +196,14 @@ void USpartaLobbyWidget::OnCharacterBClicked()
 		ALobbyPlayerController* LobbyPC = Cast<ALobbyPlayerController>(PC);
         if(IsValid(LobbyPC))
         {
-            LobbyPC->ServerSelectCharacter(ELobbyCharacterType::CharacterB);
+            LobbyPC->ServerSelectCharacter(ESpartaArcadeCharacterType::Speed);
 		}
     }
 }
 
 void USpartaLobbyWidget::OnCharacterCClicked()
 {
-    UpdateCharacterPreview(ELobbyCharacterType::CharacterC);
+    UpdateCharacterPreview(ESpartaArcadeCharacterType::BombCount);
 
     APlayerController* PC = GetOwningPlayer();
     if (PC)
@@ -205,7 +211,7 @@ void USpartaLobbyWidget::OnCharacterCClicked()
 		ALobbyPlayerController* LobbyPC = Cast<ALobbyPlayerController>(PC);
         if(IsValid(LobbyPC))
         {
-			LobbyPC->ServerSelectCharacter(ELobbyCharacterType::CharacterC);
+			LobbyPC->ServerSelectCharacter(ESpartaArcadeCharacterType::BombCount);
 		}
     }
 }

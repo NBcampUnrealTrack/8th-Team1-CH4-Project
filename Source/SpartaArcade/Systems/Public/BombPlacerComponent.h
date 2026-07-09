@@ -1,8 +1,10 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "BombPlacerComponent.generated.h"
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCurrentPlacedBombsChangedSignature, int32, CurrentPlacedBombs);
 
 class ASpartaArcadeBomb;
 class UStatComponent;
@@ -15,9 +17,12 @@ class SPARTAARCADE_API UBombPlacerComponent : public UActorComponent
 public:
 	UBombPlacerComponent();
 
-	// UFUNCTION(Server, Reliable)
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(Server, Reliable)
 	void ServerPlaceBomb();
+
+public:
+	UPROPERTY(BlueprintAssignable, Category = "Events | UI")
+	FOnCurrentPlacedBombsChangedSignature OnCurrentPlacedBombsChanged;
 
 protected:
 	virtual void BeginPlay() override;
@@ -32,14 +37,19 @@ private:
 	bool CanPlaceBomb() const;
 	void OnBombExploded();
 
-	// UPROPERTY(Replicated)
-	UPROPERTY()
+	UPROPERTY(ReplicatedUsing=OnRep_CurrentPlacedBombs)
 	int32 CurrentPlacedBombs = 0;
 
 	UPROPERTY()
 	TObjectPtr<UStatComponent> CachedStatComponent;
 
 public:
-	// virtual void GetLifetimeReplicatedProps(
-	//     TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void GetLifetimeReplicatedProps(
+	    TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	void BroadcastCurrentState();
+
+private:
+	UFUNCTION()
+	void OnRep_CurrentPlacedBombs();
 };

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
@@ -7,6 +7,7 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCombatEvent);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnbHasShieldChangedSignature, bool, bHasShield);
 
 UCLASS(ClassGroup=(Bomber), meta=(BlueprintSpawnableComponent))
 class SPARTAARCADE_API UCombatComponent : public UActorComponent
@@ -49,18 +50,9 @@ public:
     UFUNCTION(BlueprintCallable)
     void GrantShield();
 
-    UFUNCTION(BlueprintPure)
-    EBomberPlayerState GetPlayerState() const { return CurrentState; }
-
-    UFUNCTION(BlueprintPure)
-    int32 GetHearts() const { return Hearts; }
-
     // 캐릭터 위임 연동을 위한 Getter 및 Heal 함수 추가
     UFUNCTION(BlueprintCallable)
     void Heal(int32 Amount);
-
-    UFUNCTION(BlueprintPure)
-    int32 GetMaxHearts() const { return StartHearts; }
 
     UFUNCTION(BlueprintPure)
     bool IsShielded() const { return bHasShield; }
@@ -83,8 +75,15 @@ public:
     UPROPERTY(BlueprintAssignable)
     FOnCombatEvent OnShieldBlock;
 
-    // virtual void GetLifetimeReplicatedProps(
-    //     TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+    UPROPERTY(BlueprintAssignable, Category = "Events | UI")
+	FOnbHasShieldChangedSignature OnbHasShieldChanged;
+
+    virtual void GetLifetimeReplicatedProps(
+         TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+    void InitializePlayerState(APlayerState* NewPlayerState);
+    
+    void BroadcastCurrentState();
 
 protected:
     virtual void BeginPlay() override;
@@ -93,20 +92,14 @@ protected:
     TObjectPtr<UDataTable> CombatStatTable;
 
     // 상태 변수 
-    // UPROPERTY(ReplicatedUsing=OnRep_Hearts)
-    UPROPERTY()
-    int32 Hearts;
-
-    // UPROPERTY(ReplicatedUsing=OnRep_CurrentState)
-    UPROPERTY()
-    EBomberPlayerState CurrentState = EBomberPlayerState::Alive;
-
-    // UPROPERTY(Replicated)
-    UPROPERTY()
+    UPROPERTY(Replicated)
     bool bInvincible = false;
     
-    UPROPERTY()
+    UPROPERTY(ReplicatedUsing=OnRep_HasShield)
     bool bHasShield = false;
+
+    UPROPERTY()
+    TObjectPtr<class ASpartaPlayerState> SpartaPlayerState;
 
 private:
     void EnterStun();
@@ -118,17 +111,12 @@ private:
     void ResetDamageFlag();
 
     UFUNCTION()
-    void OnRep_Hearts();
-
-    UFUNCTION()
-    void OnRep_CurrentState();
+	void OnRep_HasShield();
 
     // 수치 (DataTable에서 로드)
-    int32 StartHearts = 3;
     float StunDuration = 3.f;
     float InvincibleDuration = 1.f;
-    int32 SelfReviveHearts = 1;
-
+    
     FTimerHandle StunTimerHandle;
     FTimerHandle InvincibleTimerHandle;
 };

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -11,6 +11,7 @@ class UStatComponent;
 class UCombatComponent;
 class UBombPlacerComponent;
 class UDataTable;
+class ASpartaPlayerState;
 
 // 캐릭터 스탯 특화 선택을 위한 타입 열거형
 UENUM(BlueprintType)
@@ -37,6 +38,8 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	void InitializeCharacterComponents();
+
 public:
 	// 하트 라이프, 실드 방어, 기절 처리를 위한 TakeDamage 오버라이드
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
@@ -61,10 +64,6 @@ public:
 	void AddFirstAidKit();
 	void AddShield();
 	void OnBombExploded();
-	
-
-	// 네트워크 속성 동기화 함수 선언
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	// UI 및 HUD 연동을 위한 Getter 함수
 	UFUNCTION(BlueprintPure, Category = "Gameplay")
@@ -79,14 +78,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Gameplay")
 	bool IsStunned() const;
 
-	UFUNCTION(BlueprintPure, Category = "Gameplay")
-	FORCEINLINE int32 GetFirstAidKitCount() const { return FirstAidKits; }
-
 protected:
-	// 캐릭터의 하트 체력, 속도 레벨, 폭탄 소지 한도 및 기절 상태 속성
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attributes|Setup")
-	ESpartaArcadeCharacterType CharacterType;
-
 	// 컴포넌트 초기화를 위한 데이터 테이블 구조 노출
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attributes|Setup")
 	TObjectPtr<UDataTable> CharacterStatTable;
@@ -104,19 +96,17 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UBombPlacerComponent> BombPlacerComponent;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PlayerState")
+	TObjectPtr<ASpartaPlayerState> SpartaPlayerState;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attributes|Movement")
 	float BaseMovementSpeed;
 
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Attributes|Health")
-	int32 FirstAidKits;
-
-	// 팀전 구분을 위한 TeamID 속성
-	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Attributes|Team")
-	int32 TeamID;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay")
 	TSubclassOf<class ASpartaArcadeBomb> BombClass;
+
+	int32 MaxInitializedComponentsCount;
+	int32 InitializedComponentsCount;
 
 	// CombatComponent 측 기절 및 무적 타이머로 통합
 	// FTimerHandle StunTimerHandle;

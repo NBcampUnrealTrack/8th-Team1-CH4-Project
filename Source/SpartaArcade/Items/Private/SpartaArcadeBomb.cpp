@@ -1,4 +1,4 @@
-#include "SpartaArcadeBomb.h"
+﻿#include "SpartaArcadeBomb.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Engine/World.h"
@@ -7,6 +7,7 @@
 #include "NiagaraFunctionLibrary.h"
 #include "SpartaArcadeCharacter.h"
 #include "SpartaArcadeBlock.h"
+#include "BreakableBox.h"
 #include "WorldPartition/HLOD/DestructibleHLODComponent.h"
 
 ASpartaArcadeBomb::ASpartaArcadeBomb()
@@ -47,7 +48,12 @@ void ASpartaArcadeBomb::BeginPlay()
 	Super::BeginPlay();
 	
 	// 폭발 시간 카운트다운 타이머 등록
-	GetWorld()->GetTimerManager().SetTimer(ExplosionTimerHandle, this, &ASpartaArcadeBomb::Explode, ExplosionDelay, false);
+	// 폭발은 서버에서만 동작
+	if (HasAuthority())
+	{
+		GetWorld()->GetTimerManager().SetTimer(ExplosionTimerHandle, this, &ASpartaArcadeBomb::Explode, ExplosionDelay, false);
+	}
+	
 
 	// 스폰 시점에 이 폭탄의 2D 평면 영역(반경 80유닛 이내)에 겹쳐 있는 캐릭터들을 완벽히 감지하여 충돌 무시 설정
 	TArray<AActor*> FoundCharacters;
@@ -81,6 +87,10 @@ void ASpartaArcadeBomb::InitializeBomb(ASpartaArcadeCharacter* InInstigator, int
 void ASpartaArcadeBomb::ApplyExplosionDamage(AActor* Target)
 {
 	if (!Target || DamagedActors.Contains(Target))
+	{
+		return;
+	}
+	if (HasAuthority() == false)
 	{
 		return;
 	}
@@ -173,6 +183,11 @@ bool ASpartaArcadeBomb::HandleExplosionHit(AActor* HitActor)
 
 void ASpartaArcadeBomb::Explode()
 {
+	if(HasAuthority() == false)
+	{
+		return;
+	}
+
 	// 이미 폭발 중이면 즉시 리턴하여 무한 루프 방지
 	if (bIsExploded) return;
 	bIsExploded = true;
@@ -180,27 +195,11 @@ void ASpartaArcadeBomb::Explode()
 	GetWorld()->GetTimerManager().ClearTimer(ExplosionTimerHandle);
 
 	FVector StartLoc = GetActorLocation();
-
-	// 폭발 중심부 비주얼 파티클 재생
-	if (ExplosionVFX)
-	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, ExplosionVFX, StartLoc);
-	}
-	// 케스케이드 파티클 시스템도 지정된 경우 함께 스폰하도록 연동 추가
-	if (ExplosionCascadeVFX)
-	{
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ExplosionCascadeVFX, StartLoc);
-	}
-
-	// 폭발 사운드 에셋이 지정되어 있다면 위치에서 사운드 재생
-	if (ExplosionSound)
-	{
-		UGameplayStatics::PlaySoundAtLocation(this, ExplosionSound, StartLoc);
-	}
+	ExplosionLocations.Add(StartLoc);
 
 	// 중심부 대미지 판정을 SweepAndApplyDamage 헬퍼로 통합 수행
 	SweepAndApplyDamage(StartLoc, StartLoc + FVector(0.f, 0.f, 1.f), GridSize * 0.4f);
-
+	
 	// 십자 4방향으로 폭폭 화염 투사
 	PerformExplosionDirection(FVector(1.f, 0.f, 0.f));  // 북
 	PerformExplosionDirection(FVector(-1.f, 0.f, 0.f)); // 남
@@ -225,6 +224,8 @@ void ASpartaArcadeBomb::Explode()
 		}
 	}
 
+	// 폭발 판정 종료 후 폭발 이펙트 재생 및 소멸
+	Multicast_PlayExplosionEffects(ExplosionLocations);
 	Destroy();
 }
 
@@ -236,16 +237,7 @@ void ASpartaArcadeBomb::PerformExplosionDirection(const FVector& Direction)
 	{
 		FVector TargetLoc = StartLoc + Direction * (i * GridSize);
 
-		// 각 분기마다 폭풍 불길 비주얼 파티클 생성
-		if (ExplosionVFX)
-		{
-			UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, ExplosionVFX, TargetLoc);
-		}
-		// 각 분기 경로마다 케스케이드 파티클도 지정된 경우 스폰하도록 연동 추가
-		if (ExplosionCascadeVFX)
-		{
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ExplosionCascadeVFX, TargetLoc);
-		}
+		ExplosionLocations.Add(TargetLoc);
 
 		// 단일 스윕 헬퍼 호출을 통해 최초 1회 감지 보장 및 벽 차단 판정 처리
 		if (SweepAndApplyDamage(StartLoc + Direction * ((i - 1) * GridSize), TargetLoc, GridSize * 0.35f))
@@ -304,8 +296,34 @@ void ASpartaArcadeBomb::Tick(float DeltaTime)
 
 void ASpartaArcadeBomb::Kick(const FVector& Direction)
 {
+	if(HasAuthority() == false)
+	{
+		return;
+	}
+
 	bIsRolling = true;
 	RollDirection = Direction;
 	RollDirection.Z = 0.f;
 	RollDirection.Normalize();
+}
+
+void ASpartaArcadeBomb::Multicast_PlayExplosionEffects_Implementation(const TArray<FVector>& Locations)
+{
+	// 폭발 사운드 에셋이 지정되어 있다면 처음 폭발 위치에서 사운드 재생
+	if (ExplosionSound && Locations.Num() > 0)
+	{
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), ExplosionSound, Locations[0]);
+	}
+
+	for (const FVector& Location : Locations)
+	{
+		if (ExplosionVFX)
+		{
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), ExplosionVFX, Location);
+		}
+		if (ExplosionCascadeVFX)
+		{
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ExplosionCascadeVFX, Location);
+		}
+	}
 }

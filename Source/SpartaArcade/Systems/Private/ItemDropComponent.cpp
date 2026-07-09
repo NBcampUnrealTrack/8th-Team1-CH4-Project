@@ -1,4 +1,4 @@
-#include "ItemDropComponent.h"
+﻿#include "ItemDropComponent.h"
 #include "ItemActor.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
@@ -10,7 +10,7 @@ UItemDropComponent::UItemDropComponent()
 
 void UItemDropComponent::TryDropItem()
 {
-    // if (!GetOwner()->HasAuthority()) return;
+    if (!GetOwner()->HasAuthority()) return;
 
     FName SelectedRow = SelectRandomItemRow();
 
@@ -88,7 +88,7 @@ void UItemDropComponent::SpawnItem(FName ItemRowName)
 
 void UItemDropComponent::DropKillReward(AActor* DefeatedActor)
 {
-    // if (!GetOwner()->HasAuthority()) return;
+    if (!GetOwner()->HasAuthority()) return;
 
     if (!IsValid(DefeatedActor)) return;
 

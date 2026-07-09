@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
@@ -8,6 +8,10 @@
 class UProgressBar;
 class UTextBlock;
 class UImage;
+class ASpartaPlayerState;
+class UStatComponent;
+class UCombatComponent;
+class UBombPlacerComponent;
 
 UCLASS()
 class SPARTAARCADE_API USpartaHUDWidget : public UUserWidget
@@ -96,6 +100,18 @@ public:
 
     UFUNCTION()
     void HandleOnShieldBlock();
+
+    // UI 업데이트 함수 추가
+    UFUNCTION(BlueprintCallable, Category = "UI | Update")
+    void UpdateCurrentBombs(int32 CurrentBombs);
+
+    UFUNCTION(BlueprintCallable, Category = "UI | Update")
+	void UpdateStats(int32 BombCount, float ExplosionRange, float MoveSpeed);
+
+    UFUNCTION(BlueprintCallable, Category = "UI | Update")
+    void UpdateHasShield(bool bHasShield);
+
+	void InitializeHUD(ASpartaPlayerState* PlayerState, UStatComponent* StatComp, UCombatComponent* CombatComp, UBombPlacerComponent* BombPlacerComp);
 
 private:
     // 내부 헬퍼 함수

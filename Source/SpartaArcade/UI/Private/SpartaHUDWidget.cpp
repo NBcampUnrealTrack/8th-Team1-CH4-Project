@@ -1,9 +1,13 @@
-#include "SpartaHUDWidget.h"
+﻿#include "SpartaHUDWidget.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Components/HorizontalBox.h"
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
+#include "Framework/Public/InGame/SpartaPlayerState.h"
+#include "Systems/Public/StatComponent.h"
+#include "Systems/Public/CombatComponent.h"
+#include "Systems/Public/BombPlacerComponent.h"
 
 void USpartaHUDWidget::NativeConstruct()
 {
@@ -158,4 +162,64 @@ FString USpartaHUDWidget::FormatTime(int32 TotalSeconds) const
     int32 Minutes = TotalSeconds / 60;
     int32 Seconds = TotalSeconds % 60;
     return FString::Printf(TEXT("%02d:%02d"), Minutes, Seconds);
+}
+
+// --------------------------------------------
+// Bomb, Explosion, MoveSpeed, Shield 등 스탯 갱신 함수 구현
+void USpartaHUDWidget::UpdateCurrentBombs(int32 CurrentBombs)
+{
+    if (CurrentBombCountText)
+    {
+        CurrentBombCountText->SetText(FText::AsNumber(CurrentBombs));
+    }
+}
+
+void USpartaHUDWidget::UpdateStats(int32 BombCount, float ExplosionRange, float MoveSpeed)
+{
+    if (MaxBombCountText)
+    {
+        MaxBombCountText->SetText(FText::AsNumber(BombCount));
+    }
+
+    if (ExplosionRangeText)
+    {
+        ExplosionRangeText->SetText(FText::FromString(FString::Printf(TEXT("%.1f"), ExplosionRange)));
+    }
+
+    if (MoveSpeedText)
+    {
+        MoveSpeedText->SetText(FText::FromString(FString::Printf(TEXT("%.1f"), MoveSpeed)));
+    }
+}
+
+void USpartaHUDWidget::UpdateHasShield(bool bHasShield)
+{
+    if (ShieldStatusText)
+    {
+        ShieldStatusText->SetText(FText::FromString(bHasShield ? TEXT("ACTIVE") : TEXT("NONE")));
+    }
+}
+
+void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UStatComponent* StatComp, UCombatComponent* CombatComp, UBombPlacerComponent* BombPlacerComp)
+{
+    if (PlayerState)
+    {
+		PlayerState->OnHeartsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateHearts);
+		PlayerState->OnStunStateChanged.AddDynamic(this, &USpartaHUDWidget::SetStunActive);
+    }
+
+    if(StatComp)
+    {
+        StatComp->OnStatsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateStats);
+	}
+
+    if(CombatComp)
+    {
+        CombatComp->OnShieldBlock.AddDynamic(this, &USpartaHUDWidget::HandleOnShieldBlock);
+	}
+
+    if (BombPlacerComp)
+    {
+        BombPlacerComp->OnCurrentPlacedBombsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateCurrentBombs);
+    }
 }

@@ -1,24 +1,24 @@
-#include "StatComponent.h"
-// #include "Net/UnrealNetwork.h"
+﻿#include "StatComponent.h"
+#include "Net/UnrealNetwork.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 UStatComponent::UStatComponent()
 {
-    // SetIsReplicatedByDefault(true);
+    SetIsReplicatedByDefault(true);
 
     PrimaryComponentTick.bCanEverTick = false;
 }
 
-// void UStatComponent::GetLifetimeReplicatedProps(
-//     TArray<FLifetimeProperty>& OutLifetimeProps) const
-// {
-//     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-//
-//     DOREPLIFETIME(UStatComponent, BombRange);
-//     DOREPLIFETIME(UStatComponent, BombCount);
-//     DOREPLIFETIME(UStatComponent, MoveSpeed);
-// }
+void UStatComponent::GetLifetimeReplicatedProps(
+    TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+    DOREPLIFETIME(UStatComponent, BombRange);
+    DOREPLIFETIME(UStatComponent, BombCount);
+    DOREPLIFETIME(UStatComponent, MoveSpeed);
+}
 
 void UStatComponent::BeginPlay()
 {
@@ -27,7 +27,7 @@ void UStatComponent::BeginPlay()
 
 void UStatComponent::InitializeFromDataTable(FName CharacterRowName)
 {
-    // if (!GetOwner()->HasAuthority()) return;
+    if (!GetOwner()->HasAuthority()) return;
 
     if (!IsValid(CharacterStatTable))
     {
@@ -58,7 +58,7 @@ void UStatComponent::InitializeFromDataTable(FName CharacterRowName)
 
 void UStatComponent::GrowStat(EBomberStatType StatType)
 {
-    // if (!GetOwner()->HasAuthority()) return;
+    if (!GetOwner()->HasAuthority()) return;
 
     switch (StatType)
     {
@@ -66,19 +66,21 @@ void UStatComponent::GrowStat(EBomberStatType StatType)
         if (BombRange >= MaxBombRange) return;
         BombRange++;
         OnStatChanged.Broadcast(StatType, BombRange);
+		OnRep_BombRange();
         break;
 
     case EBomberStatType::BombCount:
         if (BombCount >= MaxBombCount) return;
         BombCount++;
         OnStatChanged.Broadcast(StatType, BombCount);
+		OnRep_BombCount();
         break;
 
     case EBomberStatType::MoveSpeed:
         if (MoveSpeed >= MaxMoveSpeed) return;
         MoveSpeed++;
-        OnRep_MoveSpeed();
         OnStatChanged.Broadcast(StatType, MoveSpeed);
+        OnRep_MoveSpeed();
         break;
     }
 }
@@ -86,11 +88,23 @@ void UStatComponent::GrowStat(EBomberStatType StatType)
 void UStatComponent::OnRep_BombRange()
 {
     OnStatChanged.Broadcast(EBomberStatType::BombRange, BombRange);
+
+	// UI 업데이트 델리게이트
+    if (OnStatsChanged.IsBound())
+    {
+		OnStatsChanged.Broadcast(BombCount, BombRange, MoveSpeed);
+    }
 }
 
 void UStatComponent::OnRep_BombCount()
 {
     OnStatChanged.Broadcast(EBomberStatType::BombCount, BombCount);
+
+    // UI 업데이트 델리게이트
+    if (OnStatsChanged.IsBound())
+    {
+        OnStatsChanged.Broadcast(BombCount, BombRange, MoveSpeed);
+    }
 }
 
 void UStatComponent::OnRep_MoveSpeed()
@@ -107,4 +121,17 @@ void UStatComponent::OnRep_MoveSpeed()
     MoveComp->MaxWalkSpeed = BaseSpeed + (MoveSpeed * SpeedPerLevel);
 
     OnStatChanged.Broadcast(EBomberStatType::MoveSpeed, MoveSpeed);
+
+    // UI 업데이트 델리게이트
+    if(OnStatsChanged.IsBound())
+    {
+        OnStatsChanged.Broadcast(BombCount, BombRange, MoveSpeed);
+	}
+}
+
+void UStatComponent::BroadcastCurrentState()
+{
+	OnRep_BombRange();
+	OnRep_BombCount();
+	OnRep_MoveSpeed();
 }

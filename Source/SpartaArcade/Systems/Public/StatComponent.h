@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
@@ -9,6 +9,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(
     FOnStatChanged,
     EBomberStatType, StatType,
     int32, NewValue);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnStatChangedSignature, int32, NewBombCount, float, NewBombRange, float, NewMoveSpeed);
 
 UCLASS(ClassGroup=(Bomber), meta=(BlueprintSpawnableComponent))
 class SPARTAARCADE_API UStatComponent : public UActorComponent
@@ -39,9 +41,14 @@ public:
 
     UPROPERTY(BlueprintAssignable)
     FOnStatChanged OnStatChanged;
-    
-    // virtual void GetLifetimeReplicatedProps(
-    //     TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+    UPROPERTY(BlueprintAssignable, Category = "Events | UI")
+    FOnStatChangedSignature OnStatsChanged;
+
+    virtual void GetLifetimeReplicatedProps(
+        TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	void BroadcastCurrentState();
 
 protected:
     virtual void BeginPlay() override;
@@ -49,16 +56,13 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category="Data")
     TObjectPtr<UDataTable> CharacterStatTable;
     
-    // UPROPERTY(ReplicatedUsing=OnRep_BombRange)
-    UPROPERTY()
+    UPROPERTY(ReplicatedUsing=OnRep_BombRange)
     int32 BombRange = 2;
 
-    // UPROPERTY(ReplicatedUsing=OnRep_BombCount)
-    UPROPERTY()
+    UPROPERTY(ReplicatedUsing=OnRep_BombCount)
     int32 BombCount = 3;
 
-    // UPROPERTY(ReplicatedUsing=OnRep_MoveSpeed)
-    UPROPERTY()
+    UPROPERTY(ReplicatedUsing=OnRep_MoveSpeed)
     int32 MoveSpeed = 3;
 
     int32 MaxBombRange = 5;

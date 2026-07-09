@@ -1,4 +1,4 @@
-#include "SpartaArcadePlayerController.h"
+﻿#include "SpartaArcadePlayerController.h"
 #include "GameFramework/Pawn.h"
 #include "Blueprint/AIBlueprintHelperLibrary.h"
 #include "NiagaraSystem.h"
@@ -9,6 +9,8 @@
 #include "InputActionValue.h"
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
+#include "Blueprint/UserWidget.h"
+#include "UI/Public/SpartaHUDWidget.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -32,6 +34,16 @@ void ASpartaArcadePlayerController::BeginPlay()
 
 	FInputModeGameOnly GameOnly;
 	SetInputMode(GameOnly);
+
+	// 테스트용 HUD UI 위젯 생성 및 뷰포트에 추가
+	if(IsValid(HUDUIWidgetClass))
+	{
+		HUDUIWidgetInstance = CreateWidget<UUserWidget>(this, HUDUIWidgetClass);
+		if (IsValid(HUDUIWidgetInstance))
+		{
+			HUDUIWidgetInstance->AddToViewport();
+		}
+	}
 }
 
 void ASpartaArcadePlayerController::SetupInputComponent()

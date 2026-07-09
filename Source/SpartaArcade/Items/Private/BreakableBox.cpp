@@ -1,4 +1,4 @@
-#include "BreakableBox.h"
+﻿#include "BreakableBox.h"
 #include "Components/StaticMeshComponent.h"
 #include "ItemDropComponent.h"
 
@@ -6,7 +6,7 @@ ABreakableBox::ABreakableBox()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-	// bReplicates = true;
+	bReplicates = true;
 
 	BoxMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BoxMesh"));
 	SetRootComponent(BoxMesh);
@@ -23,7 +23,7 @@ void ABreakableBox::TakeExplosionDamage_Implementation()
 {
 	if (bIsDestroyed) return;
 
-	// if (!HasAuthority()) return;
+	if (!HasAuthority()) return;
 
 	bIsDestroyed = true;
 
