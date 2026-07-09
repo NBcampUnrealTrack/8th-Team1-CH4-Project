@@ -95,6 +95,9 @@ private:
 	// 공통 단일 스윕 피격 연산 및 대미지 적용 함수 (장애물 충돌 여부 반환)
 	bool SweepAndApplyDamage(const FVector& Start, const FVector& End, float Radius);
 
+	// 충돌한 액터의 타입에 따른 반응 분기 처리 함수 (확장 판단 전담)
+	bool HandleExplosionHit(AActor* HitActor);
+
 	// 이번 폭발에서 중복 피격을 방지하며 대상에게 대미지를 주는 통합 함수
 	void ApplyExplosionDamage(AActor* Target);
 

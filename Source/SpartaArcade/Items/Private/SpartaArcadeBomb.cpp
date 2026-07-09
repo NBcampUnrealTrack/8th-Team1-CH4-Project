@@ -102,7 +102,7 @@ void ASpartaArcadeBomb::ApplyExplosionDamage(AActor* Target)
 		Cast<ASpartaArcadeCharacter>(Target) ? Cast<ASpartaArcadeCharacter>(Target)->GetHP() : 0.f);
 }
 
-// 폭발 중심부 및 십자 불길의 물리 검사를 단일화하고 다단 히트를 예방하는 함수
+// 단일 물리 스윕 트레이스 연산만 전담하여 수행하는 함수
 bool ASpartaArcadeBomb::SweepAndApplyDamage(const FVector& Start, const FVector& End, float Radius)
 {
 	FHitResult HitResult;
@@ -136,33 +136,40 @@ bool ASpartaArcadeBomb::SweepAndApplyDamage(const FVector& Start, const FVector&
 		return false; // 부딪힌 지형이나 액터가 없으므로 불길 차단 없이 계속 진행
 	}
 
-	AActor* HitActor = HitResult.GetActor();
+	// 충돌 결과 분석 및 반응 처리는 HandleExplosionHit 함수로 분리 위임
+	return HandleExplosionHit(HitResult.GetActor());
+}
 
-	// 다른 폭탄과 닿은 경우 즉시 해당 폭탄을 폭발시키며 불길은 계속 통과해야 하므로 차단 해제
+bool ASpartaArcadeBomb::HandleExplosionHit(AActor* HitActor)
+{
+	if (!HitActor) return false;
+
+	// 다른 폭탄 발견 시 즉각 유폭(Chain Explosion) 유발 및 연속 관통 허용
 	if (ASpartaArcadeBomb* OtherBomb = Cast<ASpartaArcadeBomb>(HitActor))
 	{
 		OtherBomb->Explode();
 		return false;
 	}
 
-	// 파괴 가능 블록 처리
+	// 파괴 가능 상자 블록 발견 시 부수고 불길 차단 (1칸만 파괴)
 	if (ASpartaArcadeBlock* Block = Cast<ASpartaArcadeBlock>(HitActor))
 	{
 		Block->DestroyBlock();
 		return true;
 	}
 
-	// 캐릭터 피격 처리 (불길 관통 무시 처리 덕분에 딱 1회만 들어옴)
+	// 캐릭터 피격 처리 (캐릭터는 불길을 차단하지 않고 관통 통과)
 	if (ASpartaArcadeCharacter* Character = Cast<ASpartaArcadeCharacter>(HitActor))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("폭풍이 캐릭터를 최초 감지했습니다! 대상: %s, 줄 데미지: %f"), *Character->GetName(), ExplosionDamage);
 		ApplyExplosionDamage(Character);
 		return false;
 	}
-
-	// 고정 벽 등 지형 장애물
+	
+	// 다른 폭탄이 아닌 고정 벽 지형이면 즉시 차단
 	return true;
 }
+
 
 void ASpartaArcadeBomb::Explode()
 {
