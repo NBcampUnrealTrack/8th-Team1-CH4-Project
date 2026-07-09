@@ -4,6 +4,8 @@
 #include "GameFramework/Actor.h"
 #include "SpartaArcadeMovingObstacle.generated.h"
 
+class UDataTable;
+
 class ASpartaArcadeMapBuilder;
 class USphereComponent;
 
@@ -34,6 +36,17 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SpartaArcade|Obstacle", meta = (ClampMin = "0.0"))
     float HoverHeight = 40.f;     // 지면에서 뜬 높이(시각)
+
+    // ---- 밸런싱 DataTable ----
+    /** 장애물 수치 DT. 비우면 위 값 사용. Row 구조: FSpartaArcadeObstacleRow */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Obstacle")
+    UDataTable* ObstacleTable = nullptr;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Obstacle")
+    FName ObstacleRowName = TEXT("Default");
+
+    /** DT Row → 수치 복사(BeginPlay에서 자동 호출, PlaneZ 계산 전). */
+    void ApplyObstacleRow();
 
 protected:
     UPROPERTY(VisibleAnywhere, Category = "SpartaArcade|Obstacle")

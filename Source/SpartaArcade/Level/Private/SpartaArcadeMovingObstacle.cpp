@@ -30,9 +30,27 @@ void ASpartaArcadeMovingObstacle::SetMapBuilder(ASpartaArcadeMapBuilder* InMap)
     Map = InMap;
 }
 
+void ASpartaArcadeMovingObstacle::ApplyObstacleRow()
+{
+    if (!ObstacleTable) return;
+
+    const FSpartaArcadeObstacleRow* Row =
+        ObstacleTable->FindRow<FSpartaArcadeObstacleRow>(ObstacleRowName, TEXT("ApplyObstacleRow"));
+    if (!Row)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Obstacle] ObstacleTable에 Row '%s'가 없어요 — 기본 수치 사용"),
+            *ObstacleRowName.ToString());
+        return;
+    }
+
+    MoveSpeed = Row->MoveSpeed;
+    HoverHeight = Row->HoverHeight;
+}
+
 void ASpartaArcadeMovingObstacle::BeginPlay()
 {
     Super::BeginPlay();
+    ApplyObstacleRow();            // DT가 있으면 속도/부양 높이 로드(아래 PlaneZ 계산 전에)
     if (!HasAuthority()) return;   // 이동은 서버 권위(클라는 복제로 위치 수신)
 
     if (!Map.IsValid())
