@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "BomberTypes.h"
+#include "GameplayEffect.h"
 #include "ItemDropComponent.generated.h"
 
 class AItemActor;
@@ -22,6 +23,9 @@ public:
 	// 처치 시 상대방의 보유 아이템 중 일부를 드롭
 	UFUNCTION(BlueprintCallable)
 	void DropKillReward(AActor* DefeatedActor);
+	
+	UFUNCTION(BlueprintCallable, Category="GAS")
+	static void ApplyItemEffect(AActor* TargetActor, TSubclassOf<UGameplayEffect> EffectClass);
 
 protected:
 	// DataTable 레퍼런스
