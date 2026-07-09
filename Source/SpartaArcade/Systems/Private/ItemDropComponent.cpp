@@ -1,5 +1,7 @@
 #include "ItemDropComponent.h"
 #include "ItemActor.h"
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemInterface.h"
 
 UItemDropComponent::UItemDropComponent()
 {
@@ -91,4 +93,23 @@ void UItemDropComponent::DropKillReward(AActor* DefeatedActor)
     if (!IsValid(DefeatedActor)) return;
 
     TryDropItem();
+}
+
+void UItemDropComponent::ApplyItemEffect(AActor* TargetActor, TSubclassOf<UGameplayEffect> EffectClass)
+{
+    if (!IsValid(TargetActor) || !IsValid(EffectClass)) return;
+    
+    IAbilitySystemInterface* ASCInterface = Cast<IAbilitySystemInterface>(TargetActor);
+    if (ASCInterface == nullptr) return;
+
+    UAbilitySystemComponent* ASC = ASCInterface->GetAbilitySystemComponent();
+    if (!IsValid(ASC)) return;
+    
+    FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
+    FGameplayEffectSpecHandle Spec = ASC->MakeOutgoingSpec(EffectClass, 1.f, Context);
+
+    if (Spec.IsValid())
+    {
+        ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+    }
 }
