@@ -73,6 +73,12 @@ void UCombatComponent::InitializeFromDataTable(UDataTable* InCombatStatTable)
 
 void UCombatComponent::ApplyDamage()
 {
+    // [디버그 로그 추가] - 피격 시작 시점의 현재 하트 수량 로깅
+    if (IsValid(SpartaPlayerState))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("UCombatComponent::ApplyDamage 진입! 현재 Hearts: %d, 무적 여부: %s"), SpartaPlayerState->GetHearts(), bInvincible ? TEXT("True") : TEXT("False"));
+    }
+
     if (!GetOwner()->HasAuthority()) return;
 
     //무적 중 피격 무효

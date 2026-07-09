@@ -93,6 +93,13 @@ bool UBombPlacerComponent::CanPlaceBomb() const
 {
 	if (!IsValid(CachedStatComponent)) return false;
 
+	// 소유주 캐릭터가 기절(Stunned) 상태이면 폭탄 설치를 차단
+	ASpartaArcadeCharacter* OwnerCharacter = Cast<ASpartaArcadeCharacter>(GetOwner());
+	if (OwnerCharacter && OwnerCharacter->IsStunned())
+	{
+		return false;
+	}
+
 	return CurrentPlacedBombs < CachedStatComponent->GetBombCount();
 }
 
