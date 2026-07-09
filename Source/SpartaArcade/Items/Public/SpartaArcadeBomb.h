@@ -93,17 +93,24 @@ protected:
 
 	// 특정 방향으로 폭발 광선을 전파하여 데미지/파괴 처리하는 서브 로직
 	void PerformExplosionDirection(const FVector& Direction);
-	
-	void ApplyCenterDamage(const FVector& Center);
+
+private:
+	// 공통 단일 스윕 피격 연산 및 대미지 적용 함수 (장애물 충돌 여부 반환)
+	bool SweepAndApplyDamage(const FVector& Start, const FVector& End, float Radius);
+
+	// 충돌한 액터의 타입에 따른 반응 분기 처리 함수 (확장 판단 전담)
 	bool HandleExplosionHit(AActor* HitActor);
 
 	// 폭발 이펙트 재생 멀티캐스트 RPC
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlayExplosionEffects(const TArray<FVector>& Locations);
 
-	// Removed: 튕김 문제를 완전히 개선하기 위해 사용하지 않는 EndOverlap 핸들러 제거
-	// UFUNCTION()
-	// void OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+	// 이번 폭발에서 중복 피격을 방지하며 대상에게 대미지를 주는 통합 함수
+	void ApplyExplosionDamage(AActor* Target);
+
+	// 이번 폭발 과정에서 이미 대미지를 입은 액터들의 목록 (중복 피격 방지용)
+	UPROPERTY()
+	TArray<AActor*> DamagedActors;
 
 public:
 	//  유폭 연쇄 처리를 위한 폭발 실행 함수

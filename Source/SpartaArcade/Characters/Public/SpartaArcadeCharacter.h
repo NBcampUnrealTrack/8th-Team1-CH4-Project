@@ -113,6 +113,12 @@ protected:
 	// FTimerHandle InvulnerableTimerHandle;
 
 private:
+	// 연쇄 폭발 다단 히트 차단을 위한 콜리전 복구 타이머 핸들
+	FTimerHandle CollisionRestoreTimerHandle;
+
+	// 무시되었던 Visibility 콜리전 채널을 다시 Block 상태로 원상 복구하는 헬퍼 함수
+	void RestoreCollisionResponse();
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* TopDownCameraComponent;
 
