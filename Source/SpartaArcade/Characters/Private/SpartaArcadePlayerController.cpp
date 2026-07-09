@@ -85,7 +85,14 @@ void ASpartaArcadePlayerController::OnMoveTriggered(const FInputActionValue& Val
 	APawn* ControlledPawn = GetPawn();
 	if (ControlledPawn != nullptr)
 	{
-		//  컨트롤러 회전 방향에 영향받지 않고 일관되게 상/하/좌/우(월드 기준)로 이동하도록 변경
+		// 캐릭터가 기절 상태(Stunned)일 경우 모든 이동 조작을 차단
+		ASpartaArcadeCharacter* ArcadeChar = Cast<ASpartaArcadeCharacter>(ControlledPawn);
+		if (ArcadeChar && ArcadeChar->IsStunned())
+		{
+			return;
+		}
+
+		// 정통 2D/2.5D 탑뷰 방식의 절대축 이동 적용 (카메라 앵글 무시)
 		ControlledPawn->AddMovementInput(FVector::ForwardVector, MovementVector.Y);
 		ControlledPawn->AddMovementInput(FVector::RightVector, MovementVector.X);
 	}
