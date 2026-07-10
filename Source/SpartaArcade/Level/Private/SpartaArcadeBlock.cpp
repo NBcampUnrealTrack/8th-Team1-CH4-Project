@@ -7,7 +7,7 @@ ASpartaArcadeBlock::ASpartaArcadeBlock()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-	// Modified: 데디케이티드 서버를 위한 상자 블록 복제 활성화
+	// 데디케이티드 서버를 위한 상자 블록 복제 활성화
 	bReplicates = true;
 
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
