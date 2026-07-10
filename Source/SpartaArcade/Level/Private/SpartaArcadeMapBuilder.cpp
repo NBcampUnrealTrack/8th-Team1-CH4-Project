@@ -1,4 +1,4 @@
-﻿#include "SpartaArcadeMapBuilder.h"
+#include "SpartaArcadeMapBuilder.h"
 #include "SpartaArcadeRoomGenerator.h"
 #include "SpartaArcadeMovingObstacle.h"
 #include "SpartaArcadeZoneManager.h"
@@ -54,24 +54,87 @@ ASpartaArcadeMapBuilder::ASpartaArcadeMapBuilder()
     BushISM->SetupAttachment(SceneRoot);
     BushISM->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-    // 엔진 기본 메쉬 자동 로드 + 컴포넌트에 바로 할당(에디터에서 머티리얼 슬롯이 보이게).
+    // 엔진 기본 메쉬 로드 및 TileVisualMap 기본 설정
     static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeF(TEXT("/Engine/BasicShapes/Cube.Cube"));
-    if (CubeF.Succeeded())
-    {
-        WallMesh = CubeF.Object; BoxMesh = CubeF.Object;
-        WallISM->SetStaticMesh(WallMesh);
-        BoxISM->SetStaticMesh(BoxMesh);
-        PillarISM->SetStaticMesh(WallMesh);
-    }
     static ConstructorHelpers::FObjectFinder<UStaticMesh> PlaneF(TEXT("/Engine/BasicShapes/Plane.Plane"));
-    if (PlaneF.Succeeded())
+
+    UStaticMesh* DefaultCube = CubeF.Succeeded() ? CubeF.Object : nullptr;
+    UStaticMesh* DefaultPlane = PlaneF.Succeeded() ? PlaneF.Object : nullptr;
+
+    if (DefaultPlane)
     {
-        FloorMesh = PlaneF.Object;
-        FloorPlane->SetStaticMesh(FloorMesh);
-        FloorISM->SetStaticMesh(FloorMesh);
-        IceISM->SetStaticMesh(FloorMesh);
-        MudWaterISM->SetStaticMesh(FloorMesh);
-        BushISM->SetStaticMesh(FloorMesh);
+        FloorPlane->SetStaticMesh(DefaultPlane);
+        FloorISM->SetStaticMesh(DefaultPlane);
+        IceISM->SetStaticMesh(DefaultPlane);
+        MudWaterISM->SetStaticMesh(DefaultPlane);
+        BushISM->SetStaticMesh(DefaultPlane);
+    }
+
+    if (DefaultCube)
+    {
+        WallISM->SetStaticMesh(DefaultCube);
+        BoxISM->SetStaticMesh(DefaultCube);
+        PillarISM->SetStaticMesh(DefaultCube);
+    }
+
+    // 기본 타일 비주얼 맵 구성 (디폴트 설정)
+    if (DefaultCube)
+    {
+        FSpartaArcadeTileVisualInfo WallInfo;
+        WallInfo.Mesh = DefaultCube;
+        WallInfo.BlockoutColor = FLinearColor(0.46f, 0.47f, 0.50f);
+        TileVisualMap.Add(ESpartaArcadeTileType::FixedWall, WallInfo);
+
+        FSpartaArcadeTileVisualInfo BoxInfo;
+        BoxInfo.Mesh = DefaultCube;
+        BoxInfo.BlockoutColor = FLinearColor(0.85f, 0.42f, 0.12f);
+        BoxInfo.ScaleMultiplier = FVector(0.8f, 0.8f, 0.6f);
+        BoxInfo.Offset = FVector(0.f, 0.f, -20.f); // 박스의 기존 Z 오프셋은 S*0.3f이었으나 100uu 규격으로 환산
+        TileVisualMap.Add(ESpartaArcadeTileType::DestructibleBox, BoxInfo);
+    }
+
+    if (DefaultPlane)
+    {
+        FSpartaArcadeTileVisualInfo FloorInfo;
+        FloorInfo.Mesh = DefaultPlane;
+        FloorInfo.BlockoutColor = FLinearColor(0.18f, 0.34f, 0.24f);
+        TileVisualMap.Add(ESpartaArcadeTileType::Empty, FloorInfo);
+        TileVisualMap.Add(ESpartaArcadeTileType::Floor, FloorInfo);
+
+        FSpartaArcadeTileVisualInfo IceInfo;
+        IceInfo.Mesh = DefaultPlane;
+        IceInfo.BlockoutColor = FLinearColor(0.72f, 0.85f, 0.95f);
+        TileVisualMap.Add(ESpartaArcadeTileType::Ice, IceInfo);
+
+        FSpartaArcadeTileVisualInfo MudInfo;
+        MudInfo.Mesh = DefaultPlane;
+        MudInfo.BlockoutColor = FLinearColor(0.28f, 0.44f, 0.54f);
+        TileVisualMap.Add(ESpartaArcadeTileType::MudWater, MudInfo);
+
+        FSpartaArcadeTileVisualInfo BushInfo;
+        BushInfo.Mesh = DefaultPlane;
+        BushInfo.BlockoutColor = FLinearColor(0.24f, 0.55f, 0.28f);
+        TileVisualMap.Add(ESpartaArcadeTileType::Bush, BushInfo);
+
+        FSpartaArcadeTileVisualInfo VoidInfo;
+        VoidInfo.Mesh = DefaultPlane;
+        VoidInfo.BlockoutColor = FLinearColor(0.04f, 0.05f, 0.07f);
+        TileVisualMap.Add(ESpartaArcadeTileType::Void, VoidInfo);
+        TileVisualMap.Add(ESpartaArcadeTileType::FloorPlane, VoidInfo);
+
+        // 빠져 있던 ZoneBorder(자기장 경계선) 타일 비주얼 기본값 추가
+        FSpartaArcadeTileVisualInfo ZoneBorderInfo;
+        ZoneBorderInfo.Mesh = DefaultPlane;
+        ZoneBorderInfo.BlockoutColor = FLinearColor(0.80f, 0.05f, 0.05f); // 자기장 경계 경고 빨간색
+        TileVisualMap.Add(ESpartaArcadeTileType::ZoneBorder, ZoneBorderInfo);
+
+        // 기본 장애물 클래스로 블루프린트 버전(BP_MovingObstacle)을 FClassFinder로 자동 탐색하여 할당
+        // 디테일 패널 세팅이 누락되어 C++ 버전이 스폰되며 메시가 보이지 않는 현상을 방어
+        static ConstructorHelpers::FClassFinder<AActor> ObstacleClassBP(TEXT("/Game/Level/BP_MovingObstacle.BP_MovingObstacle_C"));
+        if (ObstacleClassBP.Succeeded())
+        {
+            ObstacleClass = ObstacleClassBP.Class;
+        }
     }
 }
 
@@ -86,6 +149,15 @@ void ASpartaArcadeMapBuilder::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 void ASpartaArcadeMapBuilder::BeginPlay()
 {
     Super::BeginPlay();
+
+    if (ObstacleClass == nullptr || ObstacleClass == ASpartaArcadeMovingObstacle::StaticClass())
+    {
+        UClass* LoadedBPClass = StaticLoadClass(AActor::StaticClass(), nullptr, TEXT("/Game/Level/BP_MovingObstacle.BP_MovingObstacle_C"));
+        if (LoadedBPClass)
+        {
+            ObstacleClass = LoadedBPClass;
+        }
+    }
 
     // 그리드 생성은 서버에서만. 클라는 OnRep_MapGrid에서 비주얼만.
     if (HasAuthority())
@@ -111,6 +183,8 @@ void ASpartaArcadeMapBuilder::BuildMap()
     }
 
     GenerateGridData();   // 순수 데이터 생성(그리드·스폰 좌표·연결성 검증)
+    // 파괴 가능한 상자 액터 스폰
+    SpawnBreakableBoxes();
     SpawnTestActors();    // 테스트 액터 스폰(런타임 전용)
 }
 
@@ -190,6 +264,48 @@ void ASpartaArcadeMapBuilder::GenerateGridData()
         (Reach == TotalOpen) ? TEXT("(OK)") : TEXT("(DISCONNECTED!)"));
 }
 
+// 런타임에 진짜 파괴 가능한 상자 액터를 맵 데이터 위치에 맞춰 스폰하는 함수 구현
+void ASpartaArcadeMapBuilder::SpawnBreakableBoxes()
+{
+    if (!HasAuthority() || !GetWorld() || !GetWorld()->IsGameWorld()) return;
+
+    // 기존 상자들 제거
+    for (AActor* B : SpawnedBoxes)
+    {
+        if (IsValid(B)) B->Destroy();
+    }
+    SpawnedBoxes.Reset();
+
+    if (!BreakableBoxClass)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[MapBuilder] BreakableBoxClass가 지정되지 않았습니다!"));
+        return;
+    }
+
+    const float S = TileSize;
+    FActorSpawnParameters SpawnParams;
+    SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+    for (int32 Y = 0; Y < MapGrid.Height; ++Y)
+    {
+        for (int32 X = 0; X < MapGrid.Width; ++X)
+        {
+            if (MapGrid.GetTile(X, Y) == ESpartaArcadeTileType::DestructibleBox)
+            {
+                FVector SpawnLoc = TileToWorld(X, Y);
+                SpawnLoc.Z = GetActorLocation().Z; // 지면에 딱 스냅 고정
+
+                AActor* BoxActor = GetWorld()->SpawnActor<AActor>(BreakableBoxClass, SpawnLoc, FRotator::ZeroRotator, SpawnParams);
+                if (BoxActor)
+                {
+                    SpawnedBoxes.Add(BoxActor);
+                }
+            }
+        }
+    }
+    UE_LOG(LogTemp, Display, TEXT("[MapBuilder] Spawned %d breakable box actors"), SpawnedBoxes.Num());
+}
+
 void ASpartaArcadeMapBuilder::SpawnTestActors()
 {
     if (!GetWorld() || !GetWorld()->IsGameWorld())
@@ -258,15 +374,51 @@ void ASpartaArcadeMapBuilder::BuildVisuals()
         return;
     }
 
-    // 메쉬는 생성자에서 할당됨. 혹시 비어있을 때만 채움(안전망).
-    if (WallMesh && !WallISM->GetStaticMesh())   WallISM->SetStaticMesh(WallMesh);
-    if (WallMesh && !PillarISM->GetStaticMesh()) PillarISM->SetStaticMesh(WallMesh);
-    if (BoxMesh && !BoxISM->GetStaticMesh())    BoxISM->SetStaticMesh(BoxMesh);
-    if (FloorMesh && !FloorPlane->GetStaticMesh()) FloorPlane->SetStaticMesh(FloorMesh);
-    if (FloorMesh && !FloorISM->GetStaticMesh())  FloorISM->SetStaticMesh(FloorMesh);
-    if (FloorMesh && !IceISM->GetStaticMesh())      IceISM->SetStaticMesh(FloorMesh);
-    if (FloorMesh && !MudWaterISM->GetStaticMesh()) MudWaterISM->SetStaticMesh(FloorMesh);
-    if (FloorMesh && !BushISM->GetStaticMesh())     BushISM->SetStaticMesh(FloorMesh);
+    // Floor 및 FloorPlane 데이터 양방향 동기화 보완
+    auto SyncVisualInfo = [this](ESpartaArcadeTileType PrimaryType, ESpartaArcadeTileType AliasType)
+    {
+        bool bHasPrimary = TileVisualMap.Contains(PrimaryType);
+        bool bHasAlias = TileVisualMap.Contains(AliasType);
+
+        if (bHasAlias && (!bHasPrimary || !TileVisualMap[PrimaryType].Mesh))
+        {
+            TileVisualMap.Add(PrimaryType, TileVisualMap[AliasType]);
+        }
+        else if (bHasPrimary && (!bHasAlias || !TileVisualMap[AliasType].Mesh))
+        {
+            TileVisualMap.Add(AliasType, TileVisualMap[PrimaryType]);
+        }
+    };
+
+    SyncVisualInfo(ESpartaArcadeTileType::Empty, ESpartaArcadeTileType::Floor);
+    SyncVisualInfo(ESpartaArcadeTileType::Void, ESpartaArcadeTileType::FloorPlane);
+
+    // TileVisualMap에 들어있는 비주얼 데이터를 추출하여 각 ISM 컴포넌트에 동적 반영
+    auto ApplyVisualToISM = [this](ESpartaArcadeTileType TileType, UHierarchicalInstancedStaticMeshComponent* ISMComp)
+    {
+        if (!ISMComp) return;
+        if (TileVisualMap.Contains(TileType))
+        {
+            const FSpartaArcadeTileVisualInfo& Info = TileVisualMap[TileType];
+            if (Info.Mesh)
+            {
+                ISMComp->SetStaticMesh(Info.Mesh);
+            }
+        }
+    };
+
+    ApplyVisualToISM(ESpartaArcadeTileType::Empty, FloorISM);
+    ApplyVisualToISM(ESpartaArcadeTileType::FixedWall, WallISM);
+    ApplyVisualToISM(ESpartaArcadeTileType::FixedWall, PillarISM); // 기둥도 FixedWall 메쉬 쉐어
+    ApplyVisualToISM(ESpartaArcadeTileType::DestructibleBox, BoxISM);
+    ApplyVisualToISM(ESpartaArcadeTileType::Ice, IceISM);
+    ApplyVisualToISM(ESpartaArcadeTileType::MudWater, MudWaterISM);
+    ApplyVisualToISM(ESpartaArcadeTileType::Bush, BushISM);
+
+    if (TileVisualMap.Contains(ESpartaArcadeTileType::Empty) && TileVisualMap[ESpartaArcadeTileType::Empty].Mesh)
+    {
+        FloorPlane->SetStaticMesh(TileVisualMap[ESpartaArcadeTileType::Empty].Mesh);
+    }
 
     WallISM->ClearInstances();
     PillarISM->ClearInstances();
@@ -277,12 +429,19 @@ void ASpartaArcadeMapBuilder::BuildVisuals()
     BushISM->ClearInstances();
     BoxCellToInstance.Reset();   // 박스 셀→인스턴스 매핑도 처음부터
 
+    // 런타임 게임월드에서는 진짜 액터가 스폰되므로 중복 렌더링/충돌 방지를 위해 BoxISM 생성을 차단 (에디터 프리뷰 모드에서만 그리도록 설계)
+    bool bShouldDrawBoxISM = true;
+    if (GetWorld() && GetWorld()->IsGameWorld())
+    {
+        bShouldDrawBoxISM = false;
+    }
+
     const float S = TileSize;
     const float CubeUU = 100.f;            // 엔진 큐브/플레인 기본 크기(1m)
     const float WallScale = S / CubeUU;
 
     // 배경 바닥 플레인: 맵 전체를 덮게(= 빈 공간 색). 룸은 그 위에 밝은 타일로 따로.
-    if (FloorMesh)
+    if (FloorPlane->GetStaticMesh())
     {
         FloorPlane->SetRelativeScale3D(FVector(GridWidth * S / CubeUU, GridHeight * S / CubeUU, 1.f));
         FloorPlane->SetRelativeLocation(FVector((GridWidth - 1) * S * 0.5f, (GridHeight - 1) * S * 0.5f, 0.f));
@@ -291,7 +450,7 @@ void ASpartaArcadeMapBuilder::BuildVisuals()
     // 타일별 트랜스폼을 먼저 전부 모은 뒤 '한 번에' 추가(배치).
     // 개별 AddInstance 1만 2천 번은 에디터에서 호출마다 내비/이벤트 갱신이 붙어 수 초 멈춤 → 배치로 컴포넌트당 1번.
     TArray<FTransform> FloorXfs, WallXfs, PillarXfs, BoxXfs, IceXfs, MudXfs, BushXfs;
-    TArray<int32> BoxCells;   // BoxXfs와 같은 순서의 셀 인덱스(Y*W+X)
+    TArray<int32> BoxCells;   // BoxXfs와 같은 순서의 셀 인덱(Y*W+X)
     const int32 TotalCells = MapGrid.Width * MapGrid.Height;
     FloorXfs.Reserve(TotalCells);
     WallXfs.Reserve(TotalCells / 4);
@@ -317,6 +476,28 @@ void ASpartaArcadeMapBuilder::BuildVisuals()
             return N;
         };
 
+    // TMap 기반의 트랜스폼 연산을 위해 타입별 비주얼 설정(스케일, 오프셋) 로드
+    auto GetVisualInfo = [this](ESpartaArcadeTileType TileType, FVector DefaultScale, FVector DefaultOffset)
+    {
+        FVector Scale = DefaultScale;
+        FVector Offset = DefaultOffset;
+        if (TileVisualMap.Contains(TileType))
+        {
+            const FSpartaArcadeTileVisualInfo& Info = TileVisualMap[TileType];
+            Scale = DefaultScale * Info.ScaleMultiplier;
+            Offset = DefaultOffset + Info.Offset;
+        }
+        return TPair<FVector, FVector>(Scale, Offset);
+    };
+
+    TPair<FVector, FVector> EmptyVis = GetVisualInfo(ESpartaArcadeTileType::Empty, FVector(WallScale), FVector(0.f, 0.f, 1.f));
+    TPair<FVector, FVector> WallVis = GetVisualInfo(ESpartaArcadeTileType::FixedWall, FVector(WallScale), FVector(0.f, 0.f, S * 0.5f));
+    TPair<FVector, FVector> PillarVis = GetVisualInfo(ESpartaArcadeTileType::FixedWall, FVector(WallScale * 0.85f, WallScale * 0.85f, WallScale), FVector(0.f, 0.f, S * 0.5f));
+    TPair<FVector, FVector> BoxVis = GetVisualInfo(ESpartaArcadeTileType::DestructibleBox, FVector(WallScale * 0.8f, WallScale * 0.8f, WallScale * 0.6f), FVector(0.f, 0.f, S * 0.3f));
+    TPair<FVector, FVector> IceVis = GetVisualInfo(ESpartaArcadeTileType::Ice, FVector(WallScale), FVector(0.f, 0.f, 2.f));
+    TPair<FVector, FVector> MudVis = GetVisualInfo(ESpartaArcadeTileType::MudWater, FVector(WallScale), FVector(0.f, 0.f, 2.f));
+    TPair<FVector, FVector> BushVis = GetVisualInfo(ESpartaArcadeTileType::Bush, FVector(WallScale), FVector(0.f, 0.f, 2.f));
+
     for (int32 Y = 0; Y < MapGrid.Height; ++Y)
     {
         for (int32 X = 0; X < MapGrid.Width; ++X)
@@ -325,37 +506,35 @@ void ASpartaArcadeMapBuilder::BuildVisuals()
             switch (MapGrid.GetTile(X, Y))
             {
             case ESpartaArcadeTileType::Empty:
-                // 룸 바닥 타일 — 배경보다 1uu 위로 올려 z-fighting 방지.
-                FloorXfs.Emplace(FRotator::ZeroRotator, Pos + FVector(0, 0, 1.f), FVector(WallScale));
+                FloorXfs.Emplace(FRotator::ZeroRotator, Pos + EmptyVis.Value, EmptyVis.Key);
                 break;
             case ESpartaArcadeTileType::FixedWall:
             {
                 if (CountFixedNeighbors(X, Y) <= 1)
                 {
-                    // 실내 기둥 — 살짝 좁게(0.85) 세워 모서리 스침이 부드럽고 벽과 한눈에 구분.
-                    PillarXfs.Emplace(FRotator::ZeroRotator, Pos + FVector(0, 0, S * 0.5f),
-                        FVector(WallScale * 0.85f, WallScale * 0.85f, WallScale));
+                    PillarXfs.Emplace(FRotator::ZeroRotator, Pos + PillarVis.Value, PillarVis.Key);
                 }
                 else
                 {
-                    WallXfs.Emplace(FRotator::ZeroRotator, Pos + FVector(0, 0, S * 0.5f), FVector(WallScale));
+                    WallXfs.Emplace(FRotator::ZeroRotator, Pos + WallVis.Value, WallVis.Key);
                 }
                 break;
             }
             case ESpartaArcadeTileType::DestructibleBox:
-                // 박스는 살짝 작고 낮게 → 벽과 시각적으로 구분.
-                BoxXfs.Emplace(FRotator::ZeroRotator, Pos + FVector(0, 0, S * 0.3f),
-                    FVector(WallScale * 0.8f, WallScale * 0.8f, WallScale * 0.6f));
-                BoxCells.Add(MapGrid.IndexOf(X, Y));
+                if (bShouldDrawBoxISM)
+                {
+                    BoxXfs.Emplace(FRotator::ZeroRotator, Pos + BoxVis.Value, BoxVis.Key);
+                    BoxCells.Add(MapGrid.IndexOf(X, Y));
+                }
                 break;
             case ESpartaArcadeTileType::Ice:
-                IceXfs.Emplace(FRotator::ZeroRotator, Pos + FVector(0, 0, 2.f), FVector(WallScale));
+                IceXfs.Emplace(FRotator::ZeroRotator, Pos + IceVis.Value, IceVis.Key);
                 break;
             case ESpartaArcadeTileType::MudWater:
-                MudXfs.Emplace(FRotator::ZeroRotator, Pos + FVector(0, 0, 2.f), FVector(WallScale));
+                MudXfs.Emplace(FRotator::ZeroRotator, Pos + MudVis.Value, MudVis.Key);
                 break;
             case ESpartaArcadeTileType::Bush:
-                BushXfs.Emplace(FRotator::ZeroRotator, Pos + FVector(0, 0, 2.f), FVector(WallScale));
+                BushXfs.Emplace(FRotator::ZeroRotator, Pos + BushVis.Value, BushVis.Key);
                 break;
             default:
                 break;   // Void(빈 공간)는 인스턴스 없음 → 어두운 배경 플레인이 보임
@@ -377,36 +556,60 @@ void ASpartaArcadeMapBuilder::BuildVisuals()
         BoxCellToInstance.Add(BoxCells[i], BoxIndices.IsValidIndex(i) ? BoxIndices[i] : i);
     }
 
-    // 색칠: 컴포넌트별 다이내믹 머티리얼 인스턴스로 색 지정.
-    // (ISM은 BlockoutMaterial에 "Used with Instanced Static Meshes" 플래그가 켜져 있어야 색이 보임.)
-    if (BlockoutMaterial)
+    // 색칠: 컴포넌트별 다이내믹 머티리얼 인스턴스로 색 지정 또는 커스텀 머티리얼 바인딩.
+    auto ColorComp = [this](UMeshComponent* Comp, ESpartaArcadeTileType TileType, FLinearColor DefaultColor)
     {
-        auto ColorComp = [this](UMeshComponent* Comp, const FLinearColor& C)
-            {
-                if (!Comp) return;
-                if (UMaterialInstanceDynamic* M = Comp->CreateDynamicMaterialInstance(0, BlockoutMaterial))
-                {
-                    M->SetVectorParameterValue(TEXT("Color"), C);      // 파라미터 이름이 "Color"
-                    M->SetVectorParameterValue(TEXT("BaseColor"), C);  // 또는 "BaseColor"
-                }
-            };
-        ColorComp(FloorPlane, VoidColor);   // 배경 = 빈 공간
-        ColorComp(FloorISM, FloorColor);   // 룸 바닥
-        ColorComp(WallISM, WallColor);    // 부술 수 없는 벽
-        ColorComp(PillarISM, PillarColor);  // 실내 기둥(청회색)
-        ColorComp(BoxISM, BoxColor);     // 부술 수 있는 벽
-        ColorComp(IceISM, IceColor);      // 얼음
-        ColorComp(MudWaterISM, MudWaterColor); // 물·진흙
-        ColorComp(BushISM, BushColor);     // 덤불
+        if (!Comp) return;
 
-        FloorISM->MarkRenderStateDirty();
-        WallISM->MarkRenderStateDirty();
-        PillarISM->MarkRenderStateDirty();
-        BoxISM->MarkRenderStateDirty();
-        IceISM->MarkRenderStateDirty();
-        MudWaterISM->MarkRenderStateDirty();
-        BushISM->MarkRenderStateDirty();
+        UMaterialInterface* TargetMat = nullptr;
+        FLinearColor TargetColor = DefaultColor;
+
+        if (TileVisualMap.Contains(TileType))
+        {
+            const FSpartaArcadeTileVisualInfo& Info = TileVisualMap[TileType];
+            if (Info.Material)
+            {
+                TargetMat = Info.Material;
+            }
+            TargetColor = Info.BlockoutColor;
+        }
+
+        if (TargetMat)
+        {
+            Comp->SetMaterial(0, TargetMat);
+        }
+        else if (BlockoutMaterial)
+        {
+            if (UMaterialInstanceDynamic* M = Comp->CreateDynamicMaterialInstance(0, BlockoutMaterial))
+            {
+                M->SetVectorParameterValue(TEXT("Color"), TargetColor);
+                M->SetVectorParameterValue(TEXT("BaseColor"), TargetColor);
+            }
+        }
+    };
+
+    FLinearColor TmpVoidColor = FLinearColor(0.04f, 0.05f, 0.07f);
+    if (TileVisualMap.Contains(ESpartaArcadeTileType::Void))
+    {
+        TmpVoidColor = TileVisualMap[ESpartaArcadeTileType::Void].BlockoutColor;
     }
+
+    ColorComp(FloorPlane, ESpartaArcadeTileType::Void, TmpVoidColor);
+    ColorComp(FloorISM, ESpartaArcadeTileType::Empty, FLinearColor(0.18f, 0.34f, 0.24f));
+    ColorComp(WallISM, ESpartaArcadeTileType::FixedWall, FLinearColor(0.46f, 0.47f, 0.50f));
+    ColorComp(PillarISM, ESpartaArcadeTileType::FixedWall, FLinearColor(0.33f, 0.37f, 0.52f));
+    ColorComp(BoxISM, ESpartaArcadeTileType::DestructibleBox, FLinearColor(0.85f, 0.42f, 0.12f));
+    ColorComp(IceISM, ESpartaArcadeTileType::Ice, FLinearColor(0.72f, 0.85f, 0.95f));
+    ColorComp(MudWaterISM, ESpartaArcadeTileType::MudWater, FLinearColor(0.28f, 0.44f, 0.54f));
+    ColorComp(BushISM, ESpartaArcadeTileType::Bush, FLinearColor(0.24f, 0.55f, 0.28f));
+
+    FloorISM->MarkRenderStateDirty();
+    WallISM->MarkRenderStateDirty();
+    PillarISM->MarkRenderStateDirty();
+    BoxISM->MarkRenderStateDirty();
+    IceISM->MarkRenderStateDirty();
+    MudWaterISM->MarkRenderStateDirty();
+    BushISM->MarkRenderStateDirty();
 
     bVisualsBuilt = true;   // 이후 OnRep은 증분 갱신 경로로
 }

@@ -1,9 +1,8 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"   // 밸런싱 Row(FTableRowBase) 상속용
 #include "SpartaArcadeMapTypes.generated.h"
-// ↑ UENUM/USTRUCT/UCLASS을 쓰는 헤더는 항상 이 "*.generated.h"를 "마지막" include로.
 
 /**
  * 맵 그리드 한 칸이 가질 수 있는 타일 종류.
@@ -12,15 +11,18 @@
 UENUM(BlueprintType)
 enum class ESpartaArcadeTileType : uint8
 {
-    Empty           UMETA(DisplayName = "Empty"),           // 빈 바닥 (이동 가능). 열린 문도 이 값.
+    Empty           UMETA(DisplayName = "Empty"),            // 빈 바닥 (이동 가능). 열린 문도 이 값.
     FixedWall       UMETA(DisplayName = "Fixed Wall"),       // 파괴 불가 벽 (방 외곽 폐합)
     DestructibleBox UMETA(DisplayName = "Destructible Box"), // 부서지는 박스(박스벽/지름길). 내용물은 게임 시스템 소관
     Ice             UMETA(DisplayName = "Ice"),              // 얼음: 미끄러짐
-    MudWater        UMETA(DisplayName = "Mud / Water"),      // 물·진흙: 감속
+    MudWater        UMETA(DisplayName = "Mud"),              // 진흙: 감속
     Bush            UMETA(DisplayName = "Bush"),             // 수풀: 은폐
     Conveyor        UMETA(DisplayName = "Conveyor"),         // 컨베이어: 강제 이동
     ZoneBlock       UMETA(DisplayName = "Zone Block"),       // 자기장 압사 블록 (낙하 후 영구 벽)
-    Void            UMETA(DisplayName = "Void")              // 방 바깥 빈 공간. 렌더 안 함, 이동 불가.
+    Void            UMETA(DisplayName = "Void"),             // 방 바깥 빈 공간. 렌더 안 함, 이동 불가.
+    Floor           UMETA(DisplayName = "Floor"),            // Empty와 동일한 룸 바닥
+    FloorPlane      UMETA(DisplayName = "Floor Plane"),      // Void와 동일한 맵 전체 어두운 배경
+    ZoneBorder      UMETA(DisplayName = "Zone Border")       // 자기장 경계선 비주얼 타일
 };
 
 /**
@@ -141,4 +143,26 @@ struct FSpartaArcadeObstacleRow : public FTableRowBase
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Obstacle", meta = (ClampMin = "0.0"))
     float HoverHeight = 40.f;           // 지면에서 뜬 높이
+};
+
+// 각 타일 파츠의 비주얼(메쉬, 머티리얼, 컬러 등)을 BP에서 일괄 관리하기 위한 구조체 정의 추가
+USTRUCT(BlueprintType)
+struct FSpartaArcadeTileVisualInfo
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Visual")
+    TObjectPtr<UStaticMesh> Mesh = nullptr;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Visual")
+    TObjectPtr<UMaterialInterface> Material = nullptr;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Visual")
+    FLinearColor BlockoutColor = FLinearColor::White;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Visual")
+    FVector ScaleMultiplier = FVector(1.f, 1.f, 1.f);
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Visual")
+    FVector Offset = FVector::ZeroVector;
 };

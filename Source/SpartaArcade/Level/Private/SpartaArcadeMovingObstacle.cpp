@@ -1,4 +1,4 @@
-﻿#include "SpartaArcadeMovingObstacle.h"
+#include "SpartaArcadeMovingObstacle.h"
 #include "SpartaArcadeMapBuilder.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -17,12 +17,15 @@ ASpartaArcadeMovingObstacle::ASpartaArcadeMovingObstacle()
     Collision->SetCollisionProfileName(TEXT("OverlapAllDynamic")); // 접촉 감지는 게임 시스템이 처리(물리 차단 X)
     SetRootComponent(Collision);
 
-    Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
-    Mesh->SetupAttachment(Collision);
-    Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereF(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
-    if (SphereF.Succeeded()) Mesh->SetStaticMesh(SphereF.Object);
-    Mesh->SetRelativeScale3D(FVector(0.8f));
+    ObstacleMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ObstacleMesh"));
+    ObstacleMesh->SetupAttachment(Collision);
+    ObstacleMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    ObstacleMesh->SetRelativeScale3D(FVector(0.8f));
+
+    // 회전 제어 변수 기본값 초기화
+    bOrientRotationToMovement = true;
+    bUseSelfRotation = false;
+    SelfRotationSpeed = 180.f;
 }
 
 void ASpartaArcadeMovingObstacle::SetMapBuilder(ASpartaArcadeMapBuilder* InMap)
@@ -51,13 +54,11 @@ void ASpartaArcadeMovingObstacle::BeginPlay()
 {
     Super::BeginPlay();
     ApplyObstacleRow();            // DT가 있으면 속도/부양 높이 로드(아래 PlaneZ 계산 전에)
-    if (!HasAuthority()) return;   // 이동은 서버 권위(클라는 복제로 위치 수신)
 
-    if (!Map.IsValid())
-    {
-        Map = Cast<ASpartaArcadeMapBuilder>(
-            UGameplayStatics::GetActorOfClass(GetWorld(), ASpartaArcadeMapBuilder::StaticClass()));
-    }
+    // 이전 위치 초기화 (서버/클라 모두 필요하므로 권한 체크 이전에 연산)
+    PrevLocation = GetActorLocation();
+
+    if (!HasAuthority()) return;   // 이동은 서버 권위(클라는 복제로 위치 수신)
 
     // 지면에서 살짝 띄우고, 그 높이를 이동 평면으로 고정.
     PlaneZ = GetActorLocation().Z + HoverHeight;
@@ -113,6 +114,28 @@ void ASpartaArcadeMovingObstacle::ChooseNextTarget()
 void ASpartaArcadeMovingObstacle::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
+
+    if (bUseSelfRotation && ObstacleMesh)
+    {
+        ObstacleMesh->AddLocalRotation(FRotator(0.f, SelfRotationSpeed * DeltaSeconds, 0.f));
+    }
+
+    FVector CurLocation = GetActorLocation();
+
+    // 서버와 클라이언트 모두 매 프레임 적용되므로 뚝뚝 끊기지 않고 부드러운 방향 회전을 보장합니다.
+    if (bOrientRotationToMovement)
+    {
+        FVector DeltaMove = CurLocation - PrevLocation;
+        DeltaMove.Z = 0.f; // 2D 평면상에서의 회전
+
+        if (DeltaMove.SizeSquared() > 0.01f) // 미세 이동치 초과 시에만 방향 회전 적용
+        {
+            FRotator TargetRot = FRotationMatrix::MakeFromX(DeltaMove).Rotator();
+            SetActorRotation(FMath::RInterpTo(GetActorRotation(), TargetRot, DeltaSeconds, 15.f)); // 보간 속도 15.f
+        }
+    }
+    PrevLocation = CurLocation; // 다음 프레임 연산을 위해 캐시 갱신
+
     if (!HasAuthority() || !Map.IsValid() || !bHasTarget) return;
 
     const FVector TargetW = Map->TileToWorld(TargetCell.X, TargetCell.Y);

@@ -1,8 +1,9 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "SpartaArcadeMapGrid.h"
+#include "SpartaArcadeMapTypes.h"
 #include "SpartaArcadeMapBuilder.generated.h"
 
 class UStaticMesh;
@@ -269,45 +270,25 @@ protected:
 
     FTimerHandle TestDestroyTimerHandle;
     void TestDestroyRandomBox();
-
-    // ---- 렌더용 메쉬/머티리얼 (비우면 엔진 기본 큐브/플레인 자동 사용) ----
+	
+    // 각 지형 타일별 비주얼을 블루프린트에서 관리하기 위한 TMap 추가
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Visual")
-    UStaticMesh* WallMesh = nullptr;
+    TMap<ESpartaArcadeTileType, FSpartaArcadeTileVisualInfo> TileVisualMap;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Visual")
-    UStaticMesh* BoxMesh = nullptr;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Visual")
-    UStaticMesh* FloorMesh = nullptr;
-
-    /** 블록아웃 색칠용 언리트 머티리얼. "Color"(또는 "BaseColor") 벡터 파라미터 하나 필요.
-     *  ★ 이 머티리얼은 디테일 Usage에서 "Used with Instanced Static Meshes"를 켜야 ISM에 보임. */
+    // 기존 참조 호환을 위한 BlockoutMaterial 정의 보존
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Visual")
     UMaterialInterface* BlockoutMaterial = nullptr;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Visual|Colors")
-    FLinearColor FloorColor = FLinearColor(0.18f, 0.34f, 0.24f);  // 룸 바닥(밝은 초록)
+    // 런타임에 스폰할 진짜 파괴 가능한 상자 블루프린트 클래스
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Spawns")
+    TSubclassOf<AActor> BreakableBoxClass;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Visual|Colors")
-    FLinearColor VoidColor = FLinearColor(0.04f, 0.05f, 0.07f);  // 빈 공간(어두운 배경)
+    // 스폰된 상자 액터 관리용 배열
+    UPROPERTY()
+    TArray<AActor*> SpawnedBoxes;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Visual|Colors")
-    FLinearColor WallColor = FLinearColor(0.46f, 0.47f, 0.50f);  // 부술 수 없는 벽(회색)
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Visual|Colors")
-    FLinearColor PillarColor = FLinearColor(0.33f, 0.37f, 0.52f); // 실내 기둥(청회색) — 벽과 구분
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Visual|Colors")
-    FLinearColor BoxColor = FLinearColor(0.85f, 0.42f, 0.12f);  // 부술 수 있는 벽/박스(주황)
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Visual|Colors")
-    FLinearColor IceColor = FLinearColor(0.72f, 0.85f, 0.95f); // 얼음(연파랑, 미끄럼)
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Visual|Colors")
-    FLinearColor MudWaterColor = FLinearColor(0.28f, 0.44f, 0.54f); // 물·진흙(파랑, 감속)
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Visual|Colors")
-    FLinearColor BushColor = FLinearColor(0.24f, 0.55f, 0.28f); // 덤불(초록, 은폐)
+    // 런타임 상자 액터 스폰 헬퍼 함수
+    void SpawnBreakableBoxes();
 
     // ---- 상태(복제) ----
     UPROPERTY(ReplicatedUsing = OnRep_MapGrid)
