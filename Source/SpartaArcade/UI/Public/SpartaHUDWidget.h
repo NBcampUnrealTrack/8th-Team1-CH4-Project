@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
@@ -21,6 +21,9 @@ class SPARTAARCADE_API USpartaHUDWidget : public UUserWidget
 protected:
     virtual void NativeConstruct() override;
     virtual void NativeDestruct() override;
+    
+    // 기절 진행률 게이지 실시간 업데이트를 위한 NativeTick 오버라이드 추가
+    virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
     
     //하트 개수 기반 체력 표시
     UPROPERTY(meta = (BindWidget))
@@ -91,9 +94,10 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "UI | Update")
     void UpdateGameStateInfo(int32 AlivePlayers, int32 MatchSeconds, int32 ZonePhase);
-
+    
+    // OnHit 델리게이트와 시그니처를 맞추기 위해 매개변수가 없는 HandleOnHit 추가
     UFUNCTION()
-    void HandleOnHit(float Damage, const FVector& HitLocation);
+    void HandleOnHit();
 
     UFUNCTION()
     void HandleOnItemPickup(EItemType ItemType, int32 NewCount);
@@ -116,4 +120,17 @@ public:
 private:
     // 내부 헬퍼 함수
     FString FormatTime(int32 TotalSeconds) const;
+
+    // 실시간 게이지 업데이트 및 델리게이트 관리를 위해 각 컴포넌트 멤버 변수 캐싱 추가
+    UPROPERTY()
+    TObjectPtr<ASpartaPlayerState> SpartaPlayerState;
+
+    UPROPERTY()
+    TObjectPtr<UStatComponent> StatComponent;
+
+    UPROPERTY()
+    TObjectPtr<UCombatComponent> CombatComponent;
+
+    UPROPERTY()
+    TObjectPtr<UBombPlacerComponent> BombPlacerComponent;
 };

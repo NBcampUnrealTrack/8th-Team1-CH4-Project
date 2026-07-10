@@ -1,4 +1,4 @@
-﻿#include "CombatComponent.h"
+#include "CombatComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Framework/Public/InGame/SpartaPlayerState.h"
 
@@ -239,6 +239,20 @@ void UCombatComponent::Heal(int32 Amount)
     if (SpartaPlayerState->GetCurrentState() != EBomberPlayerState::Alive) return;
     SpartaPlayerState->SetHearts(FMath::Clamp(SpartaPlayerState->GetHearts() + Amount, 0, SpartaPlayerState->GetStartHearts()));
     OnHit.Broadcast(); // UI 갱신을 위해 브로드캐스트
+}
+
+// 기절 진행 퍼센트를 가져오는 함수 구현 추가
+float UCombatComponent::GetStunProgressPercent() const
+{
+    if (SpartaPlayerState && SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Stunned)
+    {
+        if (GetWorld() && StunDuration > 0.f)
+        {
+            float Remaining = GetWorld()->GetTimerManager().GetTimerRemaining(StunTimerHandle);
+            return FMath::Clamp((StunDuration - Remaining) / StunDuration, 0.f, 1.f);
+        }
+    }
+    return 0.f;
 }
 
 void UCombatComponent::BroadcastCurrentState()

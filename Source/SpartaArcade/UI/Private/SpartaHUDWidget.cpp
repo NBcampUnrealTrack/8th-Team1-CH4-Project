@@ -27,6 +27,18 @@ void USpartaHUDWidget::NativeDestruct()
     Super::NativeDestruct();
 }
 
+// 기절 게이지 실시간 갱신을 위해 NativeTick 정의 추가
+void USpartaHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+    Super::NativeTick(MyGeometry, InDeltaTime);
+
+    if (CombatComponent && SpartaPlayerState && SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Stunned)
+    {
+        float Progress = CombatComponent->GetStunProgressPercent();
+        UpdateStunProgress(Progress);
+    }
+}
+
 void USpartaHUDWidget::UpdateHearts(int32 CurrentHearts, int32 MaxHearts)
 {
     // 하트 개수만큼 UI 슬롯에 하트 유닛 스폰 및 리스트업
@@ -111,22 +123,17 @@ void USpartaHUDWidget::UpdateGameStateInfo(int32 AlivePlayers, int32 MatchSecond
     }
 }
 
-// 대미지 표시 시 주석 비활성화
-void USpartaHUDWidget::HandleOnHit(float Damage, const FVector& HitLocation)
+// OnHit 델리게이트 호출 시 대미지 위젯 화면 표시 로직 구현
+void USpartaHUDWidget::HandleOnHit()
 {
-    // 대미지 표시 시 주석 비활성화
-    
-    // // 피격 시 데미지 숫자 화면 표시 UI (피드백)
-    // if (DamageTextWidgetClass)
-    // {
-    //     UUserWidget* DamageWidget = CreateWidget<UUserWidget>(GetWorld(), DamageTextWidgetClass);
-    //     if (DamageWidget)
-    //     {
-    //         DamageWidget->AddToViewport();
-    //         
-    //         // 데미지 위젯 내부에 SetDamage 등의 함수가 있다면 연동
-    //     }
-    // }
+    if (DamageTextWidgetClass)
+    {
+        UUserWidget* DamageWidget = CreateWidget<UUserWidget>(GetWorld(), DamageTextWidgetClass);
+        if (DamageWidget)
+        {
+            DamageWidget->AddToViewport();
+        }
+    }
 }
 
 void USpartaHUDWidget::HandleOnItemPickup(EItemType ItemType, int32 NewCount)
@@ -202,6 +209,12 @@ void USpartaHUDWidget::UpdateHasShield(bool bHasShield)
 
 void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UStatComponent* StatComp, UCombatComponent* CombatComp, UBombPlacerComponent* BombPlacerComp)
 {
+    // 멤버 컴포넌트 캐싱 추가
+    SpartaPlayerState = PlayerState;
+    StatComponent = StatComp;
+    CombatComponent = CombatComp;
+    BombPlacerComponent = BombPlacerComp;
+
     if (PlayerState)
     {
 		PlayerState->OnHeartsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateHearts);
@@ -216,6 +229,8 @@ void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UStatCompo
     if(CombatComp)
     {
         CombatComp->OnShieldBlock.AddDynamic(this, &USpartaHUDWidget::HandleOnShieldBlock);
+        // OnHit 델리게이트 바인딩 추가
+        CombatComp->OnHit.AddDynamic(this, &USpartaHUDWidget::HandleOnHit);
 	}
 
     if (BombPlacerComp)
