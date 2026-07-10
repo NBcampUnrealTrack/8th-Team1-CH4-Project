@@ -50,14 +50,9 @@ protected:
 
     UPROPERTY(meta = (BindWidget))
     UTextBlock* MaxBombCountText;
-
-    UPROPERTY(meta = (BindWidget))
-    UTextBlock* ExplosionRangeText;
-
-    UPROPERTY(meta = (BindWidget))
-    UTextBlock* MoveSpeedText;
-
-    UPROPERTY(meta = (BindWidget))
+    
+    // 쉴드 텍스트가 위젯에서 삭제되더라도 컴파일 오류가 나지 않도록 OptionalWidget = true 속성을 부여합니다.
+    UPROPERTY(meta = (BindWidget, OptionalWidget = true))
     UTextBlock* ShieldStatusText;
 
     UPROPERTY(meta = (BindWidget))
@@ -72,6 +67,26 @@ protected:
     // --- 피격 피드백 UI 에셋 ---
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI | Feedback")
     TSubclassOf<UUserWidget> DamageTextWidgetClass;
+
+    // 스탯 바 UI 슬롯 템플릿과 3가지 스탯 바 컴포넌트 변수 선언 (OptionalWidget을 주어 블루프린트 매핑 예외 방지)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI | Stats")
+    TSubclassOf<class USpartaArcadeStatSlot> StatSlotWidgetClass;
+
+    UPROPERTY(meta = (BindWidget, OptionalWidget = true))
+    class USpartaArcadeStatBar* BombCountBar;
+
+    UPROPERTY(meta = (BindWidget, OptionalWidget = true))
+    class USpartaArcadeStatBar* RangeBar;
+
+    UPROPERTY(meta = (BindWidget, OptionalWidget = true))
+    class USpartaArcadeStatBar* SpeedBar;
+
+    // 쉴드 및 구급상자 상태를 켜고 끌 단일 아이콘 이미지 컴포넌트 선언 (OptionalWidget)
+    UPROPERTY(meta = (BindWidget, OptionalWidget = true))
+    UImage* ShieldIcon;
+
+    UPROPERTY(meta = (BindWidget, OptionalWidget = true))
+    UImage* MedKitIcon;
 
 public:
     // 하트 개수 업데이트 함수 추가
@@ -94,6 +109,13 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "UI | Update")
     void UpdateGameStateInfo(int32 AlivePlayers, int32 MatchSeconds, int32 ZonePhase);
+
+    // 쉴드 및 구급약 획득 여부에 따른 개별 아이콘 가시성 갱신 함수 선언
+    UFUNCTION(BlueprintCallable, Category = "UI | Update")
+    void UpdateShieldStatus(bool bHasShield);
+
+    UFUNCTION(BlueprintCallable, Category = "UI | Update")
+    void UpdateMedKitStatus(int32 MedKitCount);
     
     // OnHit 델리게이트와 시그니처를 맞추기 위해 매개변수가 없는 HandleOnHit 추가
     UFUNCTION()

@@ -31,6 +31,15 @@ ASpartaArcadeMovingObstacle::ASpartaArcadeMovingObstacle()
 void ASpartaArcadeMovingObstacle::SetMapBuilder(ASpartaArcadeMapBuilder* InMap)
 {
     Map = InMap;
+
+    // 맵 빌더가 런타임에 설정되더라도 안전하게 첫 번째 타겟 목표 칸을 결정하여 즉시 이동을 개시하도록 보완
+    if (Map.IsValid() && !bHasTarget && HasAuthority())
+    {
+        int32 X = 0, Y = 0;
+        Map->WorldToTile(GetActorLocation(), X, Y);
+        CurCell = FIntPoint(X, Y);
+        ChooseNextTarget();
+    }
 }
 
 void ASpartaArcadeMovingObstacle::ApplyObstacleRow()
@@ -59,6 +68,12 @@ void ASpartaArcadeMovingObstacle::BeginPlay()
     PrevLocation = GetActorLocation();
 
     if (!HasAuthority()) return;   // 이동은 서버 권위(클라는 복제로 위치 수신)
+
+    if (!Map.IsValid())
+    {
+        Map = Cast<ASpartaArcadeMapBuilder>(
+            UGameplayStatics::GetActorOfClass(GetWorld(), ASpartaArcadeMapBuilder::StaticClass()));
+    }
 
     // 지면에서 살짝 띄우고, 그 높이를 이동 평면으로 고정.
     PlaneZ = GetActorLocation().Z + HoverHeight;

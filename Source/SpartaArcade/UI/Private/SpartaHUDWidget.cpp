@@ -1,6 +1,9 @@
-﻿#include "SpartaHUDWidget.h"
+#include "SpartaHUDWidget.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
+#include "Components/Image.h"
+#include "SpartaArcadeStatBar.h"
+#include "SpartaArcadeStatSlot.h"
 #include "Components/HorizontalBox.h"
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
@@ -89,16 +92,6 @@ void USpartaHUDWidget::UpdateBombStats(int32 CurrentBombs, int32 MaxBombs)
 
 void USpartaHUDWidget::UpdateCharacterStats(float ExplosionRange, float MoveSpeed, bool bHasShield)
 {
-    if (ExplosionRangeText)
-    {
-        ExplosionRangeText->SetText(FText::FromString(FString::Printf(TEXT("%.1f"), ExplosionRange)));
-    }
-
-    if (MoveSpeedText)
-    {
-        MoveSpeedText->SetText(FText::FromString(FString::Printf(TEXT("%.1f"), MoveSpeed)));
-    }
-
     if (ShieldStatusText)
     {
         ShieldStatusText->SetText(FText::FromString(bHasShield ? TEXT("ACTIVE") : TEXT("NONE")));
@@ -188,23 +181,24 @@ void USpartaHUDWidget::UpdateStats(int32 BombCount, float ExplosionRange, float 
         MaxBombCountText->SetText(FText::AsNumber(BombCount));
     }
 
-    if (ExplosionRangeText)
+    // C++ 스탯 바 인스턴스가 위젯에 얹어져 있다면 실시간으로 칸 개수 연산 동기화
+    if (BombCountBar)
     {
-        ExplosionRangeText->SetText(FText::FromString(FString::Printf(TEXT("%.1f"), ExplosionRange)));
+        BombCountBar->UpdateStatBar(BombCount);
     }
-
-    if (MoveSpeedText)
+    if (RangeBar)
     {
-        MoveSpeedText->SetText(FText::FromString(FString::Printf(TEXT("%.1f"), MoveSpeed)));
+        RangeBar->UpdateStatBar(FMath::RoundToInt(ExplosionRange));
+    }
+    if (SpeedBar)
+    {
+        SpeedBar->UpdateStatBar(FMath::RoundToInt(MoveSpeed));
     }
 }
 
 void USpartaHUDWidget::UpdateHasShield(bool bHasShield)
 {
-    if (ShieldStatusText)
-    {
-        ShieldStatusText->SetText(FText::FromString(bHasShield ? TEXT("ACTIVE") : TEXT("NONE")));
-    }
+
 }
 
 void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UStatComponent* StatComp, UCombatComponent* CombatComp, UBombPlacerComponent* BombPlacerComp)
@@ -215,15 +209,30 @@ void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UStatCompo
     CombatComponent = CombatComp;
     BombPlacerComponent = BombPlacerComp;
 
+    // 스탯 바 위젯 초기화 (최대치 개수로 칸 동적 생성)
+    if (StatSlotWidgetClass)
+    {
+        if (BombCountBar) BombCountBar->InitializeBar(8, StatSlotWidgetClass); // 최대 8칸
+        if (RangeBar) RangeBar->InitializeBar(5, StatSlotWidgetClass);       // 최대 5칸
+        if (SpeedBar) SpeedBar->InitializeBar(5, StatSlotWidgetClass);       // 최대 5칸
+    }
+
     if (PlayerState)
     {
 		PlayerState->OnHeartsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateHearts);
 		PlayerState->OnStunStateChanged.AddDynamic(this, &USpartaHUDWidget::SetStunActive);
+		PlayerState->OnFirstAidKitsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateMedKitStatus);
+
+		// 초기 가시성 상태 세팅
+		UpdateMedKitStatus(PlayerState->GetFirstAidKits());
     }
 
     if(StatComp)
     {
         StatComp->OnStatsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateStats);
+        
+        //시작 시점의 초기 스탯치 값으로 바 가시성 세팅 강제 트리거
+        UpdateStats(StatComp->GetBombCount(), StatComp->GetBombRange(), StatComp->GetMoveSpeed());
 	}
 
     if(CombatComp)
@@ -231,10 +240,32 @@ void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UStatCompo
         CombatComp->OnShieldBlock.AddDynamic(this, &USpartaHUDWidget::HandleOnShieldBlock);
         // OnHit 델리게이트 바인딩 추가
         CombatComp->OnHit.AddDynamic(this, &USpartaHUDWidget::HandleOnHit);
+		// Modified: 쉴드 활성 여부 델리게이트 구독 연동
+		CombatComp->OnbHasShieldChanged.AddDynamic(this, &USpartaHUDWidget::UpdateShieldStatus);
+
+		// 초기 가시성 상태 세팅
+		UpdateShieldStatus(CombatComp->IsShielded());
 	}
 
     if (BombPlacerComp)
     {
         BombPlacerComp->OnCurrentPlacedBombsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateCurrentBombs);
     }
+}
+
+// 쉴드 및 구급상자 상태 변경 시 개별 UI 이미지 가시성 토글(Visible / Collapsed) 구현
+void USpartaHUDWidget::UpdateShieldStatus(bool bHasShield)
+{
+	if (ShieldIcon)
+	{
+		ShieldIcon->SetVisibility(bHasShield ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+}
+
+void USpartaHUDWidget::UpdateMedKitStatus(int32 MedKitCount)
+{
+	if (MedKitIcon)
+	{
+		MedKitIcon->SetVisibility(MedKitCount > 0 ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
 }

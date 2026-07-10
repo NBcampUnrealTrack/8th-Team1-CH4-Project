@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "InGame/SpartaPlayerState.h"
@@ -33,6 +33,8 @@ void ASpartaPlayerState::SetFirstAidKits(int32 NewCount)
 	if (HasAuthority())
 	{
 		FirstAidKits = NewCount;
+		// 서버 측에서 구급약 획득 시 이벤트를 즉각 브로드캐스트
+		OnRep_FirstAidKits();
 	}
 }
 
@@ -119,8 +121,19 @@ void ASpartaPlayerState::OnRep_CurrentState()
 }
 	
 
+//클라이언트에서 구급약 개수 복제 수신 시 동적 UI 이벤트 브로드캐스트
+void ASpartaPlayerState::OnRep_FirstAidKits()
+{
+	if (OnFirstAidKitsChanged.IsBound())
+	{
+		OnFirstAidKitsChanged.Broadcast(FirstAidKits);
+	}
+}
+
 void ASpartaPlayerState::BroadcastCurrentState()
 {
 	OnRep_Hearts();
 	OnRep_CurrentState();
+	// 구급약 개수 초기 상태 브로드캐스트 호출 추가
+	OnRep_FirstAidKits();
 }
