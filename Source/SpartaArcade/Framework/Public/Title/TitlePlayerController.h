@@ -24,5 +24,4 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
 	TObjectPtr<UUserWidget> UIWidgetInstance;
-	
 };

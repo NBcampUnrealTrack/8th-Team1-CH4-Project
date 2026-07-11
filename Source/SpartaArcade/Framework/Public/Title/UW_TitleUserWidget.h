@@ -8,7 +8,7 @@
 
 class UButton;
 class UEditableText;
-
+class UEOSGameInstanceSubsystem;
 
 UCLASS()
 class SPARTAARCADE_API UUW_TitleUserWidget : public UUserWidget
@@ -27,16 +27,36 @@ protected:
 	UFUNCTION()
 	void OnExitButtonClicked();
 
+	UFUNCTION()
+	void OnCreateSessionButtonClicked();
+
+	UFUNCTION()
+	void OnSearchSessionButtonClicked();
+
+	UFUNCTION()
+	void OnLoginButtonClicked();
+
 private:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = TitleWidget, Meta = (AllowPrivateAccess, BindWidget))
+	UPROPERTY(BlueprintReadOnly, Category = "TitleWidget", Meta = (AllowPrivateAccess, BindWidget))
 	TObjectPtr<UButton> PlayButton;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = TitleWidget, Meta = (AllowPrivateAccess, BindWidget))
+	UPROPERTY( BlueprintReadOnly, Category = "TitleWidget", Meta = (AllowPrivateAccess, BindWidget))
 	TObjectPtr<UButton> ExitButton;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = LobbyLevelUI, Meta = (AllowPrivateAccess, BindWidget))
+	UPROPERTY(BlueprintReadOnly, Category = "TitleWidget", Meta = (AllowPrivateAccess, BindWidget))
+	TObjectPtr<UButton> CreateSessionButton;
+
+	UPROPERTY(BlueprintReadOnly, Category = "TitleWidget", Meta = (AllowPrivateAccess, BindWidget))
+	TObjectPtr<UButton> SearchSessionButton;
+
+	UPROPERTY(BlueprintReadOnly, Category = "TitleWidget", Meta = (AllowPrivateAccess, BindWidget))
+	TObjectPtr<UButton> LoginButton;
+
+	UPROPERTY(BlueprintReadOnly, Category = "LobbyLevelUI", Meta = (AllowPrivateAccess, BindWidget))
 	TObjectPtr<UEditableText> ServerIPEditableText;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = LobbyLevelUI, Meta = (AllowPrivateAccess, BindWidget))
+	UPROPERTY(BlueprintReadOnly, Category = "LobbyLevelUI", Meta = (AllowPrivateAccess, BindWidget))
 	TObjectPtr<UEditableText> PlayerNameEditableText;
+
+	UEOSGameInstanceSubsystem* EOSGameInstanceSubsystem;
 };

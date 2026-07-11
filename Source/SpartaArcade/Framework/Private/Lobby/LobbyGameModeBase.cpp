@@ -29,30 +29,6 @@ void ALobbyGameModeBase::PreLogin(const FString& Options, const FString& Address
 	}
 }
 
-FString ALobbyGameModeBase::InitNewPlayer(APlayerController* NewPlayerController, const FUniqueNetIdRepl& UniqueId, const FString& Options, const FString& Portal)
-{
-	FString Result = Super::InitNewPlayer(NewPlayerController, UniqueId, Options, Portal);
-
-	ALobbyGameStateBase* LobbyGameState = GetGameState<ALobbyGameStateBase>();
-	if (IsValid(LobbyGameState))
-	{
-		FString PlayerName = UGameplayStatics::ParseOption(Options, TEXT("PlayerName"));
-		if (NewPlayerController->PlayerState)
-		{
-			if (!PlayerName.IsEmpty())
-			{
-				NewPlayerController->PlayerState->SetPlayerName(PlayerName);
-			}
-
-			else
-			{
-				NewPlayerController->PlayerState->SetPlayerName(FString::Printf(TEXT("Player%d"), LobbyGameState->PlayerStates.Num() + 1));
-			}
-		}
-	}
-	return Result;
-}
-
 void ALobbyGameModeBase::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
