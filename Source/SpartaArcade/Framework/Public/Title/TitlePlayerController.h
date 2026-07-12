@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "Interfaces/OnlineSessionInterface.h"
 #include "TitlePlayerController.generated.h"
 
 class UUserWidget;
@@ -17,6 +18,10 @@ public:
 	virtual void BeginPlay() override;
 
 	void JoinServer(const FString& InIPAddress, const FString& InPlayerName);
+
+	void HandleCreateSessionComplete(FName SessionName, bool bWasSuccessful);
+
+	void HandleJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result, const FString& Connect);
 
 private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))

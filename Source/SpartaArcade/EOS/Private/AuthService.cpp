@@ -44,6 +44,20 @@ void UAuthService::Logout()
 	Identity->Logout(0);
 }
 
+FString UAuthService::GetDisplayName() const
+{
+	if (!Identity.IsValid())
+	{
+		return FString();
+	}
+	TSharedPtr<const FUniqueNetId> UserId = Identity->GetUniquePlayerId(0);
+	if (UserId.IsValid())
+	{
+		return Identity->GetPlayerNickname(*UserId);
+	}
+	return FString();
+}
+
 // --------------------------------------------------------------
 // 콜백 함수
 

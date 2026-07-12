@@ -22,6 +22,7 @@ public:
 	UAuthService* GetAuthService() const;
 	USessionService* GetSessionService() const;
 
+
 private:
 	IOnlineSubsystem* OnlineSubsystem;
 

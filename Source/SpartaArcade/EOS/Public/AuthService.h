@@ -24,6 +24,8 @@ public:
 
 	void OnLogoutComplete(int32 LocalUserNum, bool bWasSuccessful);
 
+	FString GetDisplayName() const;
+
 private:
 	IOnlineIdentityPtr Identity;
 };

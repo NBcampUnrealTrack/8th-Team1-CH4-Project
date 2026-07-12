@@ -20,6 +20,9 @@ public:
 	virtual void PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 	virtual void Logout(AController* Exiting) override;
+	virtual void BeginPlay() override;
+
+	void InitializeLobbyGameState();
 
 	void OnPlayerReadyStateChanged();
 
@@ -30,9 +33,6 @@ public:
 	void UpdateMatchStartCountdown();
 
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
-	TSoftObjectPtr<UWorld> InGameMap;
-
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
 	int32 StartCountdownTimeRemaining;
 

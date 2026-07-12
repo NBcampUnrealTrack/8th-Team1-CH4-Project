@@ -6,7 +6,8 @@
 #include "Interfaces/OnlineSessionInterface.h"
 #include "OnlineSessionSettings.h"
 #include "Online/OnlineSessionNames.h"
-
+#include "SpartaUIDefs.h"
+#include "GameFlow/TravelGameInstanceSubsystem.h"
 void USessionService::Initialize(IOnlineSubsystem* InOnlineSubsystem)
 {
 	Session = InOnlineSubsystem->GetSessionInterface();
@@ -20,7 +21,7 @@ void USessionService::Initialize(IOnlineSubsystem* InOnlineSubsystem)
 	}
 }
 
-void USessionService::CreateSession()
+void USessionService::CreateSession(FSessionInfo CreationSettings)
 {
 	if (!Session.IsValid())
 	{
@@ -28,12 +29,14 @@ void USessionService::CreateSession()
 	}
 	FOnlineSessionSettings Settings;
 	Settings.bIsLANMatch = false;
-	Settings.NumPublicConnections = 4;
-	Settings.bShouldAdvertise = true;
+	Settings.NumPublicConnections = CreationSettings.MaxPlayers;
+	Settings.bShouldAdvertise = !CreationSettings.bIsPrivate;
 	Settings.bUsesPresence = true;
 	Settings.bUseLobbiesIfAvailable = true;
-	Settings.Set(SEARCH_KEYWORDS, FString("MyGame"), EOnlineDataAdvertisementType::ViaOnlineService);
-
+	Settings.Set(SEARCH_KEYWORDS, FString("SpartaArcade"), EOnlineDataAdvertisementType::ViaOnlineService);
+	Settings.Set(SessionKeys::SessionName, CreationSettings.SessionName, EOnlineDataAdvertisementType::ViaOnlineService);
+	Settings.Set(SessionKeys::GameMode, FString::FromInt(CreationSettings.GameModeType), EOnlineDataAdvertisementType::ViaOnlineService);
+	Settings.Set(SessionKeys::Private, CreationSettings.bIsPrivate, EOnlineDataAdvertisementType::ViaOnlineService);
 	Session->CreateSession(0, NAME_GameSession, Settings);
 }
 
@@ -52,7 +55,8 @@ void USessionService::FindSessions()
 	Search->bIsLanQuery = false;
 	Search->MaxSearchResults = 20;
 	Search->QuerySettings.Set(SEARCH_LOBBIES, true, EOnlineComparisonOp::Equals);
-	Search->QuerySettings.Set(SEARCH_KEYWORDS, FString(TEXT("MyGame")), EOnlineComparisonOp::Equals);
+	Search->QuerySettings.Set(SEARCH_KEYWORDS, FString(TEXT("SpartaArcade")), EOnlineComparisonOp::Equals);
+	Search->QuerySettings.Set(SessionKeys::Private, false, EOnlineComparisonOp::Equals);
 
 	Session->FindSessions(0, Search.ToSharedRef());
 }
@@ -60,6 +64,37 @@ void USessionService::FindSessions()
 void USessionService::JoinSession(const FOnlineSessionSearchResult& Result)
 {
 	Session->JoinSession(0, NAME_GameSession, Result);
+}
+
+FSessionInfo USessionService::MakeSessionInfo(const FOnlineSessionSearchResult& Result)
+{
+	FSessionInfo SessionInfo; 
+	FString GameModeString;
+	Result.Session.SessionSettings.Get(SessionKeys::SessionName, SessionInfo.SessionName);
+	Result.Session.SessionSettings.Get(SessionKeys::GameMode, GameModeString);
+	SessionInfo.GameModeType = FCString::Atoi(*GameModeString);
+	SessionInfo.MaxPlayers = Result.Session.SessionSettings.NumPublicConnections;
+	SessionInfo.CurrentPlayers = SessionInfo.MaxPlayers - Result.Session.NumOpenPublicConnections;
+	return SessionInfo;
+}
+
+FSessionInfo USessionService::GetCurrentSessionInfo() const
+{
+	FSessionInfo SessionInfo;
+	if (Session.IsValid())
+	{
+		FNamedOnlineSession* CurrentSession = Session->GetNamedSession(NAME_GameSession);
+		if (CurrentSession)
+		{
+			FString GameModeString;
+			CurrentSession->SessionSettings.Get(SessionKeys::SessionName, SessionInfo.SessionName);
+			CurrentSession->SessionSettings.Get(SessionKeys::GameMode, GameModeString);
+			SessionInfo.GameModeType = FCString::Atoi(*GameModeString);
+			SessionInfo.MaxPlayers = CurrentSession->SessionSettings.NumPublicConnections;
+			SessionInfo.CurrentPlayers = SessionInfo.MaxPlayers - CurrentSession->NumOpenPublicConnections;
+		}
+	}
+	return SessionInfo;
 }
 
 // --------------------------------------------------------------
@@ -70,7 +105,7 @@ void USessionService::OnCreateSessionComplete(FName SessionName, bool bWasSucces
 	if (bWasSuccessful)
 	{
 		UE_LOG(LogTemp, Log, TEXT("Session created successfully: %s"), *SessionName.ToString());
-		GetWorld()->ServerTravel(TEXT("/Game/NetworkTemp/Map/LobbyMap?listen"));
+		OnCreateSessionCompleteEvent.Broadcast(SessionName, bWasSuccessful);
 	}
 	else
 	{
@@ -83,6 +118,7 @@ void USessionService::OnDestroySessionComplete(FName SessionName, bool bWasSucce
 	if (bWasSuccessful)
 	{
 		UE_LOG(LogTemp, Log, TEXT("Session destroyed successfully: %s"), *SessionName.ToString());
+		OnDestroySessionCompleteEvent.Broadcast(SessionName, bWasSuccessful);
 	}
 	else
 	{
@@ -95,7 +131,7 @@ void USessionService::OnFindSessionsComplete(bool bWasSuccessful)
 	if (bWasSuccessful)
 	{
 		UE_LOG(LogTemp, Log, TEXT("Sessions found successfully."));
-		JoinSession(Search->SearchResults[0]);
+		OnSearchSessionCompleteEvent.Broadcast(bWasSuccessful, Search->SearchResults);
 	}
 	else
 	{
@@ -109,9 +145,9 @@ void USessionService::OnJoinSessionComplete(FName SessionName, EOnJoinSessionCom
 	{
 		UE_LOG(LogTemp, Log, TEXT("Joined session successfully: %s"), *SessionName.ToString());
 		FString Connect;
-		if (Session->GetResolvedConnectString(NAME_GameSession, Connect))
+		if(Session->GetResolvedConnectString(SessionName, Connect))
 		{
-			GetWorld()->GetFirstPlayerController()->ClientTravel(Connect, TRAVEL_Absolute);
+			OnJoinSessionCompleteEvent.Broadcast(SessionName, Result, Connect);
 		}
 	}
 	else

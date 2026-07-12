@@ -9,6 +9,8 @@
 class UButton;
 class UEditableText;
 class UEOSGameInstanceSubsystem;
+class UCheckBox;
+class UVerticalBox;
 
 UCLASS()
 class SPARTAARCADE_API UUW_TitleUserWidget : public UUserWidget
@@ -28,6 +30,9 @@ protected:
 	void OnExitButtonClicked();
 
 	UFUNCTION()
+	void OnSettingSessionClicked();
+
+	UFUNCTION()
 	void OnCreateSessionButtonClicked();
 
 	UFUNCTION()
@@ -36,7 +41,19 @@ protected:
 	UFUNCTION()
 	void OnLoginButtonClicked();
 
+	UFUNCTION()
+	void OnSoloModeButtonClicked();
+
+	UFUNCTION()
+	void OnTeamModeButtonClicked();
+
+	void HandleSearchSessionComplete(bool bWasSuccessful, const TArray<FOnlineSessionSearchResult>& SearchResults);
+
+	void UpdateSessionList(const TArray<FOnlineSessionSearchResult>& SearchResults);
+
 private:
+	UEOSGameInstanceSubsystem* EOSGameInstanceSubsystem;
+
 	UPROPERTY(BlueprintReadOnly, Category = "TitleWidget", Meta = (AllowPrivateAccess, BindWidget))
 	TObjectPtr<UButton> PlayButton;
 
@@ -44,7 +61,7 @@ private:
 	TObjectPtr<UButton> ExitButton;
 
 	UPROPERTY(BlueprintReadOnly, Category = "TitleWidget", Meta = (AllowPrivateAccess, BindWidget))
-	TObjectPtr<UButton> CreateSessionButton;
+	TObjectPtr<UButton> SettingSessionButton;
 
 	UPROPERTY(BlueprintReadOnly, Category = "TitleWidget", Meta = (AllowPrivateAccess, BindWidget))
 	TObjectPtr<UButton> SearchSessionButton;
@@ -58,5 +75,27 @@ private:
 	UPROPERTY(BlueprintReadOnly, Category = "LobbyLevelUI", Meta = (AllowPrivateAccess, BindWidget))
 	TObjectPtr<UEditableText> PlayerNameEditableText;
 
-	UEOSGameInstanceSubsystem* EOSGameInstanceSubsystem;
+	UPROPERTY(BlueprintReadOnly, Category = "CreateSession", Meta = (AllowPrivateAccess, BindWidget))
+	TObjectPtr<UEditableText> SessionNameEditableText;
+
+	UPROPERTY(BlueprintReadOnly, Category = "CreateSession", Meta = (AllowPrivateAccess, BindWidget))
+	TObjectPtr<UCheckBox> IsPrivateCheckBox;
+
+	UPROPERTY(BlueprintReadOnly, Category = "CreateSession", Meta = (AllowPrivateAccess, BindWidget))
+	TObjectPtr<UEditableText> MaxPlayerEditableText;
+
+	UPROPERTY(BlueprintReadOnly, Category = "CreateSession", Meta = (AllowPrivateAccess, BindWidget))
+	TObjectPtr<UButton> SoloModeButton;
+
+	UPROPERTY(BlueprintReadOnly, Category = "CreateSession", Meta = (AllowPrivateAccess, BindWidget))
+	TObjectPtr<UButton> TeamModeButton;
+
+	UPROPERTY(BlueprintReadOnly, Category = "CreateSession", Meta = (AllowPrivateAccess, BindWidget))
+	TObjectPtr<UButton> CreateSessionButton;
+
+	UPROPERTY(BlueprintReadOnly, Category = "CreateSession", Meta = (AllowPrivateAccess, BindWidget))
+	TObjectPtr<UVerticalBox> SessionListVerticalBox;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SessionList", Meta = (AllowPrivateAccess = true))
+	TSubclassOf<UUserWidget> SessionEntryWidgetClass;
 };

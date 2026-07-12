@@ -23,7 +23,7 @@ void ALobbyGameStateBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ALobbyGameStateBase, HostPlayerState);
-	//DOREPLIFETIME(ALobbyGameStateBase, MaxPlayerCount);
+	DOREPLIFETIME(ALobbyGameStateBase, MaxPlayerCount);
 	DOREPLIFETIME(ALobbyGameStateBase, MinPlayerCount);
 	DOREPLIFETIME(ALobbyGameStateBase, CurrentPlayerCount);
 	DOREPLIFETIME(ALobbyGameStateBase, StartCountdownTime);

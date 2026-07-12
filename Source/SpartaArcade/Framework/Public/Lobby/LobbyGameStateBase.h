@@ -39,8 +39,7 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_RoomInfoChanged)
 	APlayerState* HostPlayerState;
 
-	// 추후에 최대 인원을 설정할 수 있게 한다면 활성화
-	//UPROPERTY(ReplicatedUsing = OnRep_RoomInfoChanged)
+	UPROPERTY(ReplicatedUsing = OnRep_RoomInfoChanged)
 	int32 MaxPlayerCount;
 
 	UPROPERTY(ReplicatedUsing = OnRep_RoomInfoChanged)

@@ -5,7 +5,7 @@
 #include "AuthService.h"
 #include "SessionService.h"
 #include "OnlineSubsystem.h"
-
+#include "GameFlow/TravelGameInstanceSubsystem.h"
 void UEOSGameInstanceSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);

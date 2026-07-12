@@ -25,6 +25,10 @@ public:
     UFUNCTION(Server, Reliable, WithValidation)
     void ServerStartMatch();
 
+	void LeaveLobby();
+
+    void HandleDestroySessionComplete(FName SessionName, bool bWasSuccessful);
+
 private:
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
     TSubclassOf<UUserWidget> LobbyUIWidgetClass;
