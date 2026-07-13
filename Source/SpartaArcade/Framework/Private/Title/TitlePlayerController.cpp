@@ -35,7 +35,7 @@ void ATitlePlayerController::BeginPlay()
 	USessionService* SessionService = GetGameInstance()->GetSubsystem<UEOSGameInstanceSubsystem>()->GetSessionService();
 	if (SessionService)
 	{
-		SessionService->OnCreateSessionCompleteEvent.AddUObject(this, &ATitlePlayerController::HandleCreateSessionComplete);
+		SessionService->OnStartSessionCompleteEvent.AddUObject(this, &ATitlePlayerController::HandleStartSessionComplete);
 		SessionService->OnJoinSessionCompleteEvent.AddUObject(this, &ATitlePlayerController::HandleJoinSessionComplete);
 	}
 }
@@ -46,7 +46,7 @@ void ATitlePlayerController::JoinServer(const FString& InIPAddress, const FStrin
 	ClientTravel(ConnectionURL, ETravelType::TRAVEL_Absolute);
 }
 
-void ATitlePlayerController::HandleCreateSessionComplete(FName SessionName, bool bWasSuccessful)
+void ATitlePlayerController::HandleStartSessionComplete(FName SessionName, bool bWasSuccessful)
 {
 	if (bWasSuccessful)
 	{

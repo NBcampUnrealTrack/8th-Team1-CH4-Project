@@ -8,7 +8,7 @@
 #include "SpartaUIDefs.h"
 #include "SessionService.generated.h"
 
-DECLARE_MULTICAST_DELEGATE_TwoParams(FOnCreateSessionCompleteEvent, FName, bool);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FOnStartSessionCompleteEvent, FName, bool);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnSearchSessionCompleteEvent, bool, const TArray<FOnlineSessionSearchResult>&);
 DECLARE_MULTICAST_DELEGATE_ThreeParams(FOnJoinSessionCompleteEvent, FName, EOnJoinSessionCompleteResult::Type, const FString&);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnDestroySessionCompleteEvent, FName, bool);
@@ -50,7 +50,7 @@ class SPARTAARCADE_API USessionService : public UObject
 	GENERATED_BODY()
 
 public:
-	virtual void Initialize(IOnlineSubsystem* InOnlineSubsystem);
+	void Initialize(IOnlineSubsystem* InOnlineSubsystem);
 
 	void CreateSession(FSessionInfo CreationSettings);
 
@@ -66,6 +66,8 @@ public:
 
 	void OnCreateSessionComplete(FName SessionName, bool bWasSuccessful);
 
+	void OnStartSessionComplete(FName SessionName, bool bWasSuccessful);
+
 	void OnDestroySessionComplete(FName SessionName, bool bWasSuccessful);
 
 	void OnFindSessionsComplete(bool bWasSuccessful);
@@ -74,13 +76,19 @@ public:
 
 	void HandleNetworkFailure(UWorld* World, UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString);
 
+	void OnSessionInviteAccepted(const bool bWasSuccessful, int32 ControllerId, TSharedPtr<const FUniqueNetId> UserId, const FOnlineSessionSearchResult& InviteResult);
+
 private:
 	IOnlineSessionPtr Session;
 
 	TSharedPtr<FOnlineSessionSearch> Search;
 
+	TSharedPtr<FOnlineSessionSearchResult> InviteSession;
+
+	bool bPendingJoinAfterDestroy;
+
 public:
-	FOnCreateSessionCompleteEvent OnCreateSessionCompleteEvent;
+	FOnStartSessionCompleteEvent OnStartSessionCompleteEvent;
 	FOnSearchSessionCompleteEvent OnSearchSessionCompleteEvent;
 	FOnJoinSessionCompleteEvent OnJoinSessionCompleteEvent;
 	FOnDestroySessionCompleteEvent OnDestroySessionCompleteEvent;

@@ -4,6 +4,7 @@
 #include "AuthService.h"
 #include "OnlineSubsystem.h"
 #include "Interfaces/OnlineIdentityInterface.h"
+#include "OnlineSubsystemUtils.h"
 
 void UAuthService::Initialize(IOnlineSubsystem* InOnlineSubsystem)
 {
@@ -14,6 +15,7 @@ void UAuthService::Initialize(IOnlineSubsystem* InOnlineSubsystem)
 		Identity->AddOnLoginCompleteDelegate_Handle(0, FOnLoginCompleteDelegate::CreateUObject(this, &UAuthService::OnLoginComplete));
 		Identity->AddOnLogoutCompleteDelegate_Handle(0, FOnLogoutCompleteDelegate::CreateUObject(this, &UAuthService::OnLogoutComplete));
 	}
+
 }
 
 void UAuthService::Login(const FString& AuthToken)
@@ -32,7 +34,7 @@ void UAuthService::Login(const FString& AuthToken)
 	return;
 #else
 	Identity->AutoLogin(0);
-#endif;
+#endif
 }
 
 void UAuthService::Logout()

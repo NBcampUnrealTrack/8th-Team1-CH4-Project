@@ -11,13 +11,17 @@
 void USessionService::Initialize(IOnlineSubsystem* InOnlineSubsystem)
 {
 	Session = InOnlineSubsystem->GetSessionInterface();
+	InviteSession = nullptr;
+	bPendingJoinAfterDestroy = false;
 
 	if(Session.IsValid())
 	{
 		Session->AddOnCreateSessionCompleteDelegate_Handle(FOnCreateSessionCompleteDelegate::CreateUObject(this, &USessionService::OnCreateSessionComplete));
+		Session->AddOnStartSessionCompleteDelegate_Handle(FOnStartSessionCompleteDelegate::CreateUObject(this, &USessionService::OnStartSessionComplete));
 		Session->AddOnDestroySessionCompleteDelegate_Handle(FOnDestroySessionCompleteDelegate::CreateUObject(this, &USessionService::OnDestroySessionComplete));
 		Session->AddOnFindSessionsCompleteDelegate_Handle(FOnFindSessionsCompleteDelegate::CreateUObject(this, &USessionService::OnFindSessionsComplete));
 		Session->AddOnJoinSessionCompleteDelegate_Handle(FOnJoinSessionCompleteDelegate::CreateUObject(this, &USessionService::OnJoinSessionComplete));
+		Session->AddOnSessionUserInviteAcceptedDelegate_Handle(FOnSessionUserInviteAcceptedDelegate::CreateUObject(this, &USessionService::OnSessionInviteAccepted));
 	}
 	if(GEngine)
 	{
@@ -36,7 +40,9 @@ void USessionService::CreateSession(FSessionInfo CreationSettings)
 	Settings.NumPublicConnections = CreationSettings.MaxPlayers;
 	Settings.bShouldAdvertise = !CreationSettings.bIsPrivate;
 	Settings.bUsesPresence = true;
+	Settings.bAllowJoinViaPresence = true;
 	Settings.bUseLobbiesIfAvailable = true;
+	Settings.bAllowInvites = true;
 	Settings.Set(SEARCH_KEYWORDS, FString("SpartaArcade"), EOnlineDataAdvertisementType::ViaOnlineService);
 	Settings.Set(SessionKeys::SessionName, CreationSettings.SessionName, EOnlineDataAdvertisementType::ViaOnlineService);
 	Settings.Set(SessionKeys::GameMode, FString::FromInt(CreationSettings.GameModeType), EOnlineDataAdvertisementType::ViaOnlineService);
@@ -109,11 +115,24 @@ void USessionService::OnCreateSessionComplete(FName SessionName, bool bWasSucces
 	if (bWasSuccessful)
 	{
 		UE_LOG(LogTemp, Log, TEXT("Session created successfully: %s"), *SessionName.ToString());
-		OnCreateSessionCompleteEvent.Broadcast(SessionName, bWasSuccessful);
+		Session->StartSession(SessionName);
 	}
 	else
 	{
 		UE_LOG(LogTemp, Error, TEXT("Failed to create session: %s"), *SessionName.ToString());
+	}
+}
+
+void USessionService::OnStartSessionComplete(FName SessionName, bool bWasSuccessful)
+{
+	if (bWasSuccessful)
+	{
+		UE_LOG(LogTemp, Log, TEXT("Session started successfully: %s"), *SessionName.ToString());
+		OnStartSessionCompleteEvent.Broadcast(SessionName, bWasSuccessful);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to start session: %s"), *SessionName.ToString());
 	}
 }
 
@@ -123,6 +142,12 @@ void USessionService::OnDestroySessionComplete(FName SessionName, bool bWasSucce
 	{
 		UE_LOG(LogTemp, Log, TEXT("Session destroyed successfully: %s"), *SessionName.ToString());
 		OnDestroySessionCompleteEvent.Broadcast(SessionName, bWasSuccessful);
+		if (bPendingJoinAfterDestroy && InviteSession.IsValid())
+		{
+			JoinSession(*InviteSession);
+			InviteSession = nullptr;
+			bPendingJoinAfterDestroy = false;
+		}
 	}
 	else
 	{
@@ -166,5 +191,30 @@ void USessionService::HandleNetworkFailure(UWorld* World, UNetDriver* NetDriver,
 	{
 		UE_LOG(LogTemp, Error, TEXT("Network failure detected: %s"), *ErrorString);
 		DestroySession();
+	}
+}
+
+void USessionService::OnSessionInviteAccepted(const bool bWasSuccessful, int32 ControllerId, TSharedPtr<const FUniqueNetId> UserId, const FOnlineSessionSearchResult& InviteResult)
+{
+	if (bWasSuccessful && InviteResult.IsValid())
+	{
+		UE_LOG(LogTemp, Log, TEXT("Session invite accepted."));
+		InviteSession = MakeShared<FOnlineSessionSearchResult>(InviteResult);
+		if(Session.IsValid())
+		{
+			if(Session->GetNamedSession(NAME_GameSession))
+			{
+				Session->DestroySession(NAME_GameSession);
+				bPendingJoinAfterDestroy = true;
+			}
+			else
+			{
+				JoinSession(InviteResult);
+			}
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to accept session invite."));
 	}
 }

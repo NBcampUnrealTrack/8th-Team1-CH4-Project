@@ -2,11 +2,11 @@
 
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
-#include "Interfaces/OnlineIdentityInterface.h"
+#include "OnlineSubsystem.h"
 #include "AuthService.generated.h"
 
-
 class IOnlineSubsystem;
+
 
 UCLASS()
 class SPARTAARCADE_API UAuthService : public UObject
@@ -14,7 +14,7 @@ class SPARTAARCADE_API UAuthService : public UObject
 	GENERATED_BODY()
 
 public:
-	virtual void Initialize(IOnlineSubsystem* InOnlineSubsystem);
+	void Initialize(IOnlineSubsystem* InOnlineSubsystem);
 
 	void Login(const FString& AuthToken);
 

@@ -19,7 +19,7 @@ public:
 
 	void JoinServer(const FString& InIPAddress, const FString& InPlayerName);
 
-	void HandleCreateSessionComplete(FName SessionName, bool bWasSuccessful);
+	void HandleStartSessionComplete(FName SessionName, bool bWasSuccessful);
 
 	void HandleJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result, const FString& Connect);
 
