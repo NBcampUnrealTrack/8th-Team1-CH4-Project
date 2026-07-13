@@ -228,17 +228,7 @@ void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UBomberAtt
 		// 초기 가시성 상태 세팅
 		UpdateMedKitStatus(PlayerState->GetFirstAidKits());
     }
-
-    // Removed: StatComp-based initialization is replaced by GAS AttributeSet
-    /*
-    if(StatComp)
-    {
-        StatComp->OnStatsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateStats);
-
-        //시작 시점의 초기 스탯치 값으로 바 가시성 세팅 강제 트리거
-        UpdateStats(StatComp->GetBombCount(), StatComp->GetBombRange(), StatComp->GetMoveSpeed());
-	}
-    */
+    
 
     if (InAttributeSet)
     {
@@ -274,14 +264,6 @@ void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UBomberAtt
 		// 초기 가시성 상태 세팅
 		UpdateShieldStatus(CombatComp->IsShielded());
 	}
-
-    // Removed: BombPlacerComponent binding is replaced by GAS attribute binding
-    /*
-    if (BombPlacerComp)
-    {
-        BombPlacerComp->OnCurrentPlacedBombsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateCurrentBombs);
-    }
-    */
 }
 
 // 쉴드 및 구급상자 상태 변경 시 개별 UI 이미지 가시성 토글(Visible / Collapsed) 구현

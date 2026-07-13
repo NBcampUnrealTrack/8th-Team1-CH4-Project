@@ -70,6 +70,18 @@ ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 
 	// 데디케이티드 서버 네트워크 동기화용 캐릭터 복제 활성화
 	bReplicates = true;
+
+	static ConstructorHelpers::FObjectFinder<UDataTable> CharacterStatTableFinder(TEXT("/Game/DataFile/DT_CharacterStat.DT_CharacterStat"));
+	if (CharacterStatTableFinder.Succeeded())
+	{
+		CharacterStatTable = CharacterStatTableFinder.Object;
+	}
+
+	static ConstructorHelpers::FObjectFinder<UDataTable> CombatStatTableFinder(TEXT("/Game/DataFile/DT_CombatStat.DT_CombatStat"));
+	if (CombatStatTableFinder.Succeeded())
+	{
+		CombatStatTable = CombatStatTableFinder.Object;
+	}
 }
 
 void ASpartaArcadeCharacter::BeginPlay()

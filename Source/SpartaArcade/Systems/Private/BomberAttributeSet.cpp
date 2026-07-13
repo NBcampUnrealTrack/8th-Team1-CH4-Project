@@ -80,19 +80,62 @@ void UBomberAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 
 void UBomberAttributeSet::InitializeFromDataTable(UDataTable* InCharacterStatTable, FName RowName)
 {
-	if (!IsValid(InCharacterStatTable))
+	FCharacterStatRow FallbackRow;
+
+	if (RowName == FName(TEXT("Explosion")))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("BomberAttributeSet: CharacterStatTable이 없어요!"));
-		return;
+		FallbackRow.StartBombRange = 2;
+		FallbackRow.StartBombCount = 1;
+		FallbackRow.StartMoveSpeed = 1;
+		FallbackRow.MaxBombRange = 5;
+		FallbackRow.MaxBombCount = 8;
+		FallbackRow.MaxMoveSpeed = 5;
 	}
-	
-	FCharacterStatRow* Row = InCharacterStatTable->FindRow<FCharacterStatRow>(RowName, TEXT("InitializeFromDataTable"));
-	
-	if (Row == nullptr)
+	else if (RowName == FName(TEXT("Speed")))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("BomberAttributeSet: Row [%s]를 찾을 수 없어요!"),
-			*RowName.ToString());
-		return;
+		FallbackRow.StartBombRange = 1;
+		FallbackRow.StartBombCount = 1;
+		FallbackRow.StartMoveSpeed = 2;
+		FallbackRow.MaxBombRange = 5;
+		FallbackRow.MaxBombCount = 8;
+		FallbackRow.MaxMoveSpeed = 5;
+	}
+	else if (RowName == FName(TEXT("BombCount")))
+	{
+		FallbackRow.StartBombRange = 1;
+		FallbackRow.StartBombCount = 2;
+		FallbackRow.StartMoveSpeed = 1;
+		FallbackRow.MaxBombRange = 5;
+		FallbackRow.MaxBombCount = 8;
+		FallbackRow.MaxMoveSpeed = 5;
+	}
+	else // Default
+	{
+		FallbackRow.StartBombRange = 1;
+		FallbackRow.StartBombCount = 1;
+		FallbackRow.StartMoveSpeed = 1;
+		FallbackRow.MaxBombRange = 5;
+		FallbackRow.MaxBombCount = 8;
+		FallbackRow.MaxMoveSpeed = 5;
+	}
+
+	FCharacterStatRow* Row = &FallbackRow;
+
+	if (IsValid(InCharacterStatTable))
+	{
+		FCharacterStatRow* DTRow = InCharacterStatTable->FindRow<FCharacterStatRow>(RowName, TEXT("InitializeFromDataTable"));
+		if (DTRow != nullptr)
+		{
+			Row = DTRow;
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("BomberAttributeSet: Row [%s]를 찾을 수 없어 하드코딩된 기본값 사용!"), *RowName.ToString());
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("BomberAttributeSet: InCharacterStatTable이 유효하지 않아 하드코딩된 기본값 사용!"));
 	}
 	
 	//순서 고정

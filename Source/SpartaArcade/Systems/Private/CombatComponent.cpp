@@ -47,22 +47,32 @@ void UCombatComponent::InitializeFromDataTable(UDataTable* InCombatStatTable)
 {
     CombatStatTable = InCombatStatTable;
 
-    if (!IsValid(CombatStatTable))
+    FCombatStatRow FallbackRow;
+    // Modified: Define hardcoded default combat stats as fallback
+    FallbackRow.StartHearts = 3;
+    FallbackRow.StunDuration = 3.f;
+    FallbackRow.InvincibleDuration = 1.f;
+    FallbackRow.SelfReviveHearts = 1;
+
+    FCombatStatRow* Row = &FallbackRow;
+
+    if (IsValid(CombatStatTable))
     {
-        UE_LOG(LogTemp, Warning, TEXT("CombatComponent: CombatStatTable이 없어요!"));
-        return;
+        TArray<FCombatStatRow*> Rows;
+        CombatStatTable->GetAllRows<FCombatStatRow>(TEXT("InitializeFromDataTable"), Rows);
+        if (Rows.Num() > 0 && Rows[0] != nullptr)
+        {
+            Row = Rows[0];
+        }
+        else
+        {
+            UE_LOG(LogTemp, Warning, TEXT("CombatComponent: CombatStatTable에 Row가 없어 하드코딩된 기본값 사용!"));
+        }
     }
-
-    TArray<FCombatStatRow*> Rows;
-    CombatStatTable->GetAllRows<FCombatStatRow>(TEXT("InitializeFromDataTable"), Rows);
-
-    if (Rows.Num() == 0)
+    else
     {
-        UE_LOG(LogTemp, Warning, TEXT("CombatComponent: DataTable에 Row가 없어요!"));
-        return;
+        UE_LOG(LogTemp, Warning, TEXT("CombatComponent: CombatStatTable이 유효하지 않아 하드코딩된 기본값 사용!"));
     }
-
-    FCombatStatRow* Row = Rows[0];
 
     if (IsValid(SpartaPlayerState))
     {

@@ -20,9 +20,9 @@ class UGameplayAbility;
 UENUM(BlueprintType)
 enum class ESpartaArcadeCharacterType : uint8
 {
-	Explosive      UMETA(DisplayName = "폭발형"),
-	Speed          UMETA(DisplayName = "속도형"),
-	BombCount      UMETA(DisplayName = "폭탄 갯수형")
+	Explosive      UMETA(DisplayName = "화력광"),
+	Speed          UMETA(DisplayName = "속도광"),
+	BombCount      UMETA(DisplayName = "폭탄광")
 };
 
 // 폭탄 연계 대미지 처리를 위한 IDamageable 인터페이스 상속 추가

@@ -9,9 +9,9 @@ UENUM(BlueprintType)
 enum class ECharacterType : uint8
 {
 	Default,    // 기준형
-	Explosion,  // 폭발형
+	Explosion,  // 화력형
 	Speed,      // 속도형
-	BombCount   // 폭탄갯수형
+	BombCount   // 폭탄형
 };
 
 // 스탯 종류 
