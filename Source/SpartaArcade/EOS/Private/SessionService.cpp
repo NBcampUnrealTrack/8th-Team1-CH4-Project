@@ -19,6 +19,10 @@ void USessionService::Initialize(IOnlineSubsystem* InOnlineSubsystem)
 		Session->AddOnFindSessionsCompleteDelegate_Handle(FOnFindSessionsCompleteDelegate::CreateUObject(this, &USessionService::OnFindSessionsComplete));
 		Session->AddOnJoinSessionCompleteDelegate_Handle(FOnJoinSessionCompleteDelegate::CreateUObject(this, &USessionService::OnJoinSessionComplete));
 	}
+	if(GEngine)
+	{
+		GEngine->OnNetworkFailure().AddUObject(this, &USessionService::HandleNetworkFailure);
+	}
 }
 
 void USessionService::CreateSession(FSessionInfo CreationSettings)
@@ -153,5 +157,14 @@ void USessionService::OnJoinSessionComplete(FName SessionName, EOnJoinSessionCom
 	else
 	{
 		UE_LOG(LogTemp, Error, TEXT("Failed to join session: %s"), *SessionName.ToString());
+	}
+}
+
+void USessionService::HandleNetworkFailure(UWorld* World, UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString)
+{
+	if(FailureType == ENetworkFailure::ConnectionLost || FailureType == ENetworkFailure::FailureReceived)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Network failure detected: %s"), *ErrorString);
+		DestroySession();
 	}
 }
