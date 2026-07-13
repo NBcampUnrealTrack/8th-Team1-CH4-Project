@@ -287,16 +287,7 @@ void ASpartaArcadeCharacter::PerformUseFirstAidKit()
 	}
 }
 
-void ASpartaArcadeCharacter::UseShield()
-{
-	if (CombatComponent && IsValid(SpartaPlayerState))
-	{
-		if (CombatComponent->IsShielded() && SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Alive)
-		{
-			CombatComponent->UseShield();
-		}
-	}
-}
+
 
 
 // 캐릭터 오버랩 시 기절 상태인 다른 플레이어를 판별하여 구조(아군) 혹은 처치(적군) 처리 수행

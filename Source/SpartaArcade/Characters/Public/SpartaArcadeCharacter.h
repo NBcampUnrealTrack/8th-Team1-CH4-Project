@@ -66,10 +66,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Gameplay")
 	void UseFirstAidKit();
-
-	UFUNCTION(BlueprintCallable, Category = "Gameplay")
-	void UseShield();
-
+	
 	UFUNCTION(BlueprintCallable, Category = "Gameplay")
 	void KickBomb();
 
