@@ -57,13 +57,13 @@ protected:
     TObjectPtr<UDataTable> CharacterStatTable;
     
     UPROPERTY(ReplicatedUsing=OnRep_BombRange)
-    int32 BombRange = 2;
+    int32 BombRange = 1;
 
     UPROPERTY(ReplicatedUsing=OnRep_BombCount)
-    int32 BombCount = 3;
+    int32 BombCount = 1;
 
     UPROPERTY(ReplicatedUsing=OnRep_MoveSpeed)
-    int32 MoveSpeed = 3;
+    int32 MoveSpeed = 1;
 
     int32 MaxBombRange = 5;
     int32 MaxBombCount = 8;

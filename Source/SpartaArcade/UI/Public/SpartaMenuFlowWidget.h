@@ -9,6 +9,7 @@ class UWidgetSwitcher;
 class UButton;
 class UTextBlock;
 class UScrollBox;
+class USpartaButton;
 
 UCLASS()
 class SPARTAARCADE_API USpartaMenuFlowWidget : public UUserWidget
@@ -25,20 +26,20 @@ protected:
 
     // 1) 메인 메뉴 관련 위젯
     UPROPERTY(meta = (BindWidget))
-    UButton* JoinButton;
+    USpartaButton* JoinButton;
 
     UPROPERTY(meta = (BindWidget))
-    UButton* SettingsButton;
+    USpartaButton* SettingsButton;
 
     UPROPERTY(meta = (BindWidget))
-    UButton* QuitButton;
+    USpartaButton* QuitButton;
 
     // 2) 일시정지 메뉴 관련 위젯
     UPROPERTY(meta = (BindWidget))
-    UButton* ResumeButton;
+    USpartaButton* ResumeButton;
 
     UPROPERTY(meta = (BindWidget))
-    UButton* ExitToLobbyButton;
+    USpartaButton* ExitToLobbyButton;
 
     // 3) 게임 시작 카운트다운 관련 위젯
     UPROPERTY(meta = (BindWidget))
@@ -55,7 +56,7 @@ protected:
     UScrollBox* LeaderboardScrollBox;
 
     UPROPERTY(meta = (BindWidget))
-    UButton* LobbyReturnButton;
+    USpartaButton* LobbyReturnButton;
 
     // 리더보드 한 항목을 그릴 위젯 클래스
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MenuFlow | Settings")

@@ -97,19 +97,39 @@ void UItemDropComponent::DropKillReward(AActor* DefeatedActor)
 
 void UItemDropComponent::ApplyItemEffect(AActor* TargetActor, TSubclassOf<UGameplayEffect> EffectClass)
 {
-    if (!IsValid(TargetActor) || !IsValid(EffectClass)) return;
-    
+    if (!IsValid(TargetActor) || !IsValid(EffectClass))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[ApplyItemEffect] 실패: TargetActor=%s, EffectClass=%s"),
+            IsValid(TargetActor) ? *TargetActor->GetName() : TEXT("Invalid"),
+            IsValid(EffectClass) ? *EffectClass->GetName() : TEXT("Invalid(GameplayEffectClass가 배정 안 됨)"));
+        return;
+    }
+
     IAbilitySystemInterface* ASCInterface = Cast<IAbilitySystemInterface>(TargetActor);
-    if (ASCInterface == nullptr) return;
+    if (ASCInterface == nullptr)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[ApplyItemEffect] 실패: %s 는 IAbilitySystemInterface를 구현하지 않음"), *TargetActor->GetName());
+        return;
+    }
 
     UAbilitySystemComponent* ASC = ASCInterface->GetAbilitySystemComponent();
-    if (!IsValid(ASC)) return;
-    
+    if (!IsValid(ASC))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[ApplyItemEffect] 실패: %s 의 AbilitySystemComponent가 유효하지 않음"), *TargetActor->GetName());
+        return;
+    }
+
     FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
     FGameplayEffectSpecHandle Spec = ASC->MakeOutgoingSpec(EffectClass, 1.f, Context);
 
     if (Spec.IsValid())
     {
-        ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+        FActiveGameplayEffectHandle Handle = ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+        UE_LOG(LogTemp, Warning, TEXT("[ApplyItemEffect] %s 에게 %s 적용 결과: %s"),
+            *TargetActor->GetName(), *EffectClass->GetName(), Handle.IsValid() ? TEXT("성공") : TEXT("실패(무효 핸들)"));
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[ApplyItemEffect] %s: MakeOutgoingSpec 실패"), *EffectClass->GetName());
     }
 }

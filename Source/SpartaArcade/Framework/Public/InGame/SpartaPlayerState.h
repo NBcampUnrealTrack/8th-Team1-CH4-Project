@@ -1,5 +1,3 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -12,11 +10,12 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHeartsChangedSignature, int32, C
 // 기절
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStunStateChangedSignature, bool, bIsActive);
 
+// 구급약 보유 개수 변화 통지용 델리게이트 선언
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnFirstAidKitsChangedSignature, int32, NewCount);
+
 enum class ESpartaArcadeCharacterType : uint8;
 enum class EBomberPlayerState : uint8;
-/**
- * 
- */
+
 UCLASS()
 class SPARTAARCADE_API ASpartaPlayerState : public APlayerState
 {
@@ -69,6 +68,8 @@ public:
 	void OnRep_Hearts();
 	UFUNCTION()
 	void OnRep_CurrentState();
+	UFUNCTION()
+	void OnRep_FirstAidKits();
 
 	void BroadcastCurrentState();
 
@@ -82,6 +83,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Events | UI")
 	FOnStunStateChangedSignature OnStunStateChanged;
 
+	// 구급약 개수 변동 델리게이트 변수 정의
+	UPROPERTY(BlueprintAssignable, Category = "Events | UI")
+	FOnFirstAidKitsChangedSignature OnFirstAidKitsChanged;
+
 protected:
 
 	// -------------------------------------------------------
@@ -89,8 +94,9 @@ protected:
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Character")
 	ESpartaArcadeCharacterType CharacterType;
 
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Character")
-	int32 FirstAidKits;
+	// 구급상자 초기 보유 개수
+	UPROPERTY(ReplicatedUsing = OnRep_FirstAidKits, VisibleAnywhere, BlueprintReadOnly, Category = "Character")
+	int32 FirstAidKits = 0;
 
 	// 팀전 구분을 위한 TeamID 속성
 	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Character")

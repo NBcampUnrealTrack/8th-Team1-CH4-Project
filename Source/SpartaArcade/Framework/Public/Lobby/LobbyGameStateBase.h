@@ -8,9 +8,7 @@
 
 class USpartaLobbyWidget;
 enum class EGameModeType : uint8;
-/**
- * 
- */
+
 UCLASS()
 class SPARTAARCADE_API ALobbyGameStateBase : public AGameStateBase
 {

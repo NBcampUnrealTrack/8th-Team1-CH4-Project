@@ -1,4 +1,5 @@
-﻿#include "SpartaLobbyWidget.h"
+#include "SpartaLobbyWidget.h"
+#include "SpartaButton.h"
 #include "Components/ScrollBox.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
@@ -137,22 +138,22 @@ void USpartaLobbyWidget::UpdateCharacterPreview(ESpartaArcadeCharacterType Chara
     switch (CharacterType)
     {
     case ESpartaArcadeCharacterType::Explosive:
-        RangeText = TEXT("폭발 범위 : 5");
-        BombText = TEXT("폭탄 갯수 : 3");
-        SpeedText = TEXT("이동 속도 : 3");
-        Description = TEXT("화력 특화형 - 폭발 범위 1단계를 더 갖고 시작합니다.");
+        RangeText = TEXT("폭발 범위 : 2");
+        BombText = TEXT("폭탄 갯수 : 1");
+        SpeedText = TEXT("이동 속도 : 1");
+        Description = TEXT("화력광 \n 폭발 범위 1단계를 더 갖고 시작합니다.");
         break;
     case ESpartaArcadeCharacterType::Speed:
-        RangeText = TEXT("폭발 범위 : 2");
-        BombText = TEXT("폭탄 갯수 : 2");
-        SpeedText = TEXT("이동 속도 : 4");
-        Description = TEXT("기동 특화형 - 이동 속도 1단계를 더 갖고 시작합니다.");
+        RangeText = TEXT("폭발 범위 : 1");
+        BombText = TEXT("폭탄 갯수 : 1");
+        SpeedText = TEXT("이동 속도 : 2");
+        Description = TEXT("속도광 \n 이동 속도 1단계를 더 갖고 시작합니다.");
         break;
     case ESpartaArcadeCharacterType::BombCount:
-        RangeText = TEXT("폭발 범위 : 2");
-        BombText = TEXT("폭탄 갯수 : 5");
-        SpeedText = TEXT("이동 속도 : 2");
-        Description = TEXT("보유량 특화형 - 최대 설치 폭탄 수 1개를 더 갖고 시작합니다.");
+        RangeText = TEXT("폭발 범위 : 1");
+        BombText = TEXT("폭탄 갯수 : 2");
+        SpeedText = TEXT("이동 속도 : 1");
+        Description = TEXT("폭탄광 \n 폭탄 갯수 1개를 더 갖고 시작합니다.");
         break;
     }
 
@@ -226,11 +227,7 @@ void USpartaLobbyWidget::OnReadyClicked()
 
     if (ReadyButton)
     {
-        UTextBlock* BtnText = Cast<UTextBlock>(ReadyButton->GetChildAt(0));
-        if (BtnText)
-        {
-            BtnText->SetText(FText::FromString(bIsReady ? TEXT("CANCEL READY") : TEXT("READY")));
-        }
+        ReadyButton->SetButtonText(FText::FromString(bIsReady ? TEXT("준비 취소") : TEXT("준비")));
     }
 
     // 네트워크 컨트롤러에 준비 변경 이벤트 알림

@@ -1,4 +1,4 @@
-﻿#include "SpartaArcadeCharacter.h"
+#include "SpartaArcadeCharacter.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Camera/CameraComponent.h"
 #include "Components/DecalComponent.h"
@@ -11,18 +11,25 @@
 #include "SpartaArcadeBomb.h"
 #include "TimerManager.h"
 #include "Net/UnrealNetwork.h"
-#include "StatComponent.h"
 #include "CombatComponent.h"
-#include "BombPlacerComponent.h"
 #include "Engine/DataTable.h"
 #include "Framework/Public/InGame/SpartaPlayerState.h"
 #include "SpartaArcadePlayerController.h"
 #include "UI/Public/SpartaHUDWidget.h"
+#include "Engine/DamageEvents.h"
+#include "AbilitySystemComponent.h"
+#include "BomberAttributeSet.h"
+#include "BomberGameplayTags.h"
+
 
 ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 {
 	// 캡슐 콜리전 크기 초기화
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
+
+	// 폭발 판정(SweepAndApplyDamage)이 ECC_Visibility 채널로 스윕하므로,
+	// 프리셋 설정과 무관하게 캡슐이 이 채널을 확실히 Block 하도록 명시적으로 고정
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 
 	// 컨트롤러 회전값 사용 해제
 	bUseControllerRotationPitch = false;
@@ -48,21 +55,18 @@ ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 	TopDownCameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	TopDownCameraComponent->bUsePawnControlRotation = false;
 
-	PrimaryActorTick.bCanEverTick = true;
-	PrimaryActorTick.bStartWithTickEnabled = true;
+	// Tick 낭비 방지를 위해 bCanEverTick 비활성화
+	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bStartWithTickEnabled = false;
 
 	// 컴포넌트 기반 아키텍처 적용
-	StatComponent = CreateDefaultSubobject<UStatComponent>(TEXT("StatComponent"));
 	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
-	BombPlacerComponent = CreateDefaultSubobject<UBombPlacerComponent>(TEXT("BombPlacer"));
-
-	BaseMovementSpeed = 300.f;
 
 	MaxInitializedComponentsCount = 100;
 	InitializedComponentsCount = 0;
 
-	// 무브먼트 스피드 제어는 StatComponent 내 OnRep_MoveSpeed 에서 수행
-	// GetCharacterMovement()->MaxWalkSpeed = BaseMovementSpeed + (SpeedLevel * 75.0f);
+	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	AttributeSet = CreateDefaultSubobject<UBomberAttributeSet>(TEXT("AttributeSet"));
 
 	// 데디케이티드 서버 네트워크 동기화용 캐릭터 복제 활성화
 	bReplicates = true;
@@ -75,10 +79,44 @@ void ASpartaArcadeCharacter::BeginPlay()
 	
 }
 
-void ASpartaArcadeCharacter::Tick(float DeltaSeconds)
+void ASpartaArcadeCharacter::PossessedBy(AController* NewController)
 {
-    Super::Tick(DeltaSeconds);
+	Super::PossessedBy(NewController);
+	if (IsValid(AbilitySystemComponent))
+	{
+		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+
+		if (HasAuthority())
+		{
+			if (IsValid(PlaceBombAbilityClass))
+			{
+				AbilitySystemComponent->GiveAbility(
+					FGameplayAbilitySpec(PlaceBombAbilityClass, 1, INDEX_NONE, this));
+			}
+
+			if (IsValid(KickBombAbilityClass))
+			{
+				AbilitySystemComponent->GiveAbility(
+					FGameplayAbilitySpec(KickBombAbilityClass, 1, INDEX_NONE, this));
+			}
+
+			if (IsValid(UseFirstAidKitAbilityClass))
+			{
+				AbilitySystemComponent->GiveAbility(
+					FGameplayAbilitySpec(UseFirstAidKitAbilityClass, 1, INDEX_NONE, this));
+			}
+		}
+	}
 }
+
+void ASpartaArcadeCharacter::OnRep_PlayerState()                                                                                                                                                                                  
+{                                                                                                                                                                                                                                 
+	Super::OnRep_PlayerState();                                                                                                                                                                                                   
+	if (IsValid(AbilitySystemComponent))                                                                                                                                                                                          
+	{                                                                                                                                                                                                                             
+		AbilitySystemComponent->InitAbilityActorInfo(this, this);                                                                                                                                                                 
+	}                                                                                                                                                                                                                             
+}     
 
 // 하트 체력 감소, 실드 차단 및 체력 0 도달 시 기절 상태 진입 로직 구현
 float ASpartaArcadeCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser)
@@ -114,7 +152,7 @@ float ASpartaArcadeCharacter::TakeDamage(float DamageAmount, struct FDamageEvent
 }
 void ASpartaArcadeCharacter::InitializeCharacterComponents()
 {
-	if (!IsValid(GetPlayerState()) || !IsValid(StatComponent) || !IsValid(CombatComponent) || !IsValid(BombPlacerComponent))
+	if (!IsValid(GetPlayerState()) || !IsValid(CombatComponent))
 	{
 		if(InitializedComponentsCount >= MaxInitializedComponentsCount)
 		{
@@ -136,25 +174,20 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 		switch (SpartaPlayerState->GetCharacterType())
 		{
 		case ESpartaArcadeCharacterType::Explosive:
-			RowName = FName(TEXT("Row_Explosion"));
+			RowName = FName(TEXT("Explosion"));
 			break;
 		case ESpartaArcadeCharacterType::Speed:
-			RowName = FName(TEXT("Row_Speed"));
+			RowName = FName(TEXT("Speed"));
 			break;
 		case ESpartaArcadeCharacterType::BombCount:
-			RowName = FName(TEXT("Row_BombCount"));
+			RowName = FName(TEXT("BombCount"));
 			break;
 		}
 	}
 
-	if (StatComponent)
+	if (IsValid(AttributeSet) && IsValid(CharacterStatTable))
 	{
-		if (CharacterStatTable)
-		{
-			StatComponent->SetCharacterStatTable(CharacterStatTable);
-		}
-		StatComponent->InitializeFromDataTable(RowName);
-		
+		AttributeSet->InitializeFromDataTable(CharacterStatTable, RowName);
 	}
 
 	if (CombatComponent)
@@ -178,63 +211,39 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 		{
 			if (USpartaHUDWidget* HUDWidget = Cast<USpartaHUDWidget>(PC->HUDUIWidgetInstance))
 			{
-				HUDWidget->InitializeHUD(SpartaPlayerState, StatComponent, CombatComponent, BombPlacerComponent);
+				// TODO AttributeSet->OnStatsChanged / GA_PlaceBomb->OnCurrentPlacedBombsChanged 로 재배선 필요
+				HUDWidget->InitializeHUD(SpartaPlayerState, nullptr, CombatComponent, nullptr);
 				SpartaPlayerState->BroadcastCurrentState();
-				StatComponent->BroadcastCurrentState();
 				CombatComponent->BroadcastCurrentState();
-				BombPlacerComponent->BroadcastCurrentState();
 			}
 		}
 	}
 }
 
+
+
 // 클래식 봄버맨 타일 일치를 위해 캐릭터의 현재 발밑 좌표를 100단위 그리드로 보정하여 스폰
 void ASpartaArcadeCharacter::PlaceBomb()
 {
-	// BombPlacerComponent에 폭탄 설치 위임
-	if (BombPlacerComponent)
+	// GA_PlaceBomb 어빌리티에 폭탄 설치 위임
+	if (IsValid(AbilitySystemComponent) && IsValid(PlaceBombAbilityClass))
 	{
-		BombPlacerComponent->ServerPlaceBomb();
-	}
-}
-
-// 최대 스탯 상한선(Cap)을 포함하는 아이템 효과 함수
-void ASpartaArcadeCharacter::AddSpeedBoost()
-{
-	// StatComponent에 스탯 성장 위임
-	if (StatComponent)
-	{
-		StatComponent->GrowStat(EBomberStatType::MoveSpeed);
-	}
-}
-
-void ASpartaArcadeCharacter::AddExtraBomb()
-{
-	// StatComponent에 스탯 성장 위임
-	if (StatComponent)
-	{
-		StatComponent->GrowStat(EBomberStatType::BombCount);
-	}
-}
-
-void ASpartaArcadeCharacter::IncreaseExplosionRange()
-{
-	// StatComponent에 스탯 성장 위임
-	if (StatComponent)
-	{
-		StatComponent->GrowStat(EBomberStatType::BombRange);
+		AbilitySystemComponent->TryActivateAbilityByClass(PlaceBombAbilityClass);
 	}
 }
 
 void ASpartaArcadeCharacter::AddFirstAidKit()
 {
-	SpartaPlayerState->SetFirstAidKits(SpartaPlayerState->GetFirstAidKits() + 1);
+	if (SpartaPlayerState && SpartaPlayerState->GetFirstAidKits() < 1)
+	{
+		SpartaPlayerState->SetFirstAidKits(SpartaPlayerState->GetFirstAidKits() + 1);
+	}
 }
 
 void ASpartaArcadeCharacter::AddShield()
 {
 	// CombatComponent에 방어막 획득 위임
-	if (CombatComponent)
+	if (CombatComponent && !CombatComponent->IsShielded())
 	{
 		CombatComponent->GrantShield();
 	}
@@ -242,11 +251,20 @@ void ASpartaArcadeCharacter::AddShield()
 
 void ASpartaArcadeCharacter::OnBombExploded()
 {
-	// 폭탄 카운트 처리는 BombPlacerComponent 내부에서 델리게이트로 수행됨
+	// 폭탄 카운트 처리는 GA_PlaceBomb 내부에서 델리게이트로 수행됨
+}
+
+// 구급 상자 사용 어빌리티 트리거
+void ASpartaArcadeCharacter::UseFirstAidKit()
+{
+	if (IsValid(AbilitySystemComponent) && IsValid(UseFirstAidKitAbilityClass))
+	{
+		AbilitySystemComponent->TryActivateAbilityByClass(UseFirstAidKitAbilityClass);
+	}
 }
 
 // 구급 상자를 소모하여 일반 상태에선 자가 치료(하트 회복), 기절 상태에선 자력 부활 처리
-void ASpartaArcadeCharacter::UseFirstAidKit()
+void ASpartaArcadeCharacter::PerformUseFirstAidKit()
 {
 	// CombatComponent와 연동하여 구급상자 소모 로직 수행
 	if (SpartaPlayerState->GetFirstAidKits() <= 0)
@@ -256,7 +274,7 @@ void ASpartaArcadeCharacter::UseFirstAidKit()
 
 	if (CombatComponent && IsValid(SpartaPlayerState))
 	{
-		if (SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Stunned)
+		if (IsStunned())
 		{
 			SpartaPlayerState->SetFirstAidKits(SpartaPlayerState->GetFirstAidKits() - 1);
 			CombatComponent->SelfRevive();
@@ -270,6 +288,8 @@ void ASpartaArcadeCharacter::UseFirstAidKit()
 }
 
 
+
+
 // 캐릭터 오버랩 시 기절 상태인 다른 플레이어를 판별하여 구조(아군) 혹은 처치(적군) 처리 수행
 void ASpartaArcadeCharacter::NotifyActorBeginOverlap(AActor* OtherActor)
 {
@@ -279,7 +299,8 @@ void ASpartaArcadeCharacter::NotifyActorBeginOverlap(AActor* OtherActor)
 	ASpartaArcadeCharacter* OtherChar = Cast<ASpartaArcadeCharacter>(OtherActor);
 	if (OtherChar && OtherChar->CombatComponent)
 	{
-		if (OtherChar->SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Stunned)
+		UAbilitySystemComponent* OtherASC = OtherChar->GetAbilitySystemComponent();
+		if (IsValid(OtherASC) && OtherASC->HasMatchingGameplayTag(BomberGameplayTags::State_Stunned))
 		{
 			// 아군 구조 판정
 			if (OtherChar->SpartaPlayerState->GetTeamID() != -1 && SpartaPlayerState->GetTeamID() == OtherChar->SpartaPlayerState->GetTeamID())
@@ -311,12 +332,19 @@ FVector ASpartaArcadeCharacter::GetSnappedKickDirection() const
 	return FVector(0.f, FMath::Sign(KickDir.Y), 0.f);
 }
 
-// 캐릭터 정면에 인접한 폭탄이 있다면 격자 축 정렬 방향 보내는 기능
+// 폭탄 차기 어빌리티 트리거
 void ASpartaArcadeCharacter::KickBomb()
 {
-	// CombatComponent 상태 기반 기절 판단 적용
-	bool bIsStunnedLocal = CombatComponent ? (SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Stunned) : false;
-	if (bIsStunnedLocal) return;
+	if (IsValid(AbilitySystemComponent) && IsValid(KickBombAbilityClass))
+	{
+		AbilitySystemComponent->TryActivateAbilityByClass(KickBombAbilityClass);
+	}
+}
+
+// 캐릭터 정면에 인접한 폭탄이 있다면 격자 축 정렬 방향 보내는 기능
+void ASpartaArcadeCharacter::PerformKickBomb()
+{
+	// 기절 여부는 GA_KickBomb의 ActivationBlockedTags(State_Stunned)에서 이미 차단됨
 
 	FVector StartLoc = GetActorLocation();
 	TArray<FHitResult> OutHits;
@@ -379,7 +407,7 @@ bool ASpartaArcadeCharacter::IsShielded() const
 
 bool ASpartaArcadeCharacter::IsStunned() const
 {
-	return SpartaPlayerState ? (SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Stunned) : false;
+	return IsValid(AbilitySystemComponent) && AbilitySystemComponent->HasMatchingGameplayTag(BomberGameplayTags::State_Stunned);
 }
 
 // CombatComponent 이벤트에 대응하는 핸들러 함수 구현 추가
@@ -418,4 +446,27 @@ void ASpartaArcadeCharacter::RestoreCollisionResponse()
 		UE_LOG(LogTemp, Warning, TEXT("%s 의 폭풍 콜리전 채널이 Block(활성화) 상태로 복구되었습니다."), *GetName());
 
 	}
+}
+
+// IDamageable 인터페이스 구현체 정의. 폭탄 폭발로 인한 피해를 캐릭터 데미지 시스템에 연동.
+void ASpartaArcadeCharacter::TakeExplosionDamage_Implementation()
+{
+	FDamageEvent DamageEvent;
+	// 폭풍 피해 1.f 적용 (TakeDamage가 내부적으로 생명 1개 차감, 실드 체크 등 복합 로직 수행)
+	TakeDamage(1.f, DamageEvent, GetController(), this);
+}
+
+bool ASpartaArcadeCharacter::CanTakeDamage_Implementation() const
+{
+	return CombatComponent ? CombatComponent->CanTakeDamage() : true;
+}
+
+bool ASpartaArcadeCharacter::BlocksExplosion_Implementation() const
+{
+	return false;
+}
+
+UAbilitySystemComponent* ASpartaArcadeCharacter::GetAbilitySystemComponent() const
+{
+	return AbilitySystemComponent;
 }

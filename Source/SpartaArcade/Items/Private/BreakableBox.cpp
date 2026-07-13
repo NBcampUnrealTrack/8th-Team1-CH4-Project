@@ -1,6 +1,8 @@
-﻿#include "BreakableBox.h"
+#include "BreakableBox.h"
 #include "Components/StaticMeshComponent.h"
 #include "ItemDropComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "SpartaArcadeMapBuilder.h"
 
 ABreakableBox::ABreakableBox()
 {
@@ -26,6 +28,13 @@ void ABreakableBox::TakeExplosionDamage_Implementation()
 	if (!HasAuthority()) return;
 
 	bIsDestroyed = true;
+
+	// 맵빌더에 블록 파괴 통지하여 그리드 및 비주얼 동기화
+	AActor* MapBuilderActor = UGameplayStatics::GetActorOfClass(GetWorld(), ASpartaArcadeMapBuilder::StaticClass());
+	if (ASpartaArcadeMapBuilder* MapBuilder = Cast<ASpartaArcadeMapBuilder>(MapBuilderActor))
+	{
+		MapBuilder->NotifyTileDestroyedAtWorld(GetActorLocation());
+	}
 
 	if (IsValid(ItemDropComp))
 	{

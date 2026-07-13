@@ -1,6 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
@@ -11,6 +9,7 @@ class UEditableText;
 class UEOSGameInstanceSubsystem;
 class UCheckBox;
 class UVerticalBox;
+class USpartaButton;
 
 UCLASS()
 class SPARTAARCADE_API UUW_TitleUserWidget : public UUserWidget
