@@ -27,6 +27,10 @@ ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 	// 캡슐 콜리전 크기 초기화
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 
+	// 폭발 판정(SweepAndApplyDamage)이 ECC_Visibility 채널로 스윕하므로,
+	// 프리셋 설정과 무관하게 캡슐이 이 채널을 확실히 Block 하도록 명시적으로 고정
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+
 	// 컨트롤러 회전값 사용 해제
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
