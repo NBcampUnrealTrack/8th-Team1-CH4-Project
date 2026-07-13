@@ -32,6 +32,10 @@ void USpartaLobbyWidget::NativeConstruct()
     {
         StartButton->OnClicked.AddDynamic(this, &USpartaLobbyWidget::OnStartClicked);
     }
+    if(QuitButton)
+    {
+        QuitButton->OnClicked.AddDynamic(this, &USpartaLobbyWidget::OnQuitClicked);
+    }
 
     // 기본 프리뷰 세팅
     UpdateCharacterPreview(ESpartaArcadeCharacterType::Explosive);
@@ -249,5 +253,19 @@ void USpartaLobbyWidget::OnStartClicked()
 		{
 			LobbyPC->ServerStartMatch();
 		}
+    }
+}
+
+void USpartaLobbyWidget::OnQuitClicked()
+{
+    // 로비 나가기 요청 처리
+    APlayerController* PC = GetOwningPlayer();
+    if (PC)
+    {
+        ALobbyPlayerController* LobbyPC = Cast<ALobbyPlayerController>(PC);
+        if(IsValid(LobbyPC))
+        {
+			LobbyPC->LeaveLobby();
+        }
     }
 }

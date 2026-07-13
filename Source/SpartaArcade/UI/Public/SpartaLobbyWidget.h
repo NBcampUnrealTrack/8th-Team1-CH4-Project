@@ -38,6 +38,9 @@ protected:
     USpartaButton* StartButton;
 
     UPROPERTY(meta = (BindWidget))
+    UButton* QuitButton;
+
+    UPROPERTY(meta = (BindWidget))
     UTextBlock* CountdownTextBlock;
 
     UPROPERTY(meta = (BindWidget))
@@ -86,6 +89,9 @@ protected:
 
     UFUNCTION()
     void OnStartClicked();
+
+    UFUNCTION()
+	void OnQuitClicked();
 
 private:
     // 로컬 선택 상태

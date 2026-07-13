@@ -7,8 +7,13 @@ public class SpartaArcade : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 		
-        PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "NavigationSystem", "AIModule", "Niagara", "EnhancedInput", "UMG", "Slate", "SlateCore", 
-	        "GameplayAbilities", "GameplayTags", "GameplayTasks" });
+        PublicDependencyModuleNames.AddRange(new string[] { 
+			"Core", "CoreUObject", "Engine", "InputCore", 
+			"NavigationSystem", "AIModule", "Niagara", 
+			"EnhancedInput", "UMG", "Slate", "SlateCore",
+			"OnlineSubsystem", "OnlineSubsystemEOS", "OnlineSubsystemUtils",
+            "GameplayAbilities", "GameplayTags", "GameplayTasks"
+        });
         
 
         
@@ -21,7 +26,8 @@ public class SpartaArcade : ModuleRules
 	        Path.Combine(ModuleDirectory, "Level/Public"),
 	        Path.Combine(ModuleDirectory, "Spawn/Public"),
 	        Path.Combine(ModuleDirectory, "Systems/Public"),
-	        Path.Combine(ModuleDirectory, "UI/Public")
+	        Path.Combine(ModuleDirectory, "UI/Public"),
+			Path.Combine(ModuleDirectory, "EOS/Public")
         });
 
         PrivateIncludePaths.AddRange(new string[]
@@ -33,7 +39,8 @@ public class SpartaArcade : ModuleRules
 	        Path.Combine(ModuleDirectory, "Level/Private"),
 	        Path.Combine(ModuleDirectory, "Spawn/Private"),
 	        Path.Combine(ModuleDirectory, "Systems/Private"),
-	        Path.Combine(ModuleDirectory, "UI/Private")
+	        Path.Combine(ModuleDirectory, "UI/Private"),
+			Path.Combine(ModuleDirectory, "EOS/Private")
         });
     }
 }

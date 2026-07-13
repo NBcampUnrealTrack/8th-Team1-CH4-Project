@@ -11,7 +11,9 @@
 			"AdditionalDependencies": [
 				"Engine",
 				"UMG",
-				"GameplayAbilities"
+				"GameplayAbilities",
+				"CoreUObject",
+				"DeveloperSettings"
 			]
 		}
 	],
@@ -25,6 +27,10 @@
 		},
 		{
 			"Name": "GameplayAbilities",
+			"Enabled": true
+		},
+		{
+			"Name": "OnlineSubsystemEOS",
 			"Enabled": true
 		}
 	]

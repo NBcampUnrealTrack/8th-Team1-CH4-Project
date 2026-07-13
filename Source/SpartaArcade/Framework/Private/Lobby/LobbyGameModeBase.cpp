@@ -5,6 +5,10 @@
 #include "Lobby/LobbyGameStateBase.h"
 #include "Lobby/LobbyPlayerState.h"
 #include "Kismet/GameplayStatics.h"
+#include "EOSGameInstanceSubsystem.h"
+#include "SessionService.h"
+#include "SpartaUIDefs.h"
+#include "GameFlow/TravelGameInstanceSubsystem.h"
 
 ALobbyGameModeBase::ALobbyGameModeBase()
 {
@@ -27,30 +31,6 @@ void ALobbyGameModeBase::PreLogin(const FString& Options, const FString& Address
 			return;
 		}
 	}
-}
-
-FString ALobbyGameModeBase::InitNewPlayer(APlayerController* NewPlayerController, const FUniqueNetIdRepl& UniqueId, const FString& Options, const FString& Portal)
-{
-	FString Result = Super::InitNewPlayer(NewPlayerController, UniqueId, Options, Portal);
-
-	ALobbyGameStateBase* LobbyGameState = GetGameState<ALobbyGameStateBase>();
-	if (IsValid(LobbyGameState))
-	{
-		FString PlayerName = UGameplayStatics::ParseOption(Options, TEXT("PlayerName"));
-		if (NewPlayerController->PlayerState)
-		{
-			if (!PlayerName.IsEmpty())
-			{
-				NewPlayerController->PlayerState->SetPlayerName(PlayerName);
-			}
-
-			else
-			{
-				NewPlayerController->PlayerState->SetPlayerName(FString::Printf(TEXT("Player%d"), LobbyGameState->PlayerStates.Num() + 1));
-			}
-		}
-	}
-	return Result;
 }
 
 void ALobbyGameModeBase::PostLogin(APlayerController* NewPlayer)
@@ -92,6 +72,26 @@ void ALobbyGameModeBase::Logout(AController* Exiting)
 		}
 		LobbyGameState->PlayerStates.Remove(Exiting->PlayerState);
 		LobbyGameState->CurrentPlayerCount = FMath::Max(0, LobbyGameState->PlayerStates.Num());
+		LobbyGameState->OnRep_RoomInfoChanged();
+	}
+}
+
+void ALobbyGameModeBase::BeginPlay()
+{
+	Super::BeginPlay();
+	InitializeLobbyGameState();
+}
+
+void ALobbyGameModeBase::InitializeLobbyGameState()
+{
+	ALobbyGameStateBase* LobbyGameState = GetGameState<ALobbyGameStateBase>();
+	UEOSGameInstanceSubsystem* EOSGameInstanceSubsystem = GetGameInstance()->GetSubsystem<UEOSGameInstanceSubsystem>();
+	if (IsValid(LobbyGameState) && IsValid(EOSGameInstanceSubsystem))
+	{
+		FSessionInfo CurrentSessionInfo = EOSGameInstanceSubsystem->GetSessionService()->GetCurrentSessionInfo();
+		LobbyGameState->CurrentPlayerCount = CurrentSessionInfo.CurrentPlayers;
+		LobbyGameState->MaxPlayerCount = CurrentSessionInfo.MaxPlayers;
+		LobbyGameState->GameModeType = static_cast<EGameModeType>(CurrentSessionInfo.GameModeType);
 		LobbyGameState->OnRep_RoomInfoChanged();
 	}
 }
@@ -166,16 +166,7 @@ void ALobbyGameModeBase::UpdateMatchStartCountdown()
 		{
 			GetWorldTimerManager().ClearTimer(StartCountdownTimerHandle);
 
-			UWorld* World = GetWorld();
-			if (IsValid(World))
-			{
-				if (InGameMap.IsNull() == false)
-				{
-					FString MapPath = InGameMap.GetLongPackageName();
-
-					World->ServerTravel(MapPath + TEXT("?listen"));
-				}
-			}
+			GetGameInstance()->GetSubsystem<UTravelGameInstanceSubsystem>()->TravelToInGameMap();
 		}
 	}
 }

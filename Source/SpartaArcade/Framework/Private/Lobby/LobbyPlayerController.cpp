@@ -7,7 +7,9 @@
 #include "Lobby/LobbyGameModeBase.h"
 #include "Lobby/LobbyGameStateBase.h"
 #include "UI/Public/SpartaLobbyWidget.h"
-
+#include "EOSGameInstanceSubsystem.h"
+#include "SessionService.h"
+#include "GameFlow/TravelGameInstanceSubsystem.h"
 void ALobbyPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
@@ -35,6 +37,16 @@ void ALobbyPlayerController::BeginPlay()
 				LobbyGameState->SetLobbyUIWidget(Cast<USpartaLobbyWidget>(LobbyUIWidgetInstance));
 				LobbyGameState->RefreshLobbyUI();
 			}
+		}
+	}
+
+	UEOSGameInstanceSubsystem* EOSSubsystem = GetGameInstance()->GetSubsystem<UEOSGameInstanceSubsystem>();
+	if(IsValid(EOSSubsystem) == true)
+	{
+		USessionService* SessionService = EOSSubsystem->GetSessionService();
+		if(IsValid(SessionService) == true)
+		{
+			SessionService->OnDestroySessionCompleteEvent.AddUObject(this, &ALobbyPlayerController::HandleDestroySessionComplete);
 		}
 	}
 }
@@ -81,12 +93,32 @@ void ALobbyPlayerController::ServerStartMatch_Implementation()
 	if (IsValid(LobbyGameMode) == true)
 	{
 		LobbyGameMode->StartInGameMatch();
-
-		
 	}
 }
 
 bool ALobbyPlayerController::ServerStartMatch_Validate()
 {
 	return true;
+}
+
+void ALobbyPlayerController::LeaveLobby()
+{
+	if (IsLocalController() == false)
+	{
+		return;
+	}
+
+	GetGameInstance()->GetSubsystem<UEOSGameInstanceSubsystem>()->GetSessionService()->DestroySession();
+}
+
+void ALobbyPlayerController::HandleDestroySessionComplete(FName SessionName, bool bWasSuccessful)
+{
+	if (bWasSuccessful)
+	{
+		UTravelGameInstanceSubsystem* TravelSubsystem = GetGameInstance()->GetSubsystem<UTravelGameInstanceSubsystem>();
+		if (IsValid(TravelSubsystem))
+		{
+			TravelSubsystem->TravelToTitleMap();
+		}
+	}
 }
