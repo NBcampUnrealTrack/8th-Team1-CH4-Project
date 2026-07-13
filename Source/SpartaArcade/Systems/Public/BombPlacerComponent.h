@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
@@ -29,9 +29,6 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category="Data")
 	TSubclassOf<ASpartaArcadeBomb> BombClass;
-
-	UPROPERTY(EditDefaultsOnly, Category="Data")
-	TObjectPtr<UDataTable> BombStatTable;
 
 private:
 	bool CanPlaceBomb() const;

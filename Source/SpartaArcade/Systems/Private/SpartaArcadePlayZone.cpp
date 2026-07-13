@@ -1,5 +1,3 @@
-// Modified: 불필요한 영문 주석 제거 및 나선형 즉사 자기장 로직으로 전면 교체
-
 #include "SpartaArcadePlayZone.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
@@ -8,8 +6,7 @@
 #include "SpartaArcadeCharacter.h"
 #include "SpartaArcadeMapGenerator.h"
 #include "SpartaArcadeBomb.h"
-#include "SpartaArcadeBlock.h"
-#include "SpartaArcadeItem.h"
+#include "BreakableBox.h"
 
 ASpartaArcadePlayZone::ASpartaArcadePlayZone()
 {
@@ -164,7 +161,7 @@ void ASpartaArcadePlayZone::DropDeathBlockAtTile(FIntPoint GridCoord, AActor* Wa
 					Character->Destroy(); // 즉사 처리
 				}
 			}
-			else if (HitActor && (HitActor->IsA(ASpartaArcadeBomb::StaticClass()) || HitActor->IsA(ASpartaArcadeBlock::StaticClass()) || HitActor->IsA(ASpartaArcadeItem::StaticClass())))
+			else if (HitActor && (HitActor->IsA(ASpartaArcadeBomb::StaticClass()) || HitActor->IsA(ABreakableBox::StaticClass())))
 			{
 				HitActor->Destroy(); // 격자 내 다른 액터 청소
 			}

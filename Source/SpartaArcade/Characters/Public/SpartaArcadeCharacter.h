@@ -1,9 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Templates/SubclassOf.h"
 #include "Net/UnrealNetwork.h"
+#include "Damageable.h"
 #include "SpartaArcadeCharacter.generated.h"
 
 // 컴포넌트 의존 관계 설정을 위한 전방 선언
@@ -22,15 +23,19 @@ enum class ESpartaArcadeCharacterType : uint8
 	BombCount      UMETA(DisplayName = "폭탄 갯수형")
 };
 
+// 폭탄 연계 대미지 처리를 위한 IDamageable 인터페이스 상속 추가
 UCLASS(Blueprintable)
-class SPARTAARCADE_API ASpartaArcadeCharacter : public ACharacter
+class SPARTAARCADE_API ASpartaArcadeCharacter : public ACharacter, public IDamageable
 {
 	GENERATED_BODY()
 
 public:
 	ASpartaArcadeCharacter();
 
-	virtual void Tick(float DeltaSeconds) override;
+	// IDamageable 인터페이스 구현 선언
+	virtual void TakeExplosionDamage_Implementation() override;
+	virtual bool CanTakeDamage_Implementation() const override;
+	virtual bool BlocksExplosion_Implementation() const override;
 
 	// 기절 구출(아군) 및 처치(적군) 처리를 위한 충돌 오버랩
 	virtual void NotifyActorBeginOverlap(AActor* OtherActor) override;
@@ -98,9 +103,6 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PlayerState")
 	TObjectPtr<ASpartaPlayerState> SpartaPlayerState;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attributes|Movement")
-	float BaseMovementSpeed;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay")
 	TSubclassOf<class ASpartaArcadeBomb> BombClass;

@@ -7,6 +7,7 @@
 class ASpartaArcadeMapBuilder;
 class UHierarchicalInstancedStaticMeshComponent;
 class UMaterialInterface;
+class UDataTable;
 
 // 압사당한 액터(플레이어 등) 알림 — 실제 사망 처리는 게임 시스템이 바인딩.
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnActorCrushed, AActor*, CrushedActor);
@@ -54,6 +55,17 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SpartaArcade|Zone", meta = (ClampMin = "0.1"))
     float BlockHeightTiles = 2.f;   // 압사 블록 높이(타일 단위). 2 = 2칸 높이
+
+    // ---- 밸런싱 DataTable ----
+    /** 자기장 수치 DT. 비우면 위 값 사용. Row 구조: FSpartaArcadeZoneRow */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Zone")
+    UDataTable* ZoneTable = nullptr;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Zone")
+    FName ZoneRowName = TEXT("Default");
+
+    /** DT Row → 수치 복사(BeginPlay에서 자동 호출, 서버·클라 공통). */
+    void ApplyZoneRow();
 
     // ---- 연출 색(붉은 톤) ----
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Zone")

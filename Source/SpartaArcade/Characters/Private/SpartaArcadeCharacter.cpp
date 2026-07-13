@@ -1,4 +1,4 @@
-﻿#include "SpartaArcadeCharacter.h"
+#include "SpartaArcadeCharacter.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Camera/CameraComponent.h"
 #include "Components/DecalComponent.h"
@@ -18,6 +18,7 @@
 #include "Framework/Public/InGame/SpartaPlayerState.h"
 #include "SpartaArcadePlayerController.h"
 #include "UI/Public/SpartaHUDWidget.h"
+#include "Engine/DamageEvents.h"
 
 ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 {
@@ -48,21 +49,17 @@ ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 	TopDownCameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	TopDownCameraComponent->bUsePawnControlRotation = false;
 
-	PrimaryActorTick.bCanEverTick = true;
-	PrimaryActorTick.bStartWithTickEnabled = true;
+	// Tick 낭비 방지를 위해 bCanEverTick 비활성화
+	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bStartWithTickEnabled = false;
 
 	// 컴포넌트 기반 아키텍처 적용
 	StatComponent = CreateDefaultSubobject<UStatComponent>(TEXT("StatComponent"));
 	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
 	BombPlacerComponent = CreateDefaultSubobject<UBombPlacerComponent>(TEXT("BombPlacer"));
 
-	BaseMovementSpeed = 300.f;
-
 	MaxInitializedComponentsCount = 100;
 	InitializedComponentsCount = 0;
-
-	// 무브먼트 스피드 제어는 StatComponent 내 OnRep_MoveSpeed 에서 수행
-	// GetCharacterMovement()->MaxWalkSpeed = BaseMovementSpeed + (SpeedLevel * 75.0f);
 
 	// 데디케이티드 서버 네트워크 동기화용 캐릭터 복제 활성화
 	bReplicates = true;
@@ -73,11 +70,6 @@ void ASpartaArcadeCharacter::BeginPlay()
 	Super::BeginPlay();
 	InitializeCharacterComponents();
 	
-}
-
-void ASpartaArcadeCharacter::Tick(float DeltaSeconds)
-{
-    Super::Tick(DeltaSeconds);
 }
 
 // 하트 체력 감소, 실드 차단 및 체력 0 도달 시 기절 상태 진입 로직 구현
@@ -418,4 +410,22 @@ void ASpartaArcadeCharacter::RestoreCollisionResponse()
 		UE_LOG(LogTemp, Warning, TEXT("%s 의 폭풍 콜리전 채널이 Block(활성화) 상태로 복구되었습니다."), *GetName());
 
 	}
+}
+
+// IDamageable 인터페이스 구현체 정의. 폭탄 폭발로 인한 피해를 캐릭터 데미지 시스템에 연동.
+void ASpartaArcadeCharacter::TakeExplosionDamage_Implementation()
+{
+	FDamageEvent DamageEvent;
+	// 폭풍 피해 1.f 적용 (TakeDamage가 내부적으로 생명 1개 차감, 실드 체크 등 복합 로직 수행)
+	TakeDamage(1.f, DamageEvent, GetController(), this);
+}
+
+bool ASpartaArcadeCharacter::CanTakeDamage_Implementation() const
+{
+	return CombatComponent ? CombatComponent->CanTakeDamage() : true;
+}
+
+bool ASpartaArcadeCharacter::BlocksExplosion_Implementation() const
+{
+	return false;
 }
