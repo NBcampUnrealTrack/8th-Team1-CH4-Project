@@ -5,14 +5,16 @@
 #include "Templates/SubclassOf.h"
 #include "Net/UnrealNetwork.h"
 #include "Damageable.h"
+#include "AbilitySystemInterface.h"
 #include "SpartaArcadeCharacter.generated.h"
 
 // 컴포넌트 의존 관계 설정을 위한 전방 선언
-class UStatComponent;
 class UCombatComponent;
-class UBombPlacerComponent;
 class UDataTable;
 class ASpartaPlayerState;
+class UAbilitySystemComponent;   
+class UBomberAttributeSet;       
+class UGameplayAbility;          
 
 // 캐릭터 스탯 특화 선택을 위한 타입 열거형
 UENUM(BlueprintType)
@@ -25,7 +27,7 @@ enum class ESpartaArcadeCharacterType : uint8
 
 // 폭탄 연계 대미지 처리를 위한 IDamageable 인터페이스 상속 추가
 UCLASS(Blueprintable)
-class SPARTAARCADE_API ASpartaArcadeCharacter : public ACharacter, public IDamageable
+class SPARTAARCADE_API ASpartaArcadeCharacter : public ACharacter, public IDamageable, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
@@ -37,13 +39,19 @@ public:
 	virtual bool CanTakeDamage_Implementation() const override;
 	virtual bool BlocksExplosion_Implementation() const override;
 
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	
 	// 기절 구출(아군) 및 처치(적군) 처리를 위한 충돌 오버랩
 	virtual void NotifyActorBeginOverlap(AActor* OtherActor) override;
 
 protected:
 	virtual void BeginPlay() override;
-
+	
+	virtual void PossessedBy(AController* NewController) override;
+	
 	void InitializeCharacterComponents();
+	
+	virtual void OnRep_PlayerState() override;
 
 public:
 	// 하트 라이프, 실드 방어, 기절 처리를 위한 TakeDamage 오버라이드
@@ -66,9 +74,6 @@ public:
 	void KickBomb();
 
 	// 아이템 획득 및 쿨다운 처리를 위한 상태 함수 추가
-	void AddSpeedBoost();
-	void AddExtraBomb();
-	void IncreaseExplosionRange();
 	void AddFirstAidKit();
 	void AddShield();
 	void OnBombExploded();
@@ -86,6 +91,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Gameplay")
 	bool IsStunned() const;
 
+	// GA_KickBomb / GA_UseFirstAidKit 어빌리티가 호출하는 실제 로직 (CombatComponent 등 protected 멤버 접근을 위해 Character에 유지)
+	void PerformKickBomb();
+	void PerformUseFirstAidKit();
+
 protected:
 	// 컴포넌트 초기화를 위한 데이터 테이블 구조 노출
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attributes|Setup")
@@ -96,13 +105,7 @@ protected:
 
 	// 중복 코드 및 의존 관계 정리를 위해 컴포넌트 추가
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	TObjectPtr<UStatComponent> StatComponent;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UCombatComponent> CombatComponent;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	TObjectPtr<UBombPlacerComponent> BombPlacerComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PlayerState")
 	TObjectPtr<ASpartaPlayerState> SpartaPlayerState;
@@ -113,6 +116,21 @@ protected:
 	int32 MaxInitializedComponentsCount;
 	int32 InitializedComponentsCount;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UBomberAttributeSet> AttributeSet;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	TSubclassOf<UGameplayAbility> PlaceBombAbilityClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	TSubclassOf<UGameplayAbility> KickBombAbilityClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	TSubclassOf<UGameplayAbility> UseFirstAidKitAbilityClass;
+	
 	// CombatComponent 측 기절 및 무적 타이머로 통합
 	// FTimerHandle StunTimerHandle;
 	// FTimerHandle InvulnerableTimerHandle;

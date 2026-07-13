@@ -36,9 +36,11 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	void InitializeItem(FName InItemRowName, UDataTable* InItemDataTable);
-	
-	UPROPERTY(EditDefaultsOnly, Category="GAS")
-	TSubclassOf<UGameplayEffect> GameplayEffectClass;
+
+	// BombRange/BombCount/MoveSpeed 등 스탯 강화 아이템 타입별로 적용할 GameplayEffect를 매핑
+	// (타입별로 다른 GE를 적용해야 하므로 단일 필드가 아닌 ItemVisualMap과 동일한 TMap 패턴 사용)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="GAS")
+	TMap<EBomberItemType, TSubclassOf<UGameplayEffect>> ItemEffectMap;
 
 protected:
 	virtual void BeginPlay() override;

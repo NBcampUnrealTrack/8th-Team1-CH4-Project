@@ -1,12 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "GA_PlaceBomb.h"
-#include "SpartaArcadeBomb.h"
+#include "GA_KickBomb.h"
 #include "BomberGameplayTags.h"
-#include "AbilitySystemComponent.h"
+#include "SpartaArcadeCharacter.h"
 
-UGA_PlaceBomb::UGA_PlaceBomb()
+UGA_KickBomb::UGA_KickBomb()
 {
 	// 기절 중엔 발동 X
 	ActivationBlockedTags.AddTag(BomberGameplayTags::State_Stunned);
@@ -15,29 +14,22 @@ UGA_PlaceBomb::UGA_PlaceBomb()
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerOnly;
 }
 
-void UGA_PlaceBomb::ActivateAbility(
+void UGA_KickBomb::ActivateAbility(
 	const FGameplayAbilitySpecHandle Handle,
 	const FGameplayAbilityActorInfo* ActorInfo,
 	const FGameplayAbilityActivationInfo ActivationInfo,
 	const FGameplayEventData* TriggerEventData)
 {
-	AActor* AvatarActor = ActorInfo->AvatarActor.Get();
-	if (!IsValid(AvatarActor) || !IsValid(BombClass))
+	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.SpawnCollisionHandlingOverride =
-		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-
-	ASpartaArcadeBomb* NewBomb = AvatarActor->GetWorld()->SpawnActor<ASpartaArcadeBomb>(
-		BombClass,
-		AvatarActor->GetActorLocation(),
-		FRotator::ZeroRotator,
-		SpawnParams
-	);
+	if (ASpartaArcadeCharacter* Character = Cast<ASpartaArcadeCharacter>(ActorInfo->AvatarActor.Get()))
+	{
+		Character->PerformKickBomb();
+	}
 
 	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 }
