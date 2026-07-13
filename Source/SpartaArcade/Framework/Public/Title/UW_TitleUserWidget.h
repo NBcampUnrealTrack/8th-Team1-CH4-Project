@@ -1,5 +1,3 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -8,6 +6,7 @@
 
 class UButton;
 class UEditableText;
+class USpartaButton;
 
 
 UCLASS()
@@ -29,10 +28,10 @@ protected:
 
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = TitleWidget, Meta = (AllowPrivateAccess, BindWidget))
-	TObjectPtr<UButton> PlayButton;
+	TObjectPtr<USpartaButton> PlayButton;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = TitleWidget, Meta = (AllowPrivateAccess, BindWidget))
-	TObjectPtr<UButton> ExitButton;
+	TObjectPtr<USpartaButton> ExitButton;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = LobbyLevelUI, Meta = (AllowPrivateAccess, BindWidget))
 	TObjectPtr<UEditableText> ServerIPEditableText;

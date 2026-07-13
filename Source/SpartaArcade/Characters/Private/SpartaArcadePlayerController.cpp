@@ -1,4 +1,4 @@
-﻿#include "SpartaArcadePlayerController.h"
+#include "SpartaArcadePlayerController.h"
 #include "GameFramework/Pawn.h"
 #include "Blueprint/AIBlueprintHelperLibrary.h"
 #include "NiagaraSystem.h"
@@ -82,6 +82,11 @@ void ASpartaArcadePlayerController::SetupInputComponent()
 		{
 			EnhancedInputComponent->BindAction(UseFirstAidKitAction, ETriggerEvent::Started, this, &ASpartaArcadePlayerController::OnUseFirstAidKitTriggered);
 		}
+
+		if (UseShieldAction)
+		{
+			EnhancedInputComponent->BindAction(UseShieldAction, ETriggerEvent::Started, this, &ASpartaArcadePlayerController::OnUseShieldTriggered);
+		}
 	}
 	else
 	{
@@ -126,6 +131,11 @@ void ASpartaArcadePlayerController::OnUseFirstAidKitTriggered()
 	ServerUseFirstAidKit();
 }
 
+void ASpartaArcadePlayerController::OnUseShieldTriggered()
+{
+	ServerUseShield();
+}
+
 // 서버 측에서 실제 캐릭터 행동을 집행하는 Server RPC 구현부 정의
 void ASpartaArcadePlayerController::ServerPlaceBomb_Implementation()
 {
@@ -151,5 +161,14 @@ void ASpartaArcadePlayerController::ServerUseFirstAidKit_Implementation()
 	if (ArcadeCharacter)
 	{
 		ArcadeCharacter->UseFirstAidKit();
+	}
+}
+
+void ASpartaArcadePlayerController::ServerUseShield_Implementation()
+{
+	ASpartaArcadeCharacter* ArcadeCharacter = Cast<ASpartaArcadeCharacter>(GetPawn());
+	if (ArcadeCharacter)
+	{
+		ArcadeCharacter->UseShield();
 	}
 }

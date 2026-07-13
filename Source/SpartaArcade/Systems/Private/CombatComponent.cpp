@@ -87,15 +87,6 @@ void UCombatComponent::ApplyDamage()
     //동시 피격 시 프레임당 1회만 차감
     if (bDamageThisFrame) return;
 
-    //방어막 보유 중이면 하트 대신 방어막 소멸
-    if (bHasShield)
-    {
-        bHasShield = false;
-        OnShieldBlock.Broadcast();
-		OnRep_HasShield();
-        return;
-    }
-
     // 기절 중 재피격은 무시 
     if (SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Stunned) return;
     if (SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Eliminated) return;
@@ -123,6 +114,27 @@ void UCombatComponent::GrantShield()
 {
     bHasShield = true;
 	OnRep_HasShield();
+}
+
+void UCombatComponent::UseShield()
+{
+    if (!GetOwner()->HasAuthority()) return;
+
+    if (bHasShield)
+    {
+        bHasShield = false;
+        OnShieldBlock.Broadcast(); // Trigger shield HUD feedback/sound
+        OnRep_HasShield();
+
+        bInvincible = true;
+
+        GetWorld()->GetTimerManager().ClearTimer(InvincibleTimerHandle);
+        GetWorld()->GetTimerManager().SetTimer(
+            InvincibleTimerHandle, this, &UCombatComponent::EndInvincible,
+            3.0f, false);
+
+        UE_LOG(LogTemp, Log, TEXT("Active Shield Activated: Invincible for 3 seconds."));
+    }
 }
 
 //상태 전이 함수들 
@@ -172,6 +184,12 @@ void UCombatComponent::SelfRevive()
 
     SpartaPlayerState->SetHearts(SpartaPlayerState->GetSelfReviveHearts());
     SpartaPlayerState->SetCurrentState(EBomberPlayerState::Alive);
+
+    bInvincible = true;
+    GetWorld()->GetTimerManager().ClearTimer(InvincibleTimerHandle);
+    GetWorld()->GetTimerManager().SetTimer(
+        InvincibleTimerHandle, this, &UCombatComponent::EndInvincible,
+        InvincibleDuration, false);
 
     OnSelfRevive.Broadcast();
 }

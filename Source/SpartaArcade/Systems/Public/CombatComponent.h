@@ -50,6 +50,9 @@ public:
     UFUNCTION(BlueprintCallable)
     void GrantShield();
 
+    UFUNCTION(BlueprintCallable)
+    void UseShield();
+
     // 캐릭터 위임 연동을 위한 Getter 및 Heal 함수 추가
     UFUNCTION(BlueprintCallable)
     void Heal(int32 Amount);

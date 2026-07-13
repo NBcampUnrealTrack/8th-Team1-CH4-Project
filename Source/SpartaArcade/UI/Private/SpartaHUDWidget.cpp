@@ -240,7 +240,7 @@ void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UStatCompo
         CombatComp->OnShieldBlock.AddDynamic(this, &USpartaHUDWidget::HandleOnShieldBlock);
         // OnHit 델리게이트 바인딩 추가
         CombatComp->OnHit.AddDynamic(this, &USpartaHUDWidget::HandleOnHit);
-		// Modified: 쉴드 활성 여부 델리게이트 구독 연동
+		// 쉴드 활성 여부 델리게이트 구독 연동
 		CombatComp->OnbHasShieldChanged.AddDynamic(this, &USpartaHUDWidget::UpdateShieldStatus);
 
 		// 초기 가시성 상태 세팅
@@ -256,16 +256,16 @@ void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UStatCompo
 // 쉴드 및 구급상자 상태 변경 시 개별 UI 이미지 가시성 토글(Visible / Collapsed) 구현
 void USpartaHUDWidget::UpdateShieldStatus(bool bHasShield)
 {
-	if (ShieldIcon)
+	if (ShieldImg)
 	{
-		ShieldIcon->SetVisibility(bHasShield ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		ShieldImg->SetVisibility(bHasShield ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	}
 }
 
 void USpartaHUDWidget::UpdateMedKitStatus(int32 MedKitCount)
 {
-	if (MedKitIcon)
+	if (MedImg)
 	{
-		MedKitIcon->SetVisibility(MedKitCount > 0 ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		MedImg->SetVisibility(MedKitCount > 0 ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	}
 }

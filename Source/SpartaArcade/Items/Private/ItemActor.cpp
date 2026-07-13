@@ -5,6 +5,7 @@
 #include "StatComponent.h"
 #include "GameplayEffect.h"
 #include "Net/UnrealNetwork.h"
+#include "SpartaArcadeCharacter.h" 
 
 AItemActor::AItemActor()
 {

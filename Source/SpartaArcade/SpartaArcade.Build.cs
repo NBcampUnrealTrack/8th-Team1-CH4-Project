@@ -1,4 +1,4 @@
-﻿using UnrealBuildTool;
+using UnrealBuildTool;
 using System.IO;
 
 public class SpartaArcade : ModuleRules
@@ -9,6 +9,8 @@ public class SpartaArcade : ModuleRules
 		
         PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "NavigationSystem", "AIModule", "Niagara", "EnhancedInput", "UMG", "Slate", "SlateCore", 
 	        "GameplayAbilities", "GameplayTags", "GameplayTasks" });
+        
+
         
         PublicIncludePaths.AddRange(new string[]
         {
