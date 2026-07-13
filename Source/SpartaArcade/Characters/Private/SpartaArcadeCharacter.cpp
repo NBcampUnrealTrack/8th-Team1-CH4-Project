@@ -211,8 +211,7 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 		{
 			if (USpartaHUDWidget* HUDWidget = Cast<USpartaHUDWidget>(PC->HUDUIWidgetInstance))
 			{
-				// TODO AttributeSet->OnStatsChanged / GA_PlaceBomb->OnCurrentPlacedBombsChanged 로 재배선 필요
-				HUDWidget->InitializeHUD(SpartaPlayerState, nullptr, CombatComponent, nullptr);
+				HUDWidget->InitializeHUD(SpartaPlayerState, AttributeSet, CombatComponent, nullptr);
 				SpartaPlayerState->BroadcastCurrentState();
 				CombatComponent->BroadcastCurrentState();
 			}

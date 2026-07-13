@@ -136,6 +136,16 @@ void UBomberAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCall
 	BroadcastCurrentState();
 }
 
+void UBomberAttributeSet::PostAttributeChange(const FGameplayAttribute& Attribute, float OldValue, float NewValue)
+{
+	Super::PostAttributeChange(Attribute, OldValue, NewValue);
+
+	if (Attribute == GetHealthAttribute())
+	{
+		MirrorHealthToPlayerState();
+	}
+}
+
 void UBomberAttributeSet::BroadcastCurrentState()
 {
 	OnStatsChanged.Broadcast(

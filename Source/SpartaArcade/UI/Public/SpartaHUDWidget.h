@@ -12,6 +12,7 @@ class ASpartaPlayerState;
 class UStatComponent;
 class UCombatComponent;
 class UBombPlacerComponent;
+class UBomberAttributeSet;
 
 UCLASS()
 class SPARTAARCADE_API USpartaHUDWidget : public UUserWidget
@@ -139,7 +140,7 @@ public:
     UFUNCTION(BlueprintCallable, Category = "UI | Update")
     void UpdateHasShield(bool bHasShield);
 
-	void InitializeHUD(ASpartaPlayerState* PlayerState, UStatComponent* StatComp, UCombatComponent* CombatComp, UBombPlacerComponent* BombPlacerComp);
+	void InitializeHUD(ASpartaPlayerState* PlayerState, UBomberAttributeSet* InAttributeSet, UCombatComponent* CombatComp, UBombPlacerComponent* BombPlacerComp);
 
 private:
     // 내부 헬퍼 함수
@@ -151,6 +152,9 @@ private:
 
     UPROPERTY()
     TObjectPtr<UStatComponent> StatComponent;
+
+    UPROPERTY()
+    TObjectPtr<UBomberAttributeSet> BomberAttributeSet;
 
     UPROPERTY()
     TObjectPtr<UCombatComponent> CombatComponent;

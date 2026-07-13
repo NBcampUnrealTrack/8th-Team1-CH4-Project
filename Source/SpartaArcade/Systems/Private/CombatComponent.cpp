@@ -68,6 +68,7 @@ void UCombatComponent::InitializeFromDataTable(UDataTable* InCombatStatTable)
     {
         SpartaPlayerState->SetStartHearts(Row->StartHearts);
         SpartaPlayerState->SetSelfReviveHearts(Row->SelfReviveHearts);
+        SpartaPlayerState->SetHearts(Row->StartHearts);
         SpartaPlayerState->SetCurrentState(EBomberPlayerState::Alive);
     }
 

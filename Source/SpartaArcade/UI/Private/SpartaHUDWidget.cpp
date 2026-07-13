@@ -11,6 +11,8 @@
 #include "Systems/Public/StatComponent.h"
 #include "Systems/Public/CombatComponent.h"
 #include "Systems/Public/BombPlacerComponent.h"
+#include "Systems/Public/BomberAttributeSet.h"
+#include "GameplayEffectTypes.h"
 
 void USpartaHUDWidget::NativeConstruct()
 {
@@ -201,11 +203,11 @@ void USpartaHUDWidget::UpdateHasShield(bool bHasShield)
 
 }
 
-void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UStatComponent* StatComp, UCombatComponent* CombatComp, UBombPlacerComponent* BombPlacerComp)
+void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UBomberAttributeSet* InAttributeSet, UCombatComponent* CombatComp, UBombPlacerComponent* BombPlacerComp)
 {
     // 멤버 컴포넌트 캐싱 추가
     SpartaPlayerState = PlayerState;
-    StatComponent = StatComp;
+    BomberAttributeSet = InAttributeSet;
     CombatComponent = CombatComp;
     BombPlacerComponent = BombPlacerComp;
 
@@ -227,6 +229,8 @@ void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UStatCompo
 		UpdateMedKitStatus(PlayerState->GetFirstAidKits());
     }
 
+    // Removed: StatComp-based initialization is replaced by GAS AttributeSet
+    /*
     if(StatComp)
     {
         StatComp->OnStatsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateStats);
@@ -234,6 +238,30 @@ void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UStatCompo
         //시작 시점의 초기 스탯치 값으로 바 가시성 세팅 강제 트리거
         UpdateStats(StatComp->GetBombCount(), StatComp->GetBombRange(), StatComp->GetMoveSpeed());
 	}
+    */
+
+    if (InAttributeSet)
+    {
+        InAttributeSet->OnStatsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateStats);
+
+        // 시작 시점의 초기 스탯치 값으로 바 가시성 세팅 강제 트리거
+        UpdateStats(
+            FMath::RoundToInt(InAttributeSet->GetBombCount()),
+            InAttributeSet->GetBombRange(),
+            InAttributeSet->GetMoveSpeed()
+        );
+
+        // CurrentPlacedBombs가 변경될 때 HUD 폭탄 수량 실시간 갱신 바인딩 추가
+        if (UAbilitySystemComponent* ASC = InAttributeSet->GetOwningAbilitySystemComponent())
+        {
+            ASC->GetGameplayAttributeValueChangeDelegate(UBomberAttributeSet::GetCurrentPlacedBombsAttribute())
+                .AddLambda([this](const FOnAttributeChangeData& Data)
+                {
+                    UpdateCurrentBombs(FMath::RoundToInt(Data.NewValue));
+                });
+        }
+        UpdateCurrentBombs(FMath::RoundToInt(InAttributeSet->GetCurrentPlacedBombs()));
+    }
 
     if(CombatComp)
     {
@@ -247,10 +275,13 @@ void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UStatCompo
 		UpdateShieldStatus(CombatComp->IsShielded());
 	}
 
+    // Removed: BombPlacerComponent binding is replaced by GAS attribute binding
+    /*
     if (BombPlacerComp)
     {
         BombPlacerComp->OnCurrentPlacedBombsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateCurrentBombs);
     }
+    */
 }
 
 // 쉴드 및 구급상자 상태 변경 시 개별 UI 이미지 가시성 토글(Visible / Collapsed) 구현
