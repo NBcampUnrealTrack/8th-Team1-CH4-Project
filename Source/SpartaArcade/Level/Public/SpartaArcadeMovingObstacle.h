@@ -1,8 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "SpartaArcadeMovingObstacle.generated.h"
+
+class UDataTable;
 
 class ASpartaArcadeMapBuilder;
 class USphereComponent;
@@ -32,19 +34,43 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SpartaArcade|Obstacle", meta = (ClampMin = "0.0"))
     float MoveSpeed = 450.f;      // cm/s, 플레이어보다 빠르게(수치 임시)
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SpartaArcade|Obstacle", meta = (ClampMin = "0.0"))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SpartaArcade|Obstacle")
     float HoverHeight = 40.f;     // 지면에서 뜬 높이(시각)
+
+    // 이동 장애물에 부여할 회전 효과 관련 제어 속성 정의
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SpartaArcade|Obstacle")
+    bool bOrientRotationToMovement = true; // 진행 방향으로 회전 여부
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SpartaArcade|Obstacle")
+    bool bUseSelfRotation = false; // 제자리 빙글빙글 자전 효과 여부
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SpartaArcade|Obstacle")
+    float SelfRotationSpeed = 180.f; // 초당 자전 회전 속도 (Yaw)
+
+    // ---- 밸런싱 DataTable ----
+    /** 장애물 수치 DT. 비우면 위 값 사용. Row 구조: FSpartaArcadeObstacleRow */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Obstacle")
+    UDataTable* ObstacleTable = nullptr;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Obstacle")
+    FName ObstacleRowName = TEXT("Default");
+
+    /** DT Row → 수치 복사(BeginPlay에서 자동 호출, PlaneZ 계산 전). */
+    void ApplyObstacleRow();
 
 protected:
     UPROPERTY(VisibleAnywhere, Category = "SpartaArcade|Obstacle")
     USphereComponent* Collision;
 
+    // 언리얼 엔진의 상속 컴포넌트 직렬화 버그로 인한 비주얼 미출력 문제를 방어하기 위해 변수명을 ObstacleMesh로 리네임합니다.
     UPROPERTY(VisibleAnywhere, Category = "SpartaArcade|Obstacle")
-    UStaticMeshComponent* Mesh;
+    UStaticMeshComponent* ObstacleMesh;
 
     UPROPERTY()
     TWeakObjectPtr<ASpartaArcadeMapBuilder> Map;
 
+    FVector PrevLocation = FVector::ZeroVector;
+    
     FIntPoint CurCell = FIntPoint(0, 0);    // 현재 칸
     FIntPoint TargetCell = FIntPoint(0, 0); // 이동 목표 칸(칸 중심으로 부드럽게)
     FIntPoint Dir = FIntPoint(1, 0);        // 현재 진행 방향(4방)

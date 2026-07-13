@@ -1,10 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Templates/SubclassOf.h"
 #include "Net/UnrealNetwork.h"
-#include "AbilitySystemInterface.h" 
+#include "Damageable.h"
 #include "SpartaArcadeCharacter.generated.h"
 
 // 컴포넌트 의존 관계 설정을 위한 전방 선언
@@ -12,9 +12,6 @@ class UStatComponent;
 class UCombatComponent;
 class UBombPlacerComponent;
 class UDataTable;
-class UAbilitySystemComponent;
-class UBomberAttributeSet;
-class UGameplayAbility;
 class ASpartaPlayerState;
 
 // 캐릭터 스탯 특화 선택을 위한 타입 열거형
@@ -26,17 +23,19 @@ enum class ESpartaArcadeCharacterType : uint8
 	BombCount      UMETA(DisplayName = "폭탄 갯수형")
 };
 
+// 폭탄 연계 대미지 처리를 위한 IDamageable 인터페이스 상속 추가
 UCLASS(Blueprintable)
-class SPARTAARCADE_API ASpartaArcadeCharacter : public ACharacter, public IAbilitySystemInterface
+class SPARTAARCADE_API ASpartaArcadeCharacter : public ACharacter, public IDamageable
 {
 	GENERATED_BODY()
 
 public:
 	ASpartaArcadeCharacter();
 
-	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
-	
-	virtual void Tick(float DeltaSeconds) override;
+	// IDamageable 인터페이스 구현 선언
+	virtual void TakeExplosionDamage_Implementation() override;
+	virtual bool CanTakeDamage_Implementation() const override;
+	virtual bool BlocksExplosion_Implementation() const override;
 
 	// 기절 구출(아군) 및 처치(적군) 처리를 위한 충돌 오버랩
 	virtual void NotifyActorBeginOverlap(AActor* OtherActor) override;
@@ -44,9 +43,6 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	virtual void PossessedBy(AController* NewController) override;
-
-	
 	void InitializeCharacterComponents();
 
 public:
@@ -87,7 +83,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Gameplay")
 	bool IsStunned() const;
 
-
 protected:
 	// 컴포넌트 초기화를 위한 데이터 테이블 구조 노출
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attributes|Setup")
@@ -109,23 +104,11 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PlayerState")
 	TObjectPtr<ASpartaPlayerState> SpartaPlayerState;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attributes|Movement")
-	float BaseMovementSpeed;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay")
 	TSubclassOf<class ASpartaArcadeBomb> BombClass;
 
 	int32 MaxInitializedComponentsCount;
 	int32 InitializedComponentsCount;
-	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
-	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	TObjectPtr<UBomberAttributeSet> AttributeSet;	
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
-	TSubclassOf<UGameplayAbility> PlaceBombAbilityClass;
 
 	// CombatComponent 측 기절 및 무적 타이머로 통합
 	// FTimerHandle StunTimerHandle;
@@ -143,7 +126,6 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class USpringArmComponent* CameraBoom;
-	
 	
 	FVector GetSnappedKickDirection() const;
 

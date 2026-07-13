@@ -61,6 +61,8 @@ void ASpartaArcadeZoneManager::BeginPlay()
 {
     Super::BeginPlay();
 
+    ApplyZoneRow();   // DT가 있으면 타이밍/높이 로드 — 서버·클라 같은 에셋이라 항상 같은 값
+
     if (!Map.IsValid())
     {
         Map = Cast<ASpartaArcadeMapBuilder>(
@@ -75,6 +77,28 @@ void ASpartaArcadeZoneManager::BeginPlay()
         bStarted = true;   // 테스트 자동 시작(GameMode가 StartCountdown으로 재시작 가능)
         Elapsed = 0.f;
     }
+}
+
+void ASpartaArcadeZoneManager::ApplyZoneRow()
+{
+    if (!ZoneTable) return;
+
+    const FSpartaArcadeZoneRow* Row =
+        ZoneTable->FindRow<FSpartaArcadeZoneRow>(ZoneRowName, TEXT("ApplyZoneRow"));
+    if (!Row)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Zone] ZoneTable에 Row '%s'가 없어요 — 기본 수치 사용"),
+            *ZoneRowName.ToString());
+        return;
+    }
+
+    ActivationDelay = Row->ActivationDelay;
+    ShrinkDuration = Row->ShrinkDuration;
+    WarningLead = Row->WarningLead;
+    BlockHeightTiles = Row->BlockHeightTiles;
+
+    UE_LOG(LogTemp, Display, TEXT("[Zone] DT 수치 적용: %s / Row '%s'"),
+        *ZoneTable->GetName(), *ZoneRowName.ToString());
 }
 
 void ASpartaArcadeZoneManager::ApplyColor(UHierarchicalInstancedStaticMeshComponent* Comp, const FLinearColor& Col)
@@ -135,12 +159,12 @@ void ASpartaArcadeZoneManager::Tick(float DeltaSeconds)
         }
     }
 
-    RefreshVisuals();  
+    RefreshVisuals();   // 서버·클라 모두 진행도로 렌더
 }
 
 void ASpartaArcadeZoneManager::OnRep_Progress()
 {
-    RefreshVisuals();   
+    RefreshVisuals();   // 클라: 복제 즉시 반영
 }
 
 void ASpartaArcadeZoneManager::RefreshVisuals()

@@ -6,15 +6,15 @@
 #include "SpartaArcadeMapGrid.generated.h"
 
 /**
- * ¸ÊÀÇ ±×¸®µå.
+ * ë§µì˜ ê·¸ë¦¬ë“œ.
  *
- * ¸ÊÀ» Å¸ÀÏ Á¾·ùÀÇ Ç¥ ÇÏ³ª·Î 
- *   - »ı¼º: Ç¥¸¦ Ã¤¿î´Ù
- *   - ºô´õ: Ç¥¸¦ ÀĞ¾î¼­ ¹Ù´Ú/º®/¹Ú½º ¾×ÅÍ¸¦ ±ñ´Ù
- *   - ³ªÁß¿¡: ¹Ì´Ï¸Ê¡¤Å¸ÀÏÈ¿°ú¡¤ÀÚ±âÀå ¼öÃàÀÌ ÀüºÎ Ç¥¸¦ ÀĞ°Å³ª °íÄ£´Ù
+ * ë§µì„ íƒ€ì¼ ì¢…ë¥˜ì˜ í‘œ í•˜ë‚˜ë¡œ 
+ *   - ìƒì„±: í‘œë¥¼ ì±„ìš´ë‹¤
+ *   - ë¹Œë”: í‘œë¥¼ ì½ì–´ì„œ ë°”ë‹¥/ë²½/ë°•ìŠ¤ ì•¡í„°ë¥¼ ê¹ë‹¤
+ *   - ë‚˜ì¤‘ì—: ë¯¸ë‹ˆë§µÂ·íƒ€ì¼íš¨ê³¼Â·ìê¸°ì¥ ìˆ˜ì¶•ì´ ì „ë¶€ í‘œë¥¼ ì½ê±°ë‚˜ ê³ ì¹œë‹¤
  *
- * ÀúÀå ¹æ½Ä: 2Â÷¿øÃ³·³ º¸ÀÌÁö¸¸ ½ÇÁ¦·Ğ 1Â÷¿ø ¹è¿­(TArray).
- *   Ä­ (X, Y) ¡æ ¹è¿­ ÀÎµ¦½º = Y * Width + X  
+ * ì €ì¥ ë°©ì‹: 2ì°¨ì›ì²˜ëŸ¼ ë³´ì´ì§€ë§Œ ì‹¤ì œë¡  1ì°¨ì› ë°°ì—´(TArray).
+ *   ì¹¸ (X, Y) â†’ ë°°ì—´ ì¸ë±ìŠ¤ = Y * Width + X  
  */
 USTRUCT(BlueprintType)
 struct FSpartaArcadeMapGrid
@@ -30,7 +30,7 @@ struct FSpartaArcadeMapGrid
     UPROPERTY(BlueprintReadOnly, Category = "SpartaArcade|Map")
     TArray<ESpartaArcadeTileType> Tiles;
 
-    /** ±×¸®µå¸¦ (W x H) Å©±â·Î Àâ°í ÀüºÎ ÇÑ Á¾·ù·Î Ã¤¿ò. */
+    /** ê·¸ë¦¬ë“œë¥¼ (W x H) í¬ê¸°ë¡œ ì¡ê³  ì „ë¶€ í•œ ì¢…ë¥˜ë¡œ ì±„ì›€. */
     void Init(int32 InWidth, int32 InHeight, ESpartaArcadeTileType Fill = ESpartaArcadeTileType::Empty)
     {
         Width  = InWidth;
@@ -62,9 +62,9 @@ struct FSpartaArcadeMapGrid
     }
 
     /**
-     * 0´Ü°è(ÀÓ½Ã) µ¥ÀÌÅÍ »ı¼º: Å×µÎ¸® º® + ³»ºÎ ¹Ú½º ·£´ı + ³× ¸ğ¼­¸® ¾ÈÀü±¸¿ª.
+     * 0ë‹¨ê³„(ì„ì‹œ) ë°ì´í„° ìƒì„±: í…Œë‘ë¦¬ ë²½ + ë‚´ë¶€ ë°•ìŠ¤ ëœë¤ + ë„¤ ëª¨ì„œë¦¬ ì•ˆì „êµ¬ì—­.
      *
-     * ¾×ÅÍ¸¦ ¸¸µéÁö ¾Ê´Â "¼ø¼ö µ¥ÀÌÅÍ" ÇÔ¼ö. °°Àº Seed ¡æ Ç×»ó °°Àº ¸Ê.
+     * ì•¡í„°ë¥¼ ë§Œë“¤ì§€ ì•ŠëŠ” "ìˆœìˆ˜ ë°ì´í„°" í•¨ìˆ˜. ê°™ì€ Seed â†’ í•­ìƒ ê°™ì€ ë§µ.
      */
     static void GenerateSimple(FSpartaArcadeMapGrid& OutGrid, int32 Seed,
                                int32 InWidth = 30, int32 InHeight = 30,
@@ -105,9 +105,9 @@ struct FSpartaArcadeMapGrid
             }
         };
 
-        ClearPocket(1, 1, SafeMargin);                                                  // ÁÂ»ó´Ü
-        ClearPocket(InWidth - 1 - SafeMargin, 1, SafeMargin);                           // ¿ì»ó´Ü
-        ClearPocket(1, InHeight - 1 - SafeMargin, SafeMargin);                          // ÁÂÇÏ´Ü
-        ClearPocket(InWidth - 1 - SafeMargin, InHeight - 1 - SafeMargin, SafeMargin);   // ¿ìÇÏ´Ü
+        ClearPocket(1, 1, SafeMargin);                                                  // ì¢Œìƒë‹¨
+        ClearPocket(InWidth - 1 - SafeMargin, 1, SafeMargin);                           // ìš°ìƒë‹¨
+        ClearPocket(1, InHeight - 1 - SafeMargin, SafeMargin);                          // ì¢Œí•˜ë‹¨
+        ClearPocket(InWidth - 1 - SafeMargin, InHeight - 1 - SafeMargin, SafeMargin);   // ìš°í•˜ë‹¨
     }
 };

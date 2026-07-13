@@ -1,4 +1,4 @@
-﻿#include "SpartaArcadeBomb.h"
+#include "SpartaArcadeBomb.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Engine/World.h"
@@ -6,8 +6,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "NiagaraFunctionLibrary.h"
 #include "SpartaArcadeCharacter.h"
-#include "SpartaArcadeBlock.h"
 #include "BreakableBox.h"
+#include "Damageable.h"
 #include "WorldPartition/HLOD/DestructibleHLODComponent.h"
 
 ASpartaArcadeBomb::ASpartaArcadeBomb()
@@ -126,6 +126,14 @@ bool ASpartaArcadeBomb::SweepAndApplyDamage(const FVector& Start, const FVector&
 	{
 		if (IsValid(DamagedActor))
 		{
+			// 폭발을 가로막는 장애물(BlocksExplosion이 true이거나 ABreakableBox인 대상)은 무시 목록에 넣지 않음으로써 다음 루프 스윕 시 가로막혀 불길이 관통하지 못하도록 처리
+			if (DamagedActor->Implements<UDamageable>())
+			{
+				if (DamagedActor->IsA(ABreakableBox::StaticClass()) || IDamageable::Execute_BlocksExplosion(DamagedActor))
+				{
+					continue;
+				}
+			}
 			TraceParams.AddIgnoredActor(DamagedActor);
 		}
 	}
@@ -161,19 +169,24 @@ bool ASpartaArcadeBomb::HandleExplosionHit(AActor* HitActor)
 		return false;
 	}
 
-	// 파괴 가능 상자 블록 발견 시 부수고 불길 차단 (1칸만 파괴)
-	if (ASpartaArcadeBlock* Block = Cast<ASpartaArcadeBlock>(HitActor))
+	// IDamageable 인터페이스를 사용하는 대상(상자, 캐릭터 등) 일괄 피격 처리
+	if (HitActor->GetClass()->ImplementsInterface(UDamageable::StaticClass()))
 	{
-		Block->DestroyBlock();
-		return true;
-	}
-
-	// 캐릭터 피격 처리 (캐릭터는 불길을 차단하지 않고 관통 통과)
-	if (ASpartaArcadeCharacter* Character = Cast<ASpartaArcadeCharacter>(HitActor))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("폭풍이 캐릭터를 최초 감지했습니다! 대상: %s, 줄 데미지: %f"), *Character->GetName(), ExplosionDamage);
-		ApplyExplosionDamage(Character);
-		return false;
+		if (IDamageable::Execute_CanTakeDamage(HitActor))
+		{
+			if (!DamagedActors.Contains(HitActor))
+			{
+				IDamageable::Execute_TakeExplosionDamage(HitActor);
+				DamagedActors.Add(HitActor);
+			}
+		}
+		// 클래스가 ABreakableBox를 상속받은 대상이면 블루프린트 오버라이드 여부와 상관없이 확실하게 폭발을 차단(true)하도록 보완
+		if (HitActor->IsA(ABreakableBox::StaticClass()))
+		{
+			return true;
+		}
+		// 인터페이스에 정의된 폭발 차단 여부에 따라 불길 관통/차단 처리
+		return IDamageable::Execute_BlocksExplosion(HitActor);
 	}
 	
 	// 다른 폭탄이 아닌 고정 벽 지형이면 즉시 차단
@@ -197,8 +210,8 @@ void ASpartaArcadeBomb::Explode()
 	FVector StartLoc = GetActorLocation();
 	ExplosionLocations.Add(StartLoc);
 
-	// 중심부 대미지 판정을 SweepAndApplyDamage 헬퍼로 통합 수행
-	SweepAndApplyDamage(StartLoc, StartLoc + FVector(0.f, 0.f, 1.f), GridSize * 0.4f);
+	// 중심부 대미지 판정 범위를 좁혀 옆 칸의 상자가 미리 파괴되지 않도록 방지
+	SweepAndApplyDamage(StartLoc, StartLoc + FVector(0.f, 0.f, 1.f), GridSize * 0.2f);
 	
 	// 십자 4방향으로 폭폭 화염 투사
 	PerformExplosionDirection(FVector(1.f, 0.f, 0.f));  // 북
@@ -239,8 +252,8 @@ void ASpartaArcadeBomb::PerformExplosionDirection(const FVector& Direction)
 
 		ExplosionLocations.Add(TargetLoc);
 
-		// 단일 스윕 헬퍼 호출을 통해 최초 1회 감지 보장 및 벽 차단 판정 처리
-		if (SweepAndApplyDamage(StartLoc + Direction * ((i - 1) * GridSize), TargetLoc, GridSize * 0.35f))
+		// 단일 스윕 반경을 GridSize * 0.3f로 다듬어 오차로 인한 인접 물체 중복 피격을 방지
+		if (SweepAndApplyDamage(StartLoc + Direction * ((i - 1) * GridSize), TargetLoc, GridSize * 0.3f))
 		{
 			break;
 		}

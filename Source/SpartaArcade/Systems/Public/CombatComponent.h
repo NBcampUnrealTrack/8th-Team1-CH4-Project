@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
@@ -57,6 +57,10 @@ public:
 
     UFUNCTION(BlueprintPure)
     bool IsShielded() const { return bHasShield; }
+
+    // 기절 진행률 게이지 처리를 위한 퍼센트 반환 함수 추가
+    UFUNCTION(BlueprintPure, Category = "Combat")
+    float GetStunProgressPercent() const;
     
     UPROPERTY(BlueprintAssignable)
     FOnCombatEvent OnHit;

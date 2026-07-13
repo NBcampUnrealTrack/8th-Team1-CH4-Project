@@ -1,6 +1,4 @@
-﻿#include "CombatComponent.h"
-
-#include "AbilitySystemInterface.h"
+#include "CombatComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Framework/Public/InGame/SpartaPlayerState.h"
 
@@ -23,11 +21,6 @@ void UCombatComponent::GetLifetimeReplicatedProps(
 void UCombatComponent::BeginPlay()
 {
     Super::BeginPlay();
-    
-    if (IAbilitySystemInterface* ASCInterface = Cast<IAbilitySystemInterface>(GetOwner()))
-    {
-        CachedASC = ASCInterface->GetAbilitySystemComponent();
-    }
 }
 
 void UCombatComponent::InitializePlayerState(APlayerState* NewPlayerState)
@@ -100,12 +93,6 @@ void UCombatComponent::ApplyDamage()
         bHasShield = false;
         OnShieldBlock.Broadcast();
 		OnRep_HasShield();
-        
-        if (IsValid(CachedASC) && ActiveShieldEffectHandle.IsValid())
-        {
-            CachedASC->RemoveActiveGameplayEffect(ActiveShieldEffectHandle);
-        }
-        
         return;
     }
 
@@ -136,46 +123,17 @@ void UCombatComponent::GrantShield()
 {
     bHasShield = true;
 	OnRep_HasShield();
-    
-    if (IsValid(CachedASC) && IsValid(ShieldEffectClass))
-    {
-        FGameplayEffectContextHandle Context = CachedASC->MakeEffectContext();
-        FGameplayEffectSpecHandle Spec = CachedASC->MakeOutgoingSpec(ShieldEffectClass, 1.f, Context);
-
-        if (Spec.IsValid())
-        {
-            ActiveShieldEffectHandle = CachedASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
-        }
-    }
 }
 
 //상태 전이 함수들 
 
 void UCombatComponent::EnterStun()
 {
-    if (IsValid(SpartaPlayerState))
-    {
-        SpartaPlayerState->SetCurrentState(EBomberPlayerState::Stunned);
-    }
+    SpartaPlayerState->SetCurrentState(EBomberPlayerState::Stunned);
     OnStun.Broadcast();
 
-    if (IsValid(CachedASC) && IsValid(StunEffectClass))
-    {
-        FGameplayEffectContextHandle Context = CachedASC->MakeEffectContext();
-        FGameplayEffectSpecHandle Spec = CachedASC->MakeOutgoingSpec(StunEffectClass, 1.f, Context);
-
-        if (Spec.IsValid())
-        {
-            ActiveStunEffectHandle = CachedASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
-
-            // 이 핸들 전용 제거 델리게이트를 지금 구독
-            if (FOnActiveGameplayEffectRemoved_Info* RemovedDelegate =
-                CachedASC->OnGameplayEffectRemoved_InfoDelegate(ActiveStunEffectHandle))
-            {
-                RemovedDelegate->AddUObject(this, &UCombatComponent::OnAnyGameplayEffectRemoved);
-            }
-        }
-    }
+    GetWorld()->GetTimerManager().SetTimer(
+        StunTimerHandle, this, &UCombatComponent::Eliminate, StunDuration, false);
 }
 
 void UCombatComponent::Eliminate()
@@ -191,18 +149,12 @@ void UCombatComponent::Eliminate()
 
 void UCombatComponent::Revive()
 {
-    if (IsValid(SpartaPlayerState))
-    {
-        SpartaPlayerState->SetHearts(SpartaPlayerState->GetStartHearts());
-        SpartaPlayerState->SetCurrentState(EBomberPlayerState::Alive);
-    }
+    GetWorld()->GetTimerManager().ClearTimer(StunTimerHandle);
+
+    SpartaPlayerState->SetHearts(SpartaPlayerState->GetStartHearts());
+    SpartaPlayerState->SetCurrentState(EBomberPlayerState::Alive);
     bInvincible = true;
-    
-    if (IsValid(CachedASC) && ActiveStunEffectHandle.IsValid())
-    {
-        CachedASC->RemoveActiveGameplayEffect(ActiveStunEffectHandle);
-    }
-    
+
     OnRevived.Broadcast();
 
     GetWorld()->GetTimerManager().SetTimer(
@@ -213,16 +165,14 @@ void UCombatComponent::Revive()
 void UCombatComponent::SelfRevive()
 {
     if (!GetOwner()->HasAuthority()) return;
+
     if (SpartaPlayerState->GetCurrentState() != EBomberPlayerState::Stunned) return;
+
+    GetWorld()->GetTimerManager().ClearTimer(StunTimerHandle);
 
     SpartaPlayerState->SetHearts(SpartaPlayerState->GetSelfReviveHearts());
     SpartaPlayerState->SetCurrentState(EBomberPlayerState::Alive);
-    
-    if (IsValid(CachedASC) && ActiveStunEffectHandle.IsValid())
-    {
-        CachedASC->RemoveActiveGameplayEffect(ActiveStunEffectHandle);
-    }
-    
+
     OnSelfRevive.Broadcast();
 }
 
@@ -231,11 +181,8 @@ void UCombatComponent::InstantEliminate()
     //자기장 압사 - 기절 없이 즉시 탈락
     if (!GetOwner()->HasAuthority()) return;
 
-    if (IsValid(CachedASC) && ActiveStunEffectHandle.IsValid())
-    {
-        CachedASC->RemoveActiveGameplayEffect(ActiveStunEffectHandle);
-    }
-    
+    GetWorld()->GetTimerManager().ClearTimer(StunTimerHandle);
+
     SpartaPlayerState->SetCurrentState(EBomberPlayerState::Eliminated);
     OnEliminated.Broadcast();
 
@@ -286,21 +233,26 @@ void UCombatComponent::OnRep_HasShield()
 	}
 }
 
-void UCombatComponent::OnAnyGameplayEffectRemoved(const FGameplayEffectRemovalInfo& RemovalInfo)
-{
-    if (!IsValid(SpartaPlayerState)) return;
-    if (SpartaPlayerState->GetCurrentState() != EBomberPlayerState::Stunned) return;
-
-    Eliminate();
-}
-
-
 // 캐릭터 위임 연동을 위한 Heal 함수 구현 추가
 void UCombatComponent::Heal(int32 Amount)
 {
     if (SpartaPlayerState->GetCurrentState() != EBomberPlayerState::Alive) return;
     SpartaPlayerState->SetHearts(FMath::Clamp(SpartaPlayerState->GetHearts() + Amount, 0, SpartaPlayerState->GetStartHearts()));
     OnHit.Broadcast(); // UI 갱신을 위해 브로드캐스트
+}
+
+// 기절 진행 퍼센트를 가져오는 함수 구현 추가
+float UCombatComponent::GetStunProgressPercent() const
+{
+    if (SpartaPlayerState && SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Stunned)
+    {
+        if (GetWorld() && StunDuration > 0.f)
+        {
+            float Remaining = GetWorld()->GetTimerManager().GetTimerRemaining(StunTimerHandle);
+            return FMath::Clamp((StunDuration - Remaining) / StunDuration, 0.f, 1.f);
+        }
+    }
+    return 0.f;
 }
 
 void UCombatComponent::BroadcastCurrentState()
