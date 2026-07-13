@@ -5,6 +5,8 @@
 #include "SpartaArcadeBomb.h"
 #include "BomberGameplayTags.h"
 #include "AbilitySystemComponent.h"
+#include "BomberAttributeSet.h"
+#include "SpartaArcadeCharacter.h"
 
 UGA_PlaceBomb::UGA_PlaceBomb()
 {
@@ -21,12 +23,35 @@ void UGA_PlaceBomb::ActivateAbility(
 	const FGameplayAbilityActivationInfo ActivationInfo,
 	const FGameplayEventData* TriggerEventData)
 {
+	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+	
 	AActor* AvatarActor = ActorInfo->AvatarActor.Get();
 	if (!IsValid(AvatarActor) || !IsValid(BombClass))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
+	ASpartaArcadeCharacter* Character = Cast<ASpartaArcadeCharacter>(AvatarActor);
+	if (!IsValid(Character))
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+	
+	// AttributeSet에서 폭발 범위 읽어오기
+	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
+	const UBomberAttributeSet* AttrSet = ASC->GetSet<UBomberAttributeSet>();
+	if (!IsValid(AttrSet))
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
+	int32 BombRange = FMath::RoundToInt(AttrSet->GetBombRange());
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.SpawnCollisionHandlingOverride =
@@ -38,6 +63,11 @@ void UGA_PlaceBomb::ActivateAbility(
 		FRotator::ZeroRotator,
 		SpawnParams
 	);
+
+	if (IsValid(NewBomb))
+	{
+		NewBomb->InitializeBomb(Character, BombRange);
+	}
 
 	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 }

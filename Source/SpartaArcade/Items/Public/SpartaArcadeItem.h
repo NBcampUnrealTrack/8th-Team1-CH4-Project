@@ -37,6 +37,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gameplay", Replicated)
 	ESpartaArcadeItemType ItemType;
+	
+	UPROPERTY(EditAnywhere, Category="GAS")
+	TSubclassOf<class UGameplayEffect> StatBoostEffectClass;
 
 	// 위아래 둥둥 뜨는 둔탁한 상하 이동 주파수 및 높이 정의
 	UPROPERTY(EditAnywhere, Category = "Aesthetics")

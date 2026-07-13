@@ -2,6 +2,7 @@
 
 
 #include "Systems/Public/BomberAttributeSet.h"
+#include "BomberTypes.h"
 #include "Net/UnrealNetwork.h"
 
 
@@ -55,6 +56,33 @@ void UBomberAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 	DOREPLIFETIME(UBomberAttributeSet, MaxBombRange);
 	DOREPLIFETIME(UBomberAttributeSet, MaxBombCount);
 	DOREPLIFETIME(UBomberAttributeSet, MaxMoveSpeed);
+}
+
+void UBomberAttributeSet::InitializeFromDataTable(UDataTable* InCharacterStatTable, FName RowName)
+{
+	if (!IsValid(InCharacterStatTable))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("BomberAttributeSet: CharacterStatTable이 없어요!"));
+		return;
+	}
+	
+	FCharacterStatRow* Row = InCharacterStatTable->FindRow<FCharacterStatRow>(RowName, TEXT("InitializeFromDataTable"));
+	
+	if (Row == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("BomberAttributeSet: Row [%s]를 찾을 수 없어요!"),
+			*RowName.ToString());
+		return;
+	}
+	
+	//순서 고정
+	InitMaxBombRange(Row->MaxBombRange);
+	InitMaxBombCount(Row->MaxBombCount);
+	InitMaxMoveSpeed(Row->MaxMoveSpeed);
+
+	InitBombRange(Row->StartBombRange);
+	InitBombCount(Row->StartBombCount);
+	InitMoveSpeed(Row->StartMoveSpeed);
 }
 
 void UBomberAttributeSet::OnRep_BombRange(const FGameplayAttributeData& OldValue)

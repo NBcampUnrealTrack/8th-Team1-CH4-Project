@@ -4,6 +4,7 @@
 #include "GameFramework/Character.h"
 #include "Templates/SubclassOf.h"
 #include "Net/UnrealNetwork.h"
+#include "AbilitySystemInterface.h" 
 #include "SpartaArcadeCharacter.generated.h"
 
 // 컴포넌트 의존 관계 설정을 위한 전방 선언
@@ -11,6 +12,9 @@ class UStatComponent;
 class UCombatComponent;
 class UBombPlacerComponent;
 class UDataTable;
+class UAbilitySystemComponent;
+class UBomberAttributeSet;
+class UGameplayAbility;
 class ASpartaPlayerState;
 
 // 캐릭터 스탯 특화 선택을 위한 타입 열거형
@@ -23,13 +27,15 @@ enum class ESpartaArcadeCharacterType : uint8
 };
 
 UCLASS(Blueprintable)
-class SPARTAARCADE_API ASpartaArcadeCharacter : public ACharacter
+class SPARTAARCADE_API ASpartaArcadeCharacter : public ACharacter, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
 public:
 	ASpartaArcadeCharacter();
 
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	
 	virtual void Tick(float DeltaSeconds) override;
 
 	// 기절 구출(아군) 및 처치(적군) 처리를 위한 충돌 오버랩
@@ -38,6 +44,9 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	virtual void PossessedBy(AController* NewController) override;
+
+	
 	void InitializeCharacterComponents();
 
 public:
@@ -78,6 +87,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Gameplay")
 	bool IsStunned() const;
 
+
 protected:
 	// 컴포넌트 초기화를 위한 데이터 테이블 구조 노출
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attributes|Setup")
@@ -107,6 +117,15 @@ protected:
 
 	int32 MaxInitializedComponentsCount;
 	int32 InitializedComponentsCount;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UBomberAttributeSet> AttributeSet;	
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	TSubclassOf<UGameplayAbility> PlaceBombAbilityClass;
 
 	// CombatComponent 측 기절 및 무적 타이머로 통합
 	// FTimerHandle StunTimerHandle;
@@ -124,6 +143,7 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class USpringArmComponent* CameraBoom;
+	
 	
 	FVector GetSnappedKickDirection() const;
 

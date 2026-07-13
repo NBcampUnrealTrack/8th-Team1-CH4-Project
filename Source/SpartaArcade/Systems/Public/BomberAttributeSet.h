@@ -54,6 +54,9 @@ public:
 
 	virtual void GetLifetimeReplicatedProps(
 		TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	
+	UFUNCTION(BlueprintCallable)
+	void InitializeFromDataTable(UDataTable* InCharacterStatTable, FName RowName);
 
 protected:
 	UFUNCTION() void OnRep_BombRange(const FGameplayAttributeData& OldValue);

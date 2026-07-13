@@ -18,6 +18,8 @@
 #include "Framework/Public/InGame/SpartaPlayerState.h"
 #include "SpartaArcadePlayerController.h"
 #include "UI/Public/SpartaHUDWidget.h"
+#include "AbilitySystemComponent.h"
+#include "BomberAttributeSet.h"
 
 ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 {
@@ -60,6 +62,8 @@ ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 
 	MaxInitializedComponentsCount = 100;
 	InitializedComponentsCount = 0;
+	
+	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 
 	// 무브먼트 스피드 제어는 StatComponent 내 OnRep_MoveSpeed 에서 수행
 	// GetCharacterMovement()->MaxWalkSpeed = BaseMovementSpeed + (SpeedLevel * 75.0f);
@@ -68,11 +72,34 @@ ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 	bReplicates = true;
 }
 
+UAbilitySystemComponent* ASpartaArcadeCharacter::GetAbilitySystemComponent() const
+{
+	return AbilitySystemComponent;
+
+}
+
 void ASpartaArcadeCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	InitializeCharacterComponents();
 	
+}
+
+void ASpartaArcadeCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	
+	if (IsValid(AbilitySystemComponent))
+	{
+		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+
+		// 서버에서만 어빌리티 부여
+		if (HasAuthority() && IsValid(PlaceBombAbilityClass))
+		{
+			AbilitySystemComponent->GiveAbility(
+				FGameplayAbilitySpec(PlaceBombAbilityClass, 1, INDEX_NONE, this));
+		}
+	}
 }
 
 void ASpartaArcadeCharacter::Tick(float DeltaSeconds)
@@ -154,7 +181,11 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 			StatComponent->SetCharacterStatTable(CharacterStatTable);
 		}
 		StatComponent->InitializeFromDataTable(RowName);
-		
+	}
+	
+	if (IsValid(AttributeSet) && IsValid(CharacterStatTable))
+	{
+		AttributeSet->InitializeFromDataTable(CharacterStatTable, RowName);
 	}
 
 	if (CombatComponent)
@@ -192,9 +223,13 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 void ASpartaArcadeCharacter::PlaceBomb()
 {
 	// BombPlacerComponent에 폭탄 설치 위임
-	if (BombPlacerComponent)
+	// if (BombPlacerComponent)
+	// {
+	// 	BombPlacerComponent->ServerPlaceBomb();
+	// }
+	if (IsValid(AbilitySystemComponent) && IsValid(PlaceBombAbilityClass))
 	{
-		BombPlacerComponent->ServerPlaceBomb();
+		AbilitySystemComponent->TryActivateAbilityByClass(PlaceBombAbilityClass);
 	}
 }
 

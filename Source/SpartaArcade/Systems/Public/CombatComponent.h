@@ -3,6 +3,11 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "BomberTypes.h"
+#include "AbilitySystemInterface.h"
+#include "GameplayEffectTypes.h"
+#include "AbilitySystemComponent.h"
+#include "GameplayEffect.h"
+#include "ActiveGameplayEffectHandle.h"
 #include "CombatComponent.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCombatEvent);
@@ -20,10 +25,8 @@ public:
     // 게임 시작 시 DataTable에서 수치 로드
     UFUNCTION(BlueprintCallable)
     void InitializeFromDataTable(UDataTable* InCombatStatTable);
-
-    // ─── 외부에서 호출하는 핵심 함수 ──────────────
+    
     // 폭발/장애물 등에 의한 피해 처리
-    // TODO: 캐릭터 파트의 IDamageable 구현부에서 이 함수를 호출하도록 협의 필요
     UFUNCTION(BlueprintCallable)
     void ApplyDamage();
 
@@ -31,7 +34,7 @@ public:
     UFUNCTION(BlueprintPure)
     bool CanTakeDamage() const;
 
-    // ─── 충돌 처리 (캐릭터 Overlap에서 호출) ─────
+    // 충돌 처리 (캐릭터 Overlap에서 호출) 
     UFUNCTION(BlueprintCallable)
     void OnOverlapWithEnemy(AActor* Enemy);
 
@@ -42,15 +45,13 @@ public:
     UFUNCTION(BlueprintCallable)
     void SelfRevive();
 
-    // 자기장 압사 - 기절 없이 즉시 탈락
+    // 자기장 압사 
     UFUNCTION(BlueprintCallable)
     void InstantEliminate();
 
-    // 방어막 획득 시 호출 (아이템 시스템과 연동)
     UFUNCTION(BlueprintCallable)
     void GrantShield();
 
-    // 캐릭터 위임 연동을 위한 Getter 및 Heal 함수 추가
     UFUNCTION(BlueprintCallable)
     void Heal(int32 Amount);
 
@@ -77,6 +78,7 @@ public:
 
     UPROPERTY(BlueprintAssignable, Category = "Events | UI")
 	FOnbHasShieldChangedSignature OnbHasShieldChanged;
+
 
     virtual void GetLifetimeReplicatedProps(
          TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -112,11 +114,26 @@ private:
 
     UFUNCTION()
 	void OnRep_HasShield();
+    
+    void OnAnyGameplayEffectRemoved(const FGameplayEffectRemovalInfo& RemovalInfo);
 
-    // 수치 (DataTable에서 로드)
     float StunDuration = 3.f;
     float InvincibleDuration = 1.f;
     
     FTimerHandle StunTimerHandle;
     FTimerHandle InvincibleTimerHandle;
+    
+    UPROPERTY()
+    TObjectPtr<UAbilitySystemComponent> CachedASC;
+
+    UPROPERTY(EditDefaultsOnly, Category="GAS")
+    TSubclassOf<UGameplayEffect> StunEffectClass;
+    
+    FActiveGameplayEffectHandle ActiveStunEffectHandle;
+    
+    UPROPERTY(EditDefaultsOnly, Category="GAS")
+    TSubclassOf<UGameplayEffect> ShieldEffectClass;
+
+    FActiveGameplayEffectHandle ActiveShieldEffectHandle;
+
 };

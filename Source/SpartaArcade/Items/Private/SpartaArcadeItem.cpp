@@ -1,6 +1,7 @@
 ﻿#include "SpartaArcadeItem.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "ItemDropComponent.h"
 #include "SpartaArcadeCharacter.h"
 
 ASpartaArcadeItem::ASpartaArcadeItem()
@@ -57,33 +58,35 @@ void ASpartaArcadeItem::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(ASpartaArcadeItem, ItemType);
 }
 
-void ASpartaArcadeItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, 
-                                      UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, 
-                                      bool bFromSweep, const FHitResult& SweepResult)
+void ASpartaArcadeItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+									  UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
+									  bool bFromSweep, const FHitResult& SweepResult)
 {
 	if (HasAuthority() && OtherActor && OtherActor != this)
 	{
 		ASpartaArcadeCharacter* Character = Cast<ASpartaArcadeCharacter>(OtherActor);
 		if (Character)
 		{
-			// 수집 아이템에 따른 스탯 버프 반영
 			switch (ItemType)
 			{
 			case ESpartaArcadeItemType::SpeedBoost:
-				Character->AddSpeedBoost();
-				break;
 			case ESpartaArcadeItemType::ExtraBomb:
-				Character->AddExtraBomb();
-				break;
 			case ESpartaArcadeItemType::IncreaseRange:
-				Character->IncreaseExplosionRange();
+				
+				if (IsValid(StatBoostEffectClass))
+				{
+					UItemDropComponent::ApplyItemEffect(Character, StatBoostEffectClass);
+				}
 				break;
+
 			case ESpartaArcadeItemType::FirstAidKit:
 				Character->AddFirstAidKit();
 				break;
+
 			case ESpartaArcadeItemType::Shield:
 				Character->AddShield();
 				break;
+
 			default:
 				break;
 			}
