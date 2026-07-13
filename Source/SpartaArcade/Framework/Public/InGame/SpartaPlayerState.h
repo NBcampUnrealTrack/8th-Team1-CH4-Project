@@ -10,14 +10,12 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHeartsChangedSignature, int32, C
 // 기절
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStunStateChangedSignature, bool, bIsActive);
 
-// Modified: 구급약 보유 개수 변화 통지용 델리게이트 선언
+// 구급약 보유 개수 변화 통지용 델리게이트 선언
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnFirstAidKitsChangedSignature, int32, NewCount);
 
 enum class ESpartaArcadeCharacterType : uint8;
 enum class EBomberPlayerState : uint8;
-/**
- * 
- */
+
 UCLASS()
 class SPARTAARCADE_API ASpartaPlayerState : public APlayerState
 {

@@ -174,13 +174,13 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 		switch (SpartaPlayerState->GetCharacterType())
 		{
 		case ESpartaArcadeCharacterType::Explosive:
-			RowName = FName(TEXT("Row_Explosion"));
+			RowName = FName(TEXT("Explosion"));
 			break;
 		case ESpartaArcadeCharacterType::Speed:
-			RowName = FName(TEXT("Row_Speed"));
+			RowName = FName(TEXT("Speed"));
 			break;
 		case ESpartaArcadeCharacterType::BombCount:
-			RowName = FName(TEXT("Row_BombCount"));
+			RowName = FName(TEXT("BombCount"));
 			break;
 		}
 	}
@@ -234,13 +234,16 @@ void ASpartaArcadeCharacter::PlaceBomb()
 
 void ASpartaArcadeCharacter::AddFirstAidKit()
 {
-	SpartaPlayerState->SetFirstAidKits(SpartaPlayerState->GetFirstAidKits() + 1);
+	if (SpartaPlayerState && SpartaPlayerState->GetFirstAidKits() < 1)
+	{
+		SpartaPlayerState->SetFirstAidKits(SpartaPlayerState->GetFirstAidKits() + 1);
+	}
 }
 
 void ASpartaArcadeCharacter::AddShield()
 {
 	// CombatComponent에 방어막 획득 위임
-	if (CombatComponent)
+	if (CombatComponent && !CombatComponent->IsShielded())
 	{
 		CombatComponent->GrantShield();
 	}
@@ -280,6 +283,17 @@ void ASpartaArcadeCharacter::PerformUseFirstAidKit()
 		{
 			SpartaPlayerState->SetFirstAidKits(SpartaPlayerState->GetFirstAidKits() - 1);
 			CombatComponent->Heal(1);
+		}
+	}
+}
+
+void ASpartaArcadeCharacter::UseShield()
+{
+	if (CombatComponent && IsValid(SpartaPlayerState))
+	{
+		if (CombatComponent->IsShielded() && SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Alive)
+		{
+			CombatComponent->UseShield();
 		}
 	}
 }

@@ -35,15 +35,15 @@ struct FCharacterStatRow : public FTableRowBase
 
 	// 폭발 범위 시작값
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	int32 StartBombRange = 2;
+	int32 StartBombRange = 1;
 
 	// 보유 폭탄 수 시작값
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	int32 StartBombCount = 3;
+	int32 StartBombCount = 1;
 
 	// 이동 속도 시작값 (단계)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	int32 StartMoveSpeed = 3;
+	int32 StartMoveSpeed = 1;
 
 	// 스탯 상한값
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)

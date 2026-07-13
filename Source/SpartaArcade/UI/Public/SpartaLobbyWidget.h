@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
@@ -8,6 +8,7 @@
 class UScrollBox;
 class UButton;
 class UTextBlock;
+class USpartaButton;
 
 UCLASS()
 class SPARTAARCADE_API USpartaLobbyWidget : public UUserWidget
@@ -22,19 +23,19 @@ protected:
     UScrollBox* PlayerListScrollBox;
 
     UPROPERTY(meta = (BindWidget))
-    UButton* CharacterAButton;
+    USpartaButton* CharacterAButton;
 
     UPROPERTY(meta = (BindWidget))
-    UButton* CharacterBButton;
+    USpartaButton* CharacterBButton;
 
     UPROPERTY(meta = (BindWidget))
-    UButton* CharacterCButton;
+    USpartaButton* CharacterCButton;
 
     UPROPERTY(meta = (BindWidget))
-    UButton* ReadyButton;
+    USpartaButton* ReadyButton;
 
     UPROPERTY(meta = (BindWidget))
-    UButton* StartButton;
+    USpartaButton* StartButton;
 
     UPROPERTY(meta = (BindWidget))
     UTextBlock* CountdownTextBlock;

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -66,6 +66,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Gameplay")
 	void UseFirstAidKit();
+
+	UFUNCTION(BlueprintCallable, Category = "Gameplay")
+	void UseShield();
 
 	UFUNCTION(BlueprintCallable, Category = "Gameplay")
 	void KickBomb();

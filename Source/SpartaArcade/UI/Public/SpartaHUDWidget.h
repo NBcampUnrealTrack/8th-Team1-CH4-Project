@@ -83,10 +83,12 @@ protected:
 
     // 쉴드 및 구급상자 상태를 켜고 끌 단일 아이콘 이미지 컴포넌트 선언 (OptionalWidget)
     UPROPERTY(meta = (BindWidget, OptionalWidget = true))
-    UImage* ShieldIcon;
+    UImage* ShieldImg;
 
     UPROPERTY(meta = (BindWidget, OptionalWidget = true))
-    UImage* MedKitIcon;
+    UImage* MedImg;
+
+
 
 public:
     // 하트 개수 업데이트 함수 추가
