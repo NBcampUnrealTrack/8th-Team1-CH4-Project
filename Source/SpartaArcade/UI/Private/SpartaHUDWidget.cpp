@@ -230,7 +230,7 @@ void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UStatCompo
     if(StatComp)
     {
         StatComp->OnStatsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateStats);
-        
+
         //시작 시점의 초기 스탯치 값으로 바 가시성 세팅 강제 트리거
         UpdateStats(StatComp->GetBombCount(), StatComp->GetBombRange(), StatComp->GetMoveSpeed());
 	}

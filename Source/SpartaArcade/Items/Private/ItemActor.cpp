@@ -2,9 +2,9 @@
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "ItemDropComponent.h"
-#include "StatComponent.h"
 #include "GameplayEffect.h"
 #include "Net/UnrealNetwork.h"
+#include "SpartaArcadeCharacter.h"
 
 AItemActor::AItemActor()
 {
@@ -73,16 +73,7 @@ void AItemActor::NotifyActorBeginOverlap(AActor* OtherActor)
     Super::NotifyActorBeginOverlap(OtherActor);
 
     if (!HasAuthority()) return;
-
     if (!IsValid(ItemDataTable)) return;
-
-    UStatComponent* StatComp = OtherActor->FindComponentByClass<UStatComponent>();
-    if (!IsValid(StatComp)) return;
-    
-    if (IsValid(GameplayEffectClass))
-    {
-        UItemDropComponent::ApplyItemEffect(OtherActor, GameplayEffectClass);
-    }
 
     FItemDataRow* Row = ItemDataTable->FindRow<FItemDataRow>(
         ItemRowName, TEXT("NotifyActorBeginOverlap"));
@@ -98,27 +89,50 @@ void AItemActor::NotifyActorBeginOverlap(AActor* OtherActor)
     switch (Row->ItemType)
     {
     case EBomberItemType::BombRange:
-        StatComp->GrowStat(EBomberStatType::BombRange);
-        break;
-
     case EBomberItemType::BombCount:
-        StatComp->GrowStat(EBomberStatType::BombCount);
-        break;
-
     case EBomberItemType::MoveSpeed:
-        StatComp->GrowStat(EBomberStatType::MoveSpeed);
+        if (const TSubclassOf<UGameplayEffect>* FoundEffectClass = ItemEffectMap.Find(Row->ItemType))
+        {
+            if (IsValid(*FoundEffectClass))
+            {
+                UItemDropComponent::ApplyItemEffect(OtherActor, *FoundEffectClass);
+            }
+            else
+            {
+                UE_LOG(LogTemp, Warning, TEXT("[ItemActor] ItemEffectMap에 %s 타입은 있지만 GameplayEffect가 비어있음"),
+                    *StaticEnum<EBomberItemType>()->GetNameStringByValue(static_cast<int64>(Row->ItemType)));
+            }
+        }
+        else
+        {
+            UE_LOG(LogTemp, Warning, TEXT("[ItemActor] ItemEffectMap에 %s 타입이 등록되어 있지 않음"),
+                *StaticEnum<EBomberItemType>()->GetNameStringByValue(static_cast<int64>(Row->ItemType)));
+        }
         break;
 
     case EBomberItemType::MedKit:
-        // CombatComponent 만들면 하트 회복 로직 연결
+        if (ASpartaArcadeCharacter* Character = Cast<ASpartaArcadeCharacter>(OtherActor))
+        {
+            Character->AddFirstAidKit();
+        }
         break;
 
     case EBomberItemType::Shield:
-        // CombatComponent 만들면 방어막 부여 로직 연결
+        if (ASpartaArcadeCharacter* Character = Cast<ASpartaArcadeCharacter>(OtherActor))
+        {
+            Character->AddShield();
+        }
         break;
 
     default:
         break;
+    }
+
+    if (GEngine)
+    {
+        const FString ItemTypeName = StaticEnum<EBomberItemType>()->GetNameStringByValue(static_cast<int64>(Row->ItemType));
+        GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Green,
+            FString::Printf(TEXT("%s 아이템 획득! (%s)"), *ItemTypeName, *OtherActor->GetName()));
     }
 
     Destroy();

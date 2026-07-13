@@ -113,6 +113,9 @@ private:
     void Revive();
     void EndInvincible();
 
+    // CachedASC로부터 BomberAttributeSet을 가져오는 헬퍼 (Init 계열 함수 호출을 위해 non-const로 반환)
+    class UBomberAttributeSet* GetMutableAttributeSet() const;
+
     bool bDamageThisFrame = false;
     void ResetDamageFlag();
 
