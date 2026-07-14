@@ -16,7 +16,7 @@ void USpartaArcadeStatBar::InitializeBar(int32 InMaxStat, TSubclassOf<USpartaArc
 		USpartaArcadeStatSlot* NewSlot = CreateWidget<USpartaArcadeStatSlot>(this, SlotClass);
 		if (NewSlot)
 		{
-			// Modified: 바 위젯에 에디터로 입력된 두 개의 이미지 브러시 정보를 자식 슬롯에게 동적 전달
+			// 바 위젯에 에디터로 입력된 두 개의 이미지 브러시 정보를 자식 슬롯에게 동적 전달
 			NewSlot->SetupBrushes(BaseEmptyBrush, ObtainedFilledBrush);
 			HB_SlotContainer->AddChildToHorizontalBox(NewSlot);
 			CreatedSlots.Add(NewSlot);
