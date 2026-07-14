@@ -123,6 +123,13 @@ void AItemActor::NotifyActorBeginOverlap(AActor* OtherActor)
             Character->AddShield();
         }
         break;
+        
+    case EBomberItemType::KickUnlock:
+        if (ASpartaArcadeCharacter* Character = Cast<ASpartaArcadeCharacter>(OtherActor))
+        {
+            Character->UnlockKickBomb();
+        }   
+        break;
 
     default:
         break;

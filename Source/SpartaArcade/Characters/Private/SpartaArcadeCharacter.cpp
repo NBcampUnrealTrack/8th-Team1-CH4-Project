@@ -119,16 +119,15 @@ void ASpartaArcadeCharacter::PossessedBy(AController* NewController)
 					FGameplayAbilitySpec(PlaceBombAbilityClass, 1, INDEX_NONE, this));
 			}
 
-			if (IsValid(KickBombAbilityClass))
-			{
-				AbilitySystemComponent->GiveAbility(
-					FGameplayAbilitySpec(KickBombAbilityClass, 1, INDEX_NONE, this));
-			}
-
 			if (IsValid(UseFirstAidKitAbilityClass))
 			{
 				AbilitySystemComponent->GiveAbility(
 					FGameplayAbilitySpec(UseFirstAidKitAbilityClass, 1, INDEX_NONE, this));
+			}
+			
+			if (IsValid(UseShieldAbilityClass))
+			{
+				AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(UseShieldAbilityClass, 1, INDEX_NONE, this));
 			}
 		}
 	}
@@ -271,15 +270,34 @@ void ASpartaArcadeCharacter::AddFirstAidKit()
 void ASpartaArcadeCharacter::AddShield()
 {
 	// CombatComponent에 방어막 획득 위임
-	if (CombatComponent && !CombatComponent->IsShielded())
-	{
-		CombatComponent->GrantShield();
-	}
+	if (SpartaPlayerState && SpartaPlayerState->GetShields() < 1)                                                                                                                                                               
+	{                                                                                                                                                                                                                           
+		SpartaPlayerState->SetShields(SpartaPlayerState->GetShields() + 1);                                                                                                                                                 
+	}   
 }
 
 void ASpartaArcadeCharacter::OnBombExploded()
 {
 	// 폭탄 카운트 처리는 GA_PlaceBomb 내부에서 델리게이트로 수행됨
+}
+
+void ASpartaArcadeCharacter::PerformUseShield()
+{
+	if (!SpartaPlayerState || SpartaPlayerState->GetShields() < 1) return;
+	if (!CombatComponent || CombatComponent->IsShielded()) return;
+	
+	SpartaPlayerState->SetShields(SpartaPlayerState->GetShields() - 1);
+	CombatComponent->GrantShield();
+}
+
+void ASpartaArcadeCharacter::UnlockKickBomb()
+{
+	if (!HasAuthority()) return;
+	if (!IsValid(AbilitySystemComponent) || !IsValid(KickBombAbilityClass)) return;
+	if (AbilitySystemComponent->FindAbilitySpecFromClass(KickBombAbilityClass) != nullptr) return;
+	
+	AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(KickBombAbilityClass,1, INDEX_NONE, this));
+	
 }
 
 // 구급 상자 사용 어빌리티 트리거
@@ -289,6 +307,14 @@ void ASpartaArcadeCharacter::UseFirstAidKit()
 	{
 		AbilitySystemComponent->TryActivateAbilityByClass(UseFirstAidKitAbilityClass);
 	}
+}
+
+void ASpartaArcadeCharacter::UseShield()
+{
+	if (IsValid(AbilitySystemComponent) && IsValid(UseShieldAbilityClass))                                                                                                                                                      
+	{                                                                                                                                                                                                                           
+		AbilitySystemComponent->TryActivateAbilityByClass(UseShieldAbilityClass);                                                                                                                                           
+	}  
 }
 
 // 구급 상자를 소모하여 일반 상태에선 자가 치료(하트 회복), 기절 상태에선 자력 부활 처리
