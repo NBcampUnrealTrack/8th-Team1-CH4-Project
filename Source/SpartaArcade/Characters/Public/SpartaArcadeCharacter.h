@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -6,6 +6,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Damageable.h"
 #include "AbilitySystemInterface.h"
+#include "Components/WidgetComponent.h"
 #include "SpartaArcadeCharacter.generated.h"
 
 // 컴포넌트 의존 관계 설정을 위한 전방 선언
@@ -15,6 +16,7 @@ class ASpartaPlayerState;
 class UAbilitySystemComponent;   
 class UBomberAttributeSet;       
 class UGameplayAbility;          
+class UWidgetComponent;
 
 // 캐릭터 스탯 특화 선택을 위한 타입 열거형
 UENUM(BlueprintType)
@@ -75,6 +77,8 @@ public:
 	void AddShield();
 	void OnBombExploded();
 
+	void UpdateNickname();
+
 	// UI 및 HUD 연동을 위한 Getter 함수
 	UFUNCTION(BlueprintPure, Category = "Gameplay")
 	float GetHP() const;
@@ -103,6 +107,9 @@ protected:
 	// 중복 코드 및 의존 관계 정리를 위해 컴포넌트 추가
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UCombatComponent> CombatComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UWidgetComponent> NicknameWidgetComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PlayerState")
 	TObjectPtr<ASpartaPlayerState> SpartaPlayerState;

@@ -11,6 +11,9 @@
 #include "Engine/LocalPlayer.h"
 #include "Blueprint/UserWidget.h"
 #include "UI/Public/SpartaHUDWidget.h"
+#include "EOSGameInstanceSubsystem.h"
+#include "SessionService.h"
+#include "GameFlow/TravelGameInstanceSubsystem.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -42,6 +45,18 @@ void ASpartaArcadePlayerController::BeginPlay()
 		if (IsValid(HUDUIWidgetInstance))
 		{
 			HUDUIWidgetInstance->AddToViewport();
+		}
+	}
+
+	// 세션 파괴 완료 이벤트 바인딩 추가
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (UEOSGameInstanceSubsystem* EOSSubsystem = GameInstance->GetSubsystem<UEOSGameInstanceSubsystem>())
+		{
+			if (USessionService* SessionService = EOSSubsystem->GetSessionService())
+			{
+				SessionService->OnDestroySessionCompleteEvent.AddUObject(this, &ASpartaArcadePlayerController::HandleDestroySessionComplete);
+			}
 		}
 	}
 }
@@ -153,6 +168,47 @@ void ASpartaArcadePlayerController::ServerUseFirstAidKit_Implementation()
 	if (ArcadeCharacter)
 	{
 		ArcadeCharacter->UseFirstAidKit();
+	}
+}
+
+// 세션을 파괴하고 타이틀 맵으로 퇴장하는 함수 구현
+void ASpartaArcadePlayerController::LeaveGame()
+{
+	if (IsLocalController() == false)
+	{
+		return;
+	}
+
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (UEOSGameInstanceSubsystem* EOSSubsystem = GameInstance->GetSubsystem<UEOSGameInstanceSubsystem>())
+		{
+			if (USessionService* SessionService = EOSSubsystem->GetSessionService())
+			{
+				SessionService->DestroySession();
+				return;
+			}
+		}
+	}
+
+	// 세션 서비스 접근 실패 시 차선책으로 직접 트래블 시도
+	UTravelGameInstanceSubsystem* TravelSubsystem = GetGameInstance()->GetSubsystem<UTravelGameInstanceSubsystem>();
+	if (IsValid(TravelSubsystem))
+	{
+		TravelSubsystem->TravelToTitleMap();
+	}
+}
+
+// 세션 파괴 완료 후 타이틀 맵으로 복귀하는 콜백 구현
+void ASpartaArcadePlayerController::HandleDestroySessionComplete(FName SessionName, bool bWasSuccessful)
+{
+	if (bWasSuccessful)
+	{
+		UTravelGameInstanceSubsystem* TravelSubsystem = GetGameInstance()->GetSubsystem<UTravelGameInstanceSubsystem>();
+		if (IsValid(TravelSubsystem))
+		{
+			TravelSubsystem->TravelToTitleMap();
+		}
 	}
 }
 

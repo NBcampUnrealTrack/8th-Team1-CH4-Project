@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
@@ -10,6 +10,7 @@ class UEOSGameInstanceSubsystem;
 class UCheckBox;
 class UVerticalBox;
 class USpartaButton;
+class UWidget;
 
 UCLASS()
 class SPARTAARCADE_API UUW_TitleUserWidget : public UUserWidget
@@ -22,8 +23,8 @@ public:
 protected:
 	virtual void NativeConstruct() override;
 
-	UFUNCTION()
-	void OnPlayButtonClicked();
+	// UFUNCTION()
+	// void OnPlayButtonClicked();
 
 	UFUNCTION()
 	void OnExitButtonClicked();
@@ -37,14 +38,17 @@ protected:
 	UFUNCTION()
 	void OnSearchSessionButtonClicked();
 
-	UFUNCTION()
-	void OnLoginButtonClicked();
+	// UFUNCTION()
+	// void OnLoginButtonClicked();
 
 	UFUNCTION()
 	void OnSoloModeButtonClicked();
 
 	UFUNCTION()
 	void OnTeamModeButtonClicked();
+
+	UFUNCTION()
+	void OnMaxPlayerTextCommitted(const FText& Text, ETextCommit::Type CommitType);
 
 	void HandleSearchSessionComplete(bool bWasSuccessful, const TArray<FOnlineSessionSearchResult>& SearchResults);
 
@@ -53,26 +57,26 @@ protected:
 private:
 	UEOSGameInstanceSubsystem* EOSGameInstanceSubsystem;
 
-	UPROPERTY(BlueprintReadOnly, Category = "TitleWidget", Meta = (AllowPrivateAccess, BindWidget))
-	TObjectPtr<UButton> PlayButton;
+	// UPROPERTY(BlueprintReadOnly, Category = "TitleWidget", Meta = (AllowPrivateAccess, BindWidget))
+	// TObjectPtr<USpartaButton> PlayButton;
 
 	UPROPERTY( BlueprintReadOnly, Category = "TitleWidget", Meta = (AllowPrivateAccess, BindWidget))
-	TObjectPtr<UButton> ExitButton;
+	TObjectPtr<USpartaButton> ExitButton;
 
 	UPROPERTY(BlueprintReadOnly, Category = "TitleWidget", Meta = (AllowPrivateAccess, BindWidget))
-	TObjectPtr<UButton> SettingSessionButton;
+	TObjectPtr<USpartaButton> SettingSessionButton;
 
 	UPROPERTY(BlueprintReadOnly, Category = "TitleWidget", Meta = (AllowPrivateAccess, BindWidget))
-	TObjectPtr<UButton> SearchSessionButton;
+	TObjectPtr<USpartaButton> SearchSessionButton;
 
-	UPROPERTY(BlueprintReadOnly, Category = "TitleWidget", Meta = (AllowPrivateAccess, BindWidget))
-	TObjectPtr<UButton> LoginButton;
+	// UPROPERTY(BlueprintReadOnly, Category = "TitleWidget", Meta = (AllowPrivateAccess, BindWidget))
+	// TObjectPtr<USpartaButton> LoginButton;
 
-	UPROPERTY(BlueprintReadOnly, Category = "LobbyLevelUI", Meta = (AllowPrivateAccess, BindWidget))
-	TObjectPtr<UEditableText> ServerIPEditableText;
-
-	UPROPERTY(BlueprintReadOnly, Category = "LobbyLevelUI", Meta = (AllowPrivateAccess, BindWidget))
-	TObjectPtr<UEditableText> PlayerNameEditableText;
+	// UPROPERTY(BlueprintReadOnly, Category = "LobbyLevelUI", Meta = (AllowPrivateAccess, BindWidget))
+	// TObjectPtr<UEditableText> ServerIPEditableText;
+	//
+	// UPROPERTY(BlueprintReadOnly, Category = "LobbyLevelUI", Meta = (AllowPrivateAccess, BindWidget))
+	// TObjectPtr<UEditableText> PlayerNameEditableText;
 
 	UPROPERTY(BlueprintReadOnly, Category = "CreateSession", Meta = (AllowPrivateAccess, BindWidget))
 	TObjectPtr<UEditableText> SessionNameEditableText;
@@ -84,17 +88,23 @@ private:
 	TObjectPtr<UEditableText> MaxPlayerEditableText;
 
 	UPROPERTY(BlueprintReadOnly, Category = "CreateSession", Meta = (AllowPrivateAccess, BindWidget))
-	TObjectPtr<UButton> SoloModeButton;
+	TObjectPtr<USpartaButton> SoloModeButton;
 
 	UPROPERTY(BlueprintReadOnly, Category = "CreateSession", Meta = (AllowPrivateAccess, BindWidget))
-	TObjectPtr<UButton> TeamModeButton;
+	TObjectPtr<USpartaButton> TeamModeButton;
 
 	UPROPERTY(BlueprintReadOnly, Category = "CreateSession", Meta = (AllowPrivateAccess, BindWidget))
-	TObjectPtr<UButton> CreateSessionButton;
+	TObjectPtr<USpartaButton> CreateSessionButton;
 
 	UPROPERTY(BlueprintReadOnly, Category = "CreateSession", Meta = (AllowPrivateAccess, BindWidget))
 	TObjectPtr<UVerticalBox> SessionListVerticalBox;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SessionList", Meta = (AllowPrivateAccess = true))
 	TSubclassOf<UUserWidget> SessionEntryWidgetClass;
+
+	UPROPERTY(BlueprintReadOnly, Category = "TitleWidget", Meta = (AllowPrivateAccess, BindWidget))
+	TObjectPtr<UWidget> MakeRoomOverlay;
+
+	UPROPERTY(BlueprintReadOnly, Category = "TitleWidget", Meta = (AllowPrivateAccess, BindWidget))
+	TObjectPtr<UWidget> SessionOverlay;
 };

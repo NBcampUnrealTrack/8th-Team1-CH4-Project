@@ -3,6 +3,7 @@
 #include "Components/ScrollBox.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
+#include "Components/Widget.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerController.h"
 #include "Framework/Public/Lobby/LobbyPlayerController.h"
@@ -41,6 +42,10 @@ void USpartaLobbyWidget::NativeConstruct()
     UpdateCharacterPreview(ESpartaArcadeCharacterType::Explosive);
     
     // 카운트다운 기본 숨김 처리
+    if (Countdown)
+    {
+        Countdown->SetVisibility(ESlateVisibility::Collapsed);
+    }
     if (CountdownTextBlock)
     {
         CountdownTextBlock->SetVisibility(ESlateVisibility::Collapsed);
@@ -105,11 +110,19 @@ void USpartaLobbyWidget::UpdateCountdown(int32 RemainingSeconds)
 
     if (RemainingSeconds > 0)
     {
+        if (Countdown)
+        {
+            Countdown->SetVisibility(ESlateVisibility::Visible);
+        }
         CountdownTextBlock->SetVisibility(ESlateVisibility::Visible);
         CountdownTextBlock->SetText(FText::FromString(FString::Printf(TEXT("MATCH STARTS IN %d..."), RemainingSeconds)));
     }
     else
     {
+        if (Countdown)
+        {
+            Countdown->SetVisibility(ESlateVisibility::Collapsed);
+        }
         CountdownTextBlock->SetVisibility(ESlateVisibility::Collapsed);
     }
 }

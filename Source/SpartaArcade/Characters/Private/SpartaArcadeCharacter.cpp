@@ -20,6 +20,9 @@
 #include "AbilitySystemComponent.h"
 #include "BomberAttributeSet.h"
 #include "BomberGameplayTags.h"
+#include "Components/WidgetComponent.h"
+#include "Components/TextBlock.h"
+#include "Blueprint/WidgetTree.h"
 
 
 ASpartaArcadeCharacter::ASpartaArcadeCharacter()
@@ -82,6 +85,12 @@ ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 	{
 		CombatStatTable = CombatStatTableFinder.Object;
 	}
+
+	NicknameWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("NicknameWidgetComponent"));
+	NicknameWidgetComponent->SetupAttachment(RootComponent);
+	NicknameWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen); // 항상 화면을 향하도록 Screen 스페이스 설정
+	NicknameWidgetComponent->SetDrawSize(FVector2D(200.f, 50.f));
+	NicknameWidgetComponent->SetRelativeLocation(FVector(0.f, 0.f, 130.f)); // 캐릭터 머리 위 높이로 적당히 배치
 }
 
 void ASpartaArcadeCharacter::BeginPlay()
@@ -119,6 +128,7 @@ void ASpartaArcadeCharacter::PossessedBy(AController* NewController)
 			}
 		}
 	}
+	UpdateNickname(); 
 }
 
 void ASpartaArcadeCharacter::OnRep_PlayerState()                                                                                                                                                                                  
@@ -128,6 +138,7 @@ void ASpartaArcadeCharacter::OnRep_PlayerState()
 	{                                                                                                                                                                                                                             
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);                                                                                                                                                                 
 	}                                                                                                                                                                                                                             
+	UpdateNickname();
 }     
 
 // 하트 체력 감소, 실드 차단 및 체력 0 도달 시 기절 상태 진입 로직 구현
@@ -229,7 +240,9 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 			}
 		}
 	}
+	UpdateNickname();
 }
+
 
 
 
@@ -480,4 +493,49 @@ bool ASpartaArcadeCharacter::BlocksExplosion_Implementation() const
 UAbilitySystemComponent* ASpartaArcadeCharacter::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent;
+}
+
+// 캐릭터 위에 닉네임을 상시 렌더링하고 동기화하는 함수
+void ASpartaArcadeCharacter::UpdateNickname()
+{
+	if (!IsValid(NicknameWidgetComponent))
+	{
+		return;
+	}
+
+	UUserWidget* UserWidget = NicknameWidgetComponent->GetUserWidgetObject();
+	if (!UserWidget)
+	{
+		// 위젯 오브젝트가 아직 로드되지 않은 경우, 0.1초 뒤에 재시도
+		FTimerHandle TempHandle;
+		GetWorldTimerManager().SetTimer(TempHandle, this, &ASpartaArcadeCharacter::UpdateNickname, 0.1f, false);
+		return;
+	}
+
+	APlayerState* PS = GetPlayerState();
+	if (IsValid(PS))
+	{
+		FString PlayerName = PS->GetPlayerName();
+		
+		// 위젯 트리에서 첫 번째 TextBlock을 찾아 플레이어 닉네임 적용
+		UTextBlock* TargetText = nullptr;
+		UserWidget->WidgetTree->ForEachWidget([&TargetText](UWidget* Widget)
+		{
+			if (UTextBlock* TextBlock = Cast<UTextBlock>(Widget))
+			{
+				TargetText = TextBlock;
+			}
+		});
+
+		if (TargetText)
+		{
+			TargetText->SetText(FText::FromString(PlayerName));
+		}
+	}
+	else
+	{
+		// PlayerState가 유효해질 때까지 재시도
+		FTimerHandle TempHandle;
+		GetWorldTimerManager().SetTimer(TempHandle, this, &ASpartaArcadeCharacter::UpdateNickname, 0.1f, false);
+	}
 }

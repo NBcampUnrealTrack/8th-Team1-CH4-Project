@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Templates/SubclassOf.h"
@@ -48,6 +48,13 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
 	TObjectPtr<UUserWidget> HUDUIWidgetInstance;
+
+public:
+	// LeaveGame
+	void LeaveGame();
+
+	// HandleDestroySessionComplete
+	void HandleDestroySessionComplete(FName SessionName, bool bWasSuccessful);
 
 protected:
 

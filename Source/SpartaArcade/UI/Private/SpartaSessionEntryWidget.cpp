@@ -1,7 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
-#include "Title/SpartaSessionEntryWidget.h"
+﻿#include "SpartaSessionEntryWidget.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
 #include "OnlineSessionSettings.h"

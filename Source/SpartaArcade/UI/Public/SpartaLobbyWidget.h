@@ -9,6 +9,7 @@ class UScrollBox;
 class UButton;
 class UTextBlock;
 class USpartaButton;
+class UWidget;
 
 UCLASS()
 class SPARTAARCADE_API USpartaLobbyWidget : public UUserWidget
@@ -38,10 +39,13 @@ protected:
     USpartaButton* StartButton;
 
     UPROPERTY(meta = (BindWidget))
-    UButton* QuitButton;
+    USpartaButton* QuitButton;
 
     UPROPERTY(meta = (BindWidget))
     UTextBlock* CountdownTextBlock;
+
+    UPROPERTY(meta = (BindWidget))
+    UWidget* Countdown;
 
     UPROPERTY(meta = (BindWidget))
     UTextBlock* PreviewStatRangeText;
