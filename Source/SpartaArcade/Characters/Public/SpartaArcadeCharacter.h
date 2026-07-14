@@ -74,6 +74,7 @@ public:
 	void AddFirstAidKit();
 	void AddShield();
 	void OnBombExploded();
+	void UnlockKickBomb();
 
 	// UI 및 HUD 연동을 위한 Getter 함수
 	UFUNCTION(BlueprintPure, Category = "Gameplay")

@@ -106,12 +106,6 @@ void ASpartaArcadeCharacter::PossessedBy(AController* NewController)
 					FGameplayAbilitySpec(PlaceBombAbilityClass, 1, INDEX_NONE, this));
 			}
 
-			if (IsValid(KickBombAbilityClass))
-			{
-				AbilitySystemComponent->GiveAbility(
-					FGameplayAbilitySpec(KickBombAbilityClass, 1, INDEX_NONE, this));
-			}
-
 			if (IsValid(UseFirstAidKitAbilityClass))
 			{
 				AbilitySystemComponent->GiveAbility(
@@ -263,6 +257,16 @@ void ASpartaArcadeCharacter::AddShield()
 void ASpartaArcadeCharacter::OnBombExploded()
 {
 	// 폭탄 카운트 처리는 GA_PlaceBomb 내부에서 델리게이트로 수행됨
+}
+
+void ASpartaArcadeCharacter::UnlockKickBomb()
+{
+	if (!HasAuthority()) return;
+	if (!IsValid(AbilitySystemComponent) || !IsValid(KickBombAbilityClass)) return;
+	if (AbilitySystemComponent->FindAbilitySpecFromClass(KickBombAbilityClass) != nullptr) return;
+	
+	AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(KickBombAbilityClass,1, INDEX_NONE, this));
+	
 }
 
 // 구급 상자 사용 어빌리티 트리거
