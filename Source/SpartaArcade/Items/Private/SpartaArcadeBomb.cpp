@@ -41,6 +41,8 @@ ASpartaArcadeBomb::ASpartaArcadeBomb()
 	{
 		MeshComponent->SetStaticMesh(SphereMeshAsset.Object);
 	}
+	
+	MeshComponent->SetRelativeRotation(FRotator(0.f, 90.f, 0.f));
 }
 
 void ASpartaArcadeBomb::BeginPlay()

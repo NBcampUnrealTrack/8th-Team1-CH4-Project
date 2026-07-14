@@ -65,7 +65,8 @@ enum class EBomberItemType : uint8
     MoveSpeed,  // 이동 속도 +1
     BombCount,  // 폭탄 수 +1
     MedKit,     // 구급상자
-    Shield      // 방어막
+    Shield,      // 방어막
+	KickUnlock   // 발차기 기능
 };
 
 // 아이템 DataTable

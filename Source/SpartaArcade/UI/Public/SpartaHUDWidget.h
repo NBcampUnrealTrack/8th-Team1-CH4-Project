@@ -119,6 +119,9 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "UI | Update")
     void UpdateMedKitStatus(int32 MedKitCount);
+
+    UFUNCTION(BlueprintCallable, Category = "UI | Update")
+    void UpdateShieldItemStatus(int32 ShieldCount);
     
     // OnHit 델리게이트와 시그니처를 맞추기 위해 매개변수가 없는 HandleOnHit 추가
     UFUNCTION()

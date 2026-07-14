@@ -71,12 +71,17 @@ public:
 	void UseFirstAidKit();
 	
 	UFUNCTION(BlueprintCallable, Category = "Gameplay")
+	void UseShield();
+	
+	UFUNCTION(BlueprintCallable, Category = "Gameplay")
 	void KickBomb();
 
 	// 아이템 획득 및 쿨다운 처리를 위한 상태 함수 추가
 	void AddFirstAidKit();
 	void AddShield();
 	void OnBombExploded();
+	void PerformUseShield();
+	void UnlockKickBomb();
 
 	void UpdateNickname(); 
 
@@ -134,6 +139,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TSubclassOf<UGameplayAbility> KickBombAbilityClass;
+	
+	UPROPERTY(EditdefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	TSubclassOf<UGameplayAbility> UseShieldAbilityClass;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TSubclassOf<UGameplayAbility> UseFirstAidKitAbilityClass;
