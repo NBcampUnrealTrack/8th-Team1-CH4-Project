@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Templates/SubclassOf.h"
@@ -48,6 +48,17 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
 	TObjectPtr<UUserWidget> HUDUIWidgetInstance;
+
+public:
+	// LeaveGame
+	void LeaveGame();
+
+	// HandleDestroySessionComplete
+	void HandleDestroySessionComplete(FName SessionName, bool bWasSuccessful);
+
+	// 클라이언트가 로비 등에서 직접 팀(1 또는 2)을 선택해 서버로 변경을 요청하는 RPC 함수
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "SpartaArcade|Team")
+	void ServerSetTeam(int32 NewTeamID);
 
 protected:
 

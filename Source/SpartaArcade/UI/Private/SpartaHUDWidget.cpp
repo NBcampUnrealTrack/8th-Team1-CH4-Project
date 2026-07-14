@@ -13,6 +13,9 @@
 #include "Systems/Public/BombPlacerComponent.h"
 #include "Systems/Public/BomberAttributeSet.h"
 #include "GameplayEffectTypes.h"
+#include "Level/Public/SpartaArcadeZoneManager.h"
+#include "Characters/Public/SpartaArcadeCharacter.h"
+#include "GameFramework/GameStateBase.h"
 
 void USpartaHUDWidget::NativeConstruct()
 {
@@ -24,7 +27,7 @@ void USpartaHUDWidget::NativeConstruct()
     
     UpdateBombStats(1, 1);
     UpdateCharacterStats(1.0f, 1.0f, false);
-    UpdateGameStateInfo(0, 0, 0);
+    UpdateGameStateInfo(0, 0);
 }
 
 void USpartaHUDWidget::NativeDestruct()
@@ -32,15 +35,77 @@ void USpartaHUDWidget::NativeDestruct()
     Super::NativeDestruct();
 }
 
-// 기절 게이지 실시간 갱신을 위해 NativeTick 정의 추가
+// 기절 게이지 실시간 갱신 및 경기 정보(생존 플레이어, 자기장 카운트다운) 실시간 업데이트
 void USpartaHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
     Super::NativeTick(MyGeometry, InDeltaTime);
 
+    // 1. 기절 탈출 게이지 실시간 갱신
     if (CombatComponent && SpartaPlayerState && SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Stunned)
     {
         float Progress = CombatComponent->GetStunProgressPercent();
         UpdateStunProgress(Progress);
+    }
+
+    // 2. 실시간 자기장 시간, 생존자 수, 우승 결과 연계 갱신
+    UWorld* World = GetWorld();
+    if (World)
+    {
+        // 2-1. 생존 플레이어 수 카운트
+        int32 AliveCount = 0;
+        if (AGameStateBase* GS = World->GetGameState())
+        {
+            for (APlayerState* PS : GS->PlayerArray)
+            {
+                if (ASpartaPlayerState* SPS = Cast<ASpartaPlayerState>(PS))
+                {
+                    if (SPS->GetCurrentState() != EBomberPlayerState::Eliminated)
+                    {
+                        AliveCount++;
+                    }
+                }
+            }
+        }
+
+        // 2-2. 자기장 매니저 탐색 및 남은 시간(초) 산출
+        static TWeakObjectPtr<ASpartaArcadeZoneManager> CachedZoneManager = nullptr;
+        if (!CachedZoneManager.IsValid())
+        {
+            CachedZoneManager = Cast<ASpartaArcadeZoneManager>(UGameplayStatics::GetActorOfClass(World, ASpartaArcadeZoneManager::StaticClass()));
+        }
+
+        int32 MatchSeconds = 0;
+        int32 ZonePhase = 0;
+
+        if (CachedZoneManager.IsValid())
+        {
+            float Elapsed = CachedZoneManager->GetElapsed();
+            float ActivationDelay = CachedZoneManager->ActivationDelay;
+            float ShrinkDuration = CachedZoneManager->ShrinkDuration;
+
+            if (Elapsed < ActivationDelay)
+            {
+                // 자기장 수축 전: 남은 작동 대기 시간 카운트다운
+                MatchSeconds = FMath::Max(0, FMath::RoundToInt(ActivationDelay - Elapsed));
+            }
+            else
+            {
+                // 자기장 수축 중: 남은 수축 시간 카운트다운
+                MatchSeconds = FMath::Max(0, FMath::RoundToInt((ActivationDelay + ShrinkDuration) - Elapsed));
+            }
+        }
+
+        // 2-3. HUD 텍스트 컴포넌트 갱신
+        UpdateGameStateInfo(AliveCount, MatchSeconds);
+
+        // 2-4. 최후의 1인 우승(Victory) 결과창 연동 트리거
+        if (AliveCount == 1 && IsValid(SpartaPlayerState) && SpartaPlayerState->GetCurrentState() != EBomberPlayerState::Eliminated)
+        {
+            if (ASpartaArcadeCharacter* LocalChar = Cast<ASpartaArcadeCharacter>(GetOwningPlayerPawn()))
+            {
+                LocalChar->ShowMatchResultUI(EMatchResult::Victory);
+            }
+        }
     }
 }
 
@@ -100,7 +165,7 @@ void USpartaHUDWidget::UpdateCharacterStats(float ExplosionRange, float MoveSpee
     }
 }
 
-void USpartaHUDWidget::UpdateGameStateInfo(int32 AlivePlayers, int32 MatchSeconds, int32 ZonePhase)
+void USpartaHUDWidget::UpdateGameStateInfo(int32 AlivePlayers, int32 MatchSeconds)
 {
     if (AlivePlayersText)
     {
@@ -110,11 +175,6 @@ void USpartaHUDWidget::UpdateGameStateInfo(int32 AlivePlayers, int32 MatchSecond
     if (MatchTimeText)
     {
         MatchTimeText->SetText(FText::FromString(FormatTime(MatchSeconds)));
-    }
-
-    if (ZonePhaseText)
-    {
-        ZonePhaseText->SetText(FText::FromString(FString::Printf(TEXT("PHASE %d"), ZonePhase)));
     }
 }
 

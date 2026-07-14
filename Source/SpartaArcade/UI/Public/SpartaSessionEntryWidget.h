@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "OnlineSessionSettings.h"
+#include "SpartaButton.h"
 #include "SpartaSessionEntryWidget.generated.h"
 
 class UButton;
@@ -32,7 +33,7 @@ protected:
     UTextBlock* GameModeText;
 
     UPROPERTY(meta = (BindWidget))
-    UButton* JoinButton;
+    USpartaButton* JoinButton;
 
     UFUNCTION()
     void OnJoinClicked();

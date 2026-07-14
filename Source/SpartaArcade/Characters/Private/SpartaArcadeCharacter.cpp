@@ -20,6 +20,13 @@
 #include "AbilitySystemComponent.h"
 #include "BomberAttributeSet.h"
 #include "BomberGameplayTags.h"
+#include "UI/Public/SpartaMenuFlowWidget.h"
+#include "UObject/UObjectIterator.h"
+#include "GameFramework/GameStateBase.h"
+#include "Components/WidgetComponent.h"
+#include "Components/TextBlock.h"
+#include "Blueprint/WidgetTree.h"
+#include "Styling/SlateColor.h"
 
 
 ASpartaArcadeCharacter::ASpartaArcadeCharacter()
@@ -82,6 +89,12 @@ ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 	{
 		CombatStatTable = CombatStatTableFinder.Object;
 	}
+
+	NicknameWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("NicknameWidgetComponent"));
+	NicknameWidgetComponent->SetupAttachment(RootComponent);
+	NicknameWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen); // 항상 화면을 향하도록 Screen 스페이스 설정
+	NicknameWidgetComponent->SetDrawSize(FVector2D(200.f, 50.f));
+	NicknameWidgetComponent->SetRelativeLocation(FVector(0.f, 0.f, 130.f)); // 캐릭터 머리 위 높이로 적당히 배치
 }
 
 void ASpartaArcadeCharacter::BeginPlay()
@@ -118,6 +131,7 @@ void ASpartaArcadeCharacter::PossessedBy(AController* NewController)
 			}
 		}
 	}
+	UpdateNickname(); 
 }
 
 void ASpartaArcadeCharacter::OnRep_PlayerState()                                                                                                                                                                                  
@@ -127,6 +141,7 @@ void ASpartaArcadeCharacter::OnRep_PlayerState()
 	{                                                                                                                                                                                                                             
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);                                                                                                                                                                 
 	}                                                                                                                                                                                                                             
+	UpdateNickname();
 }     
 
 // 하트 체력 감소, 실드 차단 및 체력 0 도달 시 기절 상태 진입 로직 구현
@@ -228,7 +243,9 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 			}
 		}
 	}
+	UpdateNickname();
 }
+
 
 
 
@@ -469,6 +486,7 @@ void ASpartaArcadeCharacter::HandleOnSelfRevive()
 void ASpartaArcadeCharacter::HandleOnEliminated()
 {
 	UE_LOG(LogTemp, Log, TEXT("%s 게임에서 탈락(소멸)되었습니다."), *GetName());
+	ShowMatchResultUI(EMatchResult::Defeat);
 	Destroy();
 }
 
@@ -506,4 +524,114 @@ bool ASpartaArcadeCharacter::BlocksExplosion_Implementation() const
 UAbilitySystemComponent* ASpartaArcadeCharacter::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent;
+}
+
+// 캐릭터 위에 닉네임을 상시 렌더링하고 동기화하는 함수
+void ASpartaArcadeCharacter::UpdateNickname()
+{
+	if (!IsValid(NicknameWidgetComponent))
+	{
+		return;
+	}
+
+	UUserWidget* UserWidget = NicknameWidgetComponent->GetUserWidgetObject();
+	if (!UserWidget)
+	{
+		// 위젯 오브젝트가 아직 로드되지 않은 경우, 0.1초 뒤에 재시도
+		FTimerHandle TempHandle;
+		GetWorldTimerManager().SetTimer(TempHandle, this, &ASpartaArcadeCharacter::UpdateNickname, 0.1f, false);
+		return;
+	}
+
+	APlayerState* PS = GetPlayerState();
+	if (IsValid(PS))
+	{
+		FString PlayerName = PS->GetPlayerName();
+		
+		// 위젯 트리에서 첫 번째 TextBlock을 찾아 플레이어 닉네임 적용
+		UTextBlock* TargetText = nullptr;
+		UserWidget->WidgetTree->ForEachWidget([&TargetText](UWidget* Widget)
+		{
+			if (UTextBlock* TextBlock = Cast<UTextBlock>(Widget))
+			{
+				TargetText = TextBlock;
+			}
+		});
+
+		if (TargetText)
+		{
+			TargetText->SetText(FText::FromString(PlayerName));
+
+			// Team 1이면 빨간색, Team 2면 파란색으로 닉네임 색상 표시
+			if (ASpartaPlayerState* SPS = Cast<ASpartaPlayerState>(PS))
+			{
+				int32 TeamID = SPS->GetTeamID();
+				if (TeamID == 1)
+				{
+					TargetText->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.25f, 0.25f)));
+				}
+				else if (TeamID == 2)
+				{
+					TargetText->SetColorAndOpacity(FSlateColor(FLinearColor(0.25f, 0.5f, 1.0f)));
+				}
+				else
+				{
+					TargetText->SetColorAndOpacity(FSlateColor(FLinearColor::White)); // 기본 색상 (흰색)
+				}
+			}
+		}
+	}
+	else
+	{
+		// PlayerState가 유효해질 때까지 재시도
+		FTimerHandle TempHandle;
+		GetWorldTimerManager().SetTimer(TempHandle, this, &ASpartaArcadeCharacter::UpdateNickname, 0.1f, false);
+	}
+}
+
+void ASpartaArcadeCharacter::ShowMatchResultUI(EMatchResult Result)
+{
+	if (bMatchResultShown || !IsLocallyControlled())
+	{
+		return;
+	}
+	bMatchResultShown = true;
+
+	for (TObjectIterator<USpartaMenuFlowWidget> It; It; ++It)
+	{
+		if (It->GetWorld() == GetWorld())
+		{
+			int32 AliveCount = 0;
+			TArray<FMatchPlayerResult> MatchResults;
+
+			if (AGameStateBase* GS = GetWorld()->GetGameState())
+			{
+				for (APlayerState* PS : GS->PlayerArray)
+				{
+					if (ASpartaPlayerState* SPS = Cast<ASpartaPlayerState>(PS))
+					{
+						if (SPS->GetCurrentState() != EBomberPlayerState::Eliminated)
+						{
+							AliveCount++;
+						}
+
+						FMatchPlayerResult Res;
+						Res.PlayerName = SPS->GetPlayerName();
+						Res.Rank = (SPS->GetCurrentState() == EBomberPlayerState::Eliminated) ? 4 : 1;
+						MatchResults.Add(Res);
+					}
+				}
+			}
+
+			int32 FinalRank = (Result == EMatchResult::Defeat) ? FMath::Max(1, AliveCount) : 1;
+			It->ShowMatchResult(Result, FinalRank, MatchResults);
+
+			if (APlayerController* PC = Cast<APlayerController>(GetController()))
+			{
+				PC->SetShowMouseCursor(true);
+				PC->SetInputMode(FInputModeUIOnly());
+			}
+			return;
+		}
+	}
 }

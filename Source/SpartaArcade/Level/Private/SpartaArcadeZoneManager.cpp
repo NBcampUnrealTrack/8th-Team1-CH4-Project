@@ -1,4 +1,4 @@
-﻿#include "SpartaArcadeZoneManager.h"
+#include "SpartaArcadeZoneManager.h"
 #include "SpartaArcadeMapBuilder.h"
 #include "SpartaArcadeMovingObstacle.h"
 #include "Components/SceneComponent.h"
@@ -39,6 +39,7 @@ void ASpartaArcadeZoneManager::GetLifetimeReplicatedProps(TArray<FLifetimeProper
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
     DOREPLIFETIME(ASpartaArcadeZoneManager, ShrinkProgress);
+    DOREPLIFETIME(ASpartaArcadeZoneManager, Elapsed); 
 }
 
 void ASpartaArcadeZoneManager::SetMapBuilder(ASpartaArcadeMapBuilder* InMap)
@@ -186,16 +187,16 @@ void ASpartaArcadeZoneManager::RefreshVisuals()
         ++RenderedCrush;
     }
 
-    // 경고 밴드 재구성(발동 후, 낙하 예정 리드타임 구간만)
     WarningISM->ClearInstances();
-    if (ShrinkProgress > 0.f && DropIndex < N)
+    if (Elapsed >= (ActivationDelay - WarningLead) && DropIndex < N)
     {
         const int32 WarnN = FMath::Max(1, FMath::FloorToInt(N * (WarningLead / FMath::Max(1.f, ShrinkDuration))));
         const int32 WarnEnd = FMath::Min(N, DropIndex + WarnN);
         for (int32 i = DropIndex; i < WarnEnd; ++i)
         {
             const FIntPoint C = SpiralCells[i];
-            const FVector P = Map->TileToWorld(C.X, C.Y) + FVector(0, 0, 4.f);
+            // 바닥 타일 머티리얼과 겹쳐서 깜빡이거나 묻히는 Z-fighting 방지를 위해 오프셋 높이를 10.f 로 상향 조정
+            const FVector P = Map->TileToWorld(C.X, C.Y) + FVector(0, 0, 10.f);
             WarningISM->AddInstance(FTransform(FRotator::ZeroRotator, P, FVector(CubeScale)));
         }
     }
@@ -225,9 +226,16 @@ void ASpartaArcadeZoneManager::ProcessCrushKills()
             return NewCells.Contains(Y * W + X);
         };
 
-    // 플레이어(폰): 트리거만 브로드캐스트 — 실제 사망은 게임 시스템이 바인딩해서 처리
+    // 플레이어(폰): 트리거 브로드캐스트 및 실질적 즉사(소멸) 처리 추가 (끼임 방지 및 즉사 메커니즘 확보)
     for (TActorIterator<APawn> It(GetWorld()); It; ++It)
-        if (CellCrushed(*It)) OnActorCrushed.Broadcast(*It);
+    {
+        if (CellCrushed(*It))
+        {
+            APawn* CrushedPawn = *It;
+            OnActorCrushed.Broadcast(CrushedPawn);
+            CrushedPawn->Destroy();
+        }
+    }
 
     // 이동 장애물: 자기장에 깔리면 소멸(반복 중 안전하게 모았다가 파괴)
     TArray<ASpartaArcadeMovingObstacle*> ToKill;

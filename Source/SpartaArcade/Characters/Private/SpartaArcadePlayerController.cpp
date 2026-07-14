@@ -11,6 +11,11 @@
 #include "Engine/LocalPlayer.h"
 #include "Blueprint/UserWidget.h"
 #include "UI/Public/SpartaHUDWidget.h"
+#include "EOSGameInstanceSubsystem.h"
+#include "SessionService.h"
+#include "SpartaArcadeGameMode.h"
+#include "GameFlow/TravelGameInstanceSubsystem.h"
+#include "Framework/Public/InGame/SpartaPlayerState.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -42,6 +47,18 @@ void ASpartaArcadePlayerController::BeginPlay()
 		if (IsValid(HUDUIWidgetInstance))
 		{
 			HUDUIWidgetInstance->AddToViewport();
+		}
+	}
+
+	// 세션 파괴 완료 이벤트 바인딩 추가
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (UEOSGameInstanceSubsystem* EOSSubsystem = GameInstance->GetSubsystem<UEOSGameInstanceSubsystem>())
+		{
+			if (USessionService* SessionService = EOSSubsystem->GetSessionService())
+			{
+				SessionService->OnDestroySessionCompleteEvent.AddUObject(this, &ASpartaArcadePlayerController::HandleDestroySessionComplete);
+			}
 		}
 	}
 }
@@ -170,6 +187,82 @@ void ASpartaArcadePlayerController::ServerUseFirstAidKit_Implementation()
 	if (ArcadeCharacter)
 	{
 		ArcadeCharacter->UseFirstAidKit();
+	}
+}
+
+// 세션을 파괴하고 타이틀 맵으로 퇴장하는 함수 구현
+void ASpartaArcadePlayerController::LeaveGame()
+{
+	if (IsLocalController() == false)
+	{
+		return;
+	}
+
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (UEOSGameInstanceSubsystem* EOSSubsystem = GameInstance->GetSubsystem<UEOSGameInstanceSubsystem>())
+		{
+			if (USessionService* SessionService = EOSSubsystem->GetSessionService())
+			{
+				SessionService->DestroySession();
+				return;
+			}
+		}
+	}
+
+	// 세션 서비스 접근 실패 시 차선책으로 직접 트래블 시도
+	UTravelGameInstanceSubsystem* TravelSubsystem = GetGameInstance()->GetSubsystem<UTravelGameInstanceSubsystem>();
+	if (IsValid(TravelSubsystem))
+	{
+		TravelSubsystem->TravelToTitleMap();
+	}
+}
+
+// 세션 파괴 완료 후 타이틀 맵으로 복귀하는 콜백 구현
+void ASpartaArcadePlayerController::HandleDestroySessionComplete(FName SessionName, bool bWasSuccessful)
+{
+	if (bWasSuccessful)
+	{
+		UTravelGameInstanceSubsystem* TravelSubsystem = GetGameInstance()->GetSubsystem<UTravelGameInstanceSubsystem>();
+		if (IsValid(TravelSubsystem))
+		{
+			TravelSubsystem->TravelToTitleMap();
+		}
+	}
+}
+
+// 클라이언트가 로비 등에서 직접 팀(1 또는 2)을 선택해 서버로 변경을 요청하는 RPC 구현
+bool ASpartaArcadePlayerController::ServerSetTeam_Validate(int32 NewTeamID)
+{
+	return (NewTeamID == 1 || NewTeamID == 2);
+}
+
+void ASpartaArcadePlayerController::ServerSetTeam_Implementation(int32 NewTeamID)
+{
+	if (ASpartaPlayerState* SPS = GetPlayerState<ASpartaPlayerState>())
+	{
+		// 서버 게임모드의 bIsTeamMode 여부를 검사해 팀전 모드일 때만 팀 선택 변경 허용
+		bool bTeamModeActive = false;
+		if (ASpartaArcadeGameMode* GM = Cast<ASpartaArcadeGameMode>(GetWorld()->GetAuthGameMode()))
+		{
+			bTeamModeActive = GM->bIsTeamMode;
+		}
+
+		if (bTeamModeActive)
+		{
+			SPS->SetTeamID(NewTeamID);
+		}
+		else
+		{
+			SPS->SetTeamID(0); // 개인전일 경우 무조건 팀 ID는 0으로 고정
+		}
+
+		// 플레이어 캐릭터 닉네임 색상 즉시 업데이트 연동
+		if (ASpartaArcadeCharacter* ArcadeCharacter = Cast<ASpartaArcadeCharacter>(GetPawn()))
+		{
+			ArcadeCharacter->UpdateNickname();
+		}
+		UE_LOG(LogTemp, Warning, TEXT("[TeamSelection] %s 의 팀이 서버에서 Team %d 로 변경되었습니다."), *GetName(), SPS->GetTeamID());
 	}
 }
 

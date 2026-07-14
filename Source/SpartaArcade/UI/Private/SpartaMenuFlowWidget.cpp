@@ -6,6 +6,9 @@
 #include "Components/ScrollBox.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Characters/Public/SpartaArcadePlayerController.h"
+#include "Framework/Public/Lobby/LobbyPlayerController.h"
+#include "GameFlow/TravelGameInstanceSubsystem.h"
 
 void USpartaMenuFlowWidget::NativeConstruct()
 {
@@ -55,6 +58,23 @@ void USpartaMenuFlowWidget::ShowMainMenu()
     }
 }
 
+void USpartaMenuFlowWidget::ShowPlayMenu()
+{
+    if (MenuWidgetSwitcher)
+    {
+        MenuWidgetSwitcher->SetActiveWidgetIndex(Index_PlayMenu);
+    }
+}
+
+
+void USpartaMenuFlowWidget::ShowLobbyMenu()
+{
+    if (MenuWidgetSwitcher)
+    {
+        MenuWidgetSwitcher->SetActiveWidgetIndex(Index_LobbyMenu);
+    }
+}
+
 void USpartaMenuFlowWidget::ShowPauseMenu()
 {
     if (MenuWidgetSwitcher)
@@ -63,25 +83,25 @@ void USpartaMenuFlowWidget::ShowPauseMenu()
     }
 }
 
-void USpartaMenuFlowWidget::ShowStartCountdown(int32 RemainingSeconds)
-{
-    if (MenuWidgetSwitcher)
-    {
-        MenuWidgetSwitcher->SetActiveWidgetIndex(Index_StartCountdown);
-    }
-
-    if (MatchStartCountdownText)
-    {
-        if (RemainingSeconds > 0)
-        {
-            MatchStartCountdownText->SetText(FText::AsNumber(RemainingSeconds));
-        }
-        else
-        {
-            MatchStartCountdownText->SetText(FText::FromString(TEXT("START!")));
-        }
-    }
-}
+// void USpartaMenuFlowWidget::ShowStartCountdown(int32 RemainingSeconds)
+// {
+//     if (MenuWidgetSwitcher)
+//     {
+//         MenuWidgetSwitcher->SetActiveWidgetIndex(Index_StartCountdown);
+//     }
+//
+//     if (MatchStartCountdownText)
+//     {
+//         if (RemainingSeconds > 0)
+//         {
+//             MatchStartCountdownText->SetText(FText::AsNumber(RemainingSeconds));
+//         }
+//         else
+//         {
+//             MatchStartCountdownText->SetText(FText::FromString(TEXT("START!")));
+//         }
+//     }
+// }
 
 void USpartaMenuFlowWidget::ShowMatchResult(EMatchResult Result, int32 MyRank, const TArray<FMatchPlayerResult>& PlayerResults)
 {
@@ -155,8 +175,7 @@ void USpartaMenuFlowWidget::ShowMatchResult(EMatchResult Result, int32 MyRank, c
 
 void USpartaMenuFlowWidget::OnJoinClicked()
 {
-    // 로비 서버로 접속 (임시로 IP 주소 127.0.0.1 지정 가능 또는 매치메이킹 맵 연결)
-    UGameplayStatics::OpenLevel(GetWorld(), TEXT("LobbyLevel"));
+    ShowPlayMenu();
 }
 
 void USpartaMenuFlowWidget::OnSettingsClicked()
@@ -188,12 +207,46 @@ void USpartaMenuFlowWidget::OnResumeClicked()
 
 void USpartaMenuFlowWidget::OnExitToLobbyClicked()
 {
-    // 게임 포기 및 로비/메인화면으로 복귀
-    UGameplayStatics::OpenLevel(GetWorld(), TEXT("MainMenuLevel"));
+	APlayerController* PC = GetOwningPlayer();
+	if (ASpartaArcadePlayerController* InGamePC = Cast<ASpartaArcadePlayerController>(PC))
+	{
+		InGamePC->LeaveGame();
+	}
+	else if (ALobbyPlayerController* LobbyPC = Cast<ALobbyPlayerController>(PC))
+	{
+		LobbyPC->LeaveLobby();
+	}
+	else
+	{
+		if (UGameInstance* GameInstance = GetGameInstance())
+		{
+			if (UTravelGameInstanceSubsystem* TravelSubsystem = GameInstance->GetSubsystem<UTravelGameInstanceSubsystem>())
+			{
+				TravelSubsystem->TravelToTitleMap();
+			}
+		}
+	}
 }
 
 void USpartaMenuFlowWidget::OnLobbyReturnClicked()
 {
-    // 매치 종료 후 메인화면/로비로 복귀
-    UGameplayStatics::OpenLevel(GetWorld(), TEXT("MainMenuLevel"));
+	APlayerController* PC = GetOwningPlayer();
+	if (ASpartaArcadePlayerController* InGamePC = Cast<ASpartaArcadePlayerController>(PC))
+	{
+		InGamePC->LeaveGame();
+	}
+	else if (ALobbyPlayerController* LobbyPC = Cast<ALobbyPlayerController>(PC))
+	{
+		LobbyPC->LeaveLobby();
+	}
+	else
+	{
+		if (UGameInstance* GameInstance = GetGameInstance())
+		{
+			if (UTravelGameInstanceSubsystem* TravelSubsystem = GetGameInstance()->GetSubsystem<UTravelGameInstanceSubsystem>())
+			{
+				TravelSubsystem->TravelToTitleMap();
+			}
+		}
+	}
 }

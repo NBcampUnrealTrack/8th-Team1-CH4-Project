@@ -41,9 +41,9 @@ protected:
     UPROPERTY(meta = (BindWidget))
     USpartaButton* ExitToLobbyButton;
 
-    // 3) 게임 시작 카운트다운 관련 위젯
-    UPROPERTY(meta = (BindWidget))
-    UTextBlock* MatchStartCountdownText;
+    // // 3) 게임 시작 카운트다운 관련 위젯
+    // UPROPERTY(meta = (BindWidget))
+    // UTextBlock* MatchStartCountdownText;
 
     // 4) 게임 종료(결과) 화면 관련 위젯
     UPROPERTY(meta = (BindWidget))
@@ -66,12 +66,20 @@ public:
     // --- 화면 상태 스위칭 함수 ---
     UFUNCTION(BlueprintCallable, Category = "UI | Flow")
     void ShowMainMenu();
+    
+    UFUNCTION(BlueprintCallable, Category = "UI | Flow")
+    void ShowPlayMenu();
+    
+    UFUNCTION(BlueprintCallable, Category = "UI | Flow")
+    void ShowLobbyMenu();
 
     UFUNCTION(BlueprintCallable, Category = "UI | Flow")
     void ShowPauseMenu();
 
-    UFUNCTION(BlueprintCallable, Category = "UI | Flow")
-    void ShowStartCountdown(int32 RemainingSeconds);
+    
+    
+    // UFUNCTION(BlueprintCallable, Category = "UI | Flow")
+    // void ShowStartCountdown(int32 RemainingSeconds);
 
     UFUNCTION(BlueprintCallable, Category = "UI | Flow")
     void ShowMatchResult(EMatchResult Result, int32 MyRank, const TArray<FMatchPlayerResult>& PlayerResults);
@@ -101,7 +109,8 @@ protected:
 private:
     // WidgetSwitcher 인덱스 상수 정의
     static constexpr int32 Index_MainMenu = 0;
-    static constexpr int32 Index_PauseMenu = 1;
-    static constexpr int32 Index_StartCountdown = 2;
-    static constexpr int32 Index_ResultScreen = 3;
+    static constexpr int32 Index_PlayMenu = 1;
+    static constexpr int32 Index_LobbyMenu = 2;
+    static constexpr int32 Index_PauseMenu = 3;
+    static constexpr int32 Index_ResultScreen = 4;
 };
