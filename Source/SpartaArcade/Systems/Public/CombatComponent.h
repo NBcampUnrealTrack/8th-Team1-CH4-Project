@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
@@ -11,6 +11,7 @@
 #include "CombatComponent.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCombatEvent);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnEliminatedEvent, class ASpartaPlayerState*);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnbHasShieldChangedSignature, bool, bHasShield);
 
@@ -83,6 +84,8 @@ public:
     UPROPERTY(BlueprintAssignable, Category = "Events | UI")
 	FOnbHasShieldChangedSignature OnbHasShieldChanged;
 
+	FOnEliminatedEvent OnEliminatedEvent;
+
 
     virtual void GetLifetimeReplicatedProps(
          TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -105,7 +108,7 @@ protected:
     bool bHasShield = false;
 
     UPROPERTY()
-    TObjectPtr<class ASpartaPlayerState> SpartaPlayerState;
+    TObjectPtr<ASpartaPlayerState> SpartaPlayerState;
 
 private:
     void EnterStun();
