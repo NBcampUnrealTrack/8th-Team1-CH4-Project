@@ -54,4 +54,10 @@ public:
 
 	UPROPERTY(ReplicatedUsing = OnRep_RoomInfoChanged)
 	TArray<APlayerState*> PlayerStates;
+
+	UPROPERTY(ReplicatedUsing = OnRep_RoomInfoChanged)
+	bool bAutoBalanceTeam;
+
+	UPROPERTY(ReplicatedUsing = OnRep_RoomInfoChanged)
+	int32 TeamCount;
 };

@@ -20,6 +20,7 @@ void ASpartaGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(ASpartaGameState, GameModeType);
 	DOREPLIFETIME(ASpartaGameState, AlivePlayerCount);
 	DOREPLIFETIME(ASpartaGameState, AliveTeamCount);
+	DOREPLIFETIME(ASpartaGameState, TotalAliveTeamCount);
 	DOREPLIFETIME(ASpartaGameState, ZonePhase);
 }
 
@@ -53,6 +54,11 @@ int32 ASpartaGameState::GetAliveTeamCount() const
 	return AliveTeamCount;
 }
 
+int32 ASpartaGameState::GetTotalAliveTeamCount() const
+{
+	return TotalAliveTeamCount;
+}
+
 int32 ASpartaGameState::GetZonePhase() const
 {
 	return ZonePhase;
@@ -72,6 +78,14 @@ void ASpartaGameState::SetAliveTeamCount(int32 NewAliveTeamCount)
 	if (HasAuthority())
 	{
 		AliveTeamCount = NewAliveTeamCount;
+	}
+}
+
+void ASpartaGameState::SetTotalAliveTeamCount(int32 NewTotalAliveTeamCount)
+{
+	if (HasAuthority())
+	{
+		TotalAliveTeamCount = NewTotalAliveTeamCount;
 	}
 }
 

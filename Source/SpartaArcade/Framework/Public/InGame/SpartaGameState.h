@@ -32,10 +32,12 @@ public:
 
 	int32 GetAlivePlayerCount() const;
 	int32 GetAliveTeamCount() const;
+	int32 GetTotalAliveTeamCount() const;
 	int32 GetZonePhase() const;
 	EGameModeType GetGameModeType() const;
 	void SetAlivePlayerCount(int32 NewAlivePlayerCount);
 	void SetAliveTeamCount(int32 NewAliveTeamCount);
+	void SetTotalAliveTeamCount(int32 NewTotalAliveTeamCount);
 	void SetZonePhase(int32 NewZonePhase);
 
 protected:
@@ -47,6 +49,9 @@ protected:
 
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "GameState")
 	int32 AliveTeamCount;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "GameState")
+	int32 TotalAliveTeamCount;
 
 	UPROPERTY(ReplicatedUsing = OnRep_ZonePhase, BlueprintReadOnly, Category = "GameState")
 	int32 ZonePhase;

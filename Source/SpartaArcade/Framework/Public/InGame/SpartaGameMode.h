@@ -40,8 +40,6 @@ public:
 
 	virtual void EndMatch() override;
 
-    void UpdatePlayZone(float DeltaTime);
-
     void HandlePlayerEliminated(ASpartaPlayerState* DeadPlayer);
 
     void AddPlayerScore(ASpartaPlayerState* PlayerState, int32 Score);

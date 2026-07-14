@@ -32,6 +32,8 @@ public:
 
 	void UpdateMatchStartCountdown();
 
+	void AutoAssignTeams(int32 TeamCount);
+
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
 	int32 StartCountdownTimeRemaining;

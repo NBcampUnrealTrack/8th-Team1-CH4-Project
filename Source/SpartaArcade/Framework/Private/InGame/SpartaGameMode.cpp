@@ -40,11 +40,6 @@ void ASpartaGameMode::EndMatch()
 
 }
 
-void ASpartaGameMode::UpdatePlayZone(float DeltaTime)
-{
-	// 자기장 로직
-}
-
 void ASpartaGameMode::HandlePlayerEliminated(ASpartaPlayerState* DeadPlayer)
 {
 	if (!IsValid(DeadPlayer))
@@ -107,8 +102,6 @@ void ASpartaGameMode::InitializeTeamInfo()
 	if (SpartaGameState)
 	{
 		int32 TotalAlivePlayers = 0;
-		UE_LOG(LogTemp, Warning, TEXT("PlayerArray Count : %d"),
-			SpartaGameState->PlayerArray.Num());
 		for (APlayerState* PlayerState : SpartaGameState->PlayerArray)
 		{
 			ASpartaPlayerState* SpartaPlayerState = Cast<ASpartaPlayerState>(PlayerState);
@@ -131,5 +124,6 @@ void ASpartaGameMode::InitializeTeamInfo()
 
 		SpartaGameState->SetAlivePlayerCount(TotalAlivePlayers);
 		SpartaGameState->SetAliveTeamCount(TeamInfoMap.Num());
+		SpartaGameState->SetTotalAliveTeamCount(TeamInfoMap.Num());
 	}
 }

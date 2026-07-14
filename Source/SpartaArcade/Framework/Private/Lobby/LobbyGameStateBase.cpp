@@ -14,6 +14,8 @@ ALobbyGameStateBase::ALobbyGameStateBase()
 	, CurrentPlayerCount(0)
 	, GameModeType(EGameModeType::Solo)
 	, LobbyUIWidget(nullptr)
+	, bAutoBalanceTeam(true)
+	, TeamCount(2)
 {
 	bReplicates = true;
 }
@@ -29,6 +31,7 @@ void ALobbyGameStateBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 	DOREPLIFETIME(ALobbyGameStateBase, StartCountdownTime);
 	DOREPLIFETIME(ALobbyGameStateBase, GameModeType);
 	DOREPLIFETIME(ALobbyGameStateBase, PlayerStates);
+	DOREPLIFETIME(ALobbyGameStateBase, bAutoBalanceTeam);
 }
 
 void ALobbyGameStateBase::OnRep_RoomInfoChanged()
@@ -76,9 +79,9 @@ void ALobbyGameStateBase::RefreshLobbyUI()
 
 		if (ALobbyPlayerState* LobbyPlayerState = Cast<ALobbyPlayerState>(PlayerState))
 		{
-			ReadyStates.Add(LobbyPlayerState->bIsReady);
+			ReadyStates.Add(LobbyPlayerState->GetIsReady());
 
-			if (!LobbyPlayerState->bIsReady)
+			if (!LobbyPlayerState->GetIsReady())
 			{
 				bAllReady = false;
 			}

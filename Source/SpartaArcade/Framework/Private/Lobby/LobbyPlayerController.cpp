@@ -57,9 +57,9 @@ void ALobbyPlayerController::ServerSelectCharacter_Implementation(ESpartaArcadeC
 	ALobbyPlayerState* LobbyPlayerState = GetPlayerState<ALobbyPlayerState>();
 	if (IsValid(LobbyPlayerState) == true)
 	{
-		if(LobbyPlayerState->bIsReady == false && LobbyPlayerState->SelectedCharacterType != NewType)
+		if(LobbyPlayerState->GetIsReady() == false && LobbyPlayerState->GetSelectedCharacterType() != NewType)
 		{
-			LobbyPlayerState->SelectedCharacterType = NewType;
+			LobbyPlayerState->SetSelectedCharacterType(NewType);
 			LobbyPlayerState->OnRep_LobbyStateChanged();
 		}
 	}
@@ -76,7 +76,7 @@ void ALobbyPlayerController::ServerToggleReady_Implementation()
 	ALobbyPlayerState* LobbyPlayerState = GetPlayerState<ALobbyPlayerState>();
 	if (IsValid(LobbyPlayerState) == true)
 	{
-		LobbyPlayerState->bIsReady = !LobbyPlayerState->bIsReady;
+		LobbyPlayerState->SetIsReady(!LobbyPlayerState->GetIsReady());
 		LobbyPlayerState->OnRep_LobbyStateChanged();
 	}
 }
