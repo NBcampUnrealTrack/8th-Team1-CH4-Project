@@ -224,9 +224,11 @@ void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UBomberAtt
 		PlayerState->OnHeartsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateHearts);
 		PlayerState->OnStunStateChanged.AddDynamic(this, &USpartaHUDWidget::SetStunActive);
 		PlayerState->OnFirstAidKitsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateMedKitStatus);
+		PlayerState->OnShieldsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateShieldItemStatus);
 
 		// 초기 가시성 상태 세팅
 		UpdateMedKitStatus(PlayerState->GetFirstAidKits());
+		UpdateShieldItemStatus(PlayerState->GetShields());
     }
     
 
@@ -266,12 +268,21 @@ void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UBomberAtt
 	}
 }
 
-// 쉴드 및 구급상자 상태 변경 시 개별 UI 이미지 가시성 토글(Visible / Collapsed) 구현
+// 쉴드 활성/비활성(실제 방어 중인지) 상태는 텍스트로만 표시
 void USpartaHUDWidget::UpdateShieldStatus(bool bHasShield)
+{
+	if (ShieldStatusText)
+	{
+		ShieldStatusText->SetText(FText::FromString(bHasShield ? TEXT("ACTIVE") : TEXT("NONE")));
+	}
+}
+
+// 쉴드 아이템 보유 여부(획득했는지)는 아이콘으로 표시 — 구급상자(MedImg)와 동일한 패턴
+void USpartaHUDWidget::UpdateShieldItemStatus(int32 ShieldCount)
 {
 	if (ShieldImg)
 	{
-		ShieldImg->SetVisibility(bHasShield ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		ShieldImg->SetVisibility(ShieldCount > 0 ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	}
 }
 

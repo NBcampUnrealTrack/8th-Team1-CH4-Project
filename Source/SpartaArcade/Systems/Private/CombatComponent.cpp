@@ -229,16 +229,18 @@ void UCombatComponent::Revive()
 
     GetWorld()->GetTimerManager().ClearTimer(StunTimerHandle);
 
+    if (IsValid(CachedASC))
+    {
+        CachedASC->RemoveLooseGameplayTag(BomberGameplayTags::State_Stunned);
+    }
+    
     // 상태 변경 후 GE_Stun 제거
     if (IsValid(CachedASC) && ActiveStunEffectHandle.IsValid())
     {
         CachedASC->RemoveActiveGameplayEffect(ActiveStunEffectHandle);
     }
 
-    if (IsValid(CachedASC))
-    {
-        CachedASC->RemoveLooseGameplayTag(BomberGameplayTags::State_Stunned);
-    }
+    
 
     OnRevived.Broadcast();
 
@@ -258,13 +260,14 @@ void UCombatComponent::SelfRevive()
 
     GetWorld()->GetTimerManager().ClearTimer(StunTimerHandle);
 
+    CachedASC->RemoveLooseGameplayTag(BomberGameplayTags::State_Stunned);
+
     // 상태 변경 후 GE_Stun 제거
     if (IsValid(CachedASC) && ActiveStunEffectHandle.IsValid())
     {
         CachedASC->RemoveActiveGameplayEffect(ActiveStunEffectHandle);
     }
 
-    CachedASC->RemoveLooseGameplayTag(BomberGameplayTags::State_Stunned);
 
     OnSelfRevive.Broadcast();
 }

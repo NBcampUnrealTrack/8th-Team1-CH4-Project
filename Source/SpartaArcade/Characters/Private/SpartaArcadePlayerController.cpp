@@ -83,6 +83,10 @@ void ASpartaArcadePlayerController::SetupInputComponent()
 			EnhancedInputComponent->BindAction(UseFirstAidKitAction, ETriggerEvent::Started, this, &ASpartaArcadePlayerController::OnUseFirstAidKitTriggered);
 		}
 		
+		if (UseShieldAction)
+		{
+			EnhancedInputComponent->BindAction(UseShieldAction, ETriggerEvent::Started, this, &ASpartaArcadePlayerController::OnUseShieldTriggered);
+		}
 	}
 	else
 	{
@@ -125,6 +129,19 @@ void ASpartaArcadePlayerController::OnKickBombTriggered()
 void ASpartaArcadePlayerController::OnUseFirstAidKitTriggered()
 {
 	ServerUseFirstAidKit();
+}
+
+void ASpartaArcadePlayerController::OnUseShieldTriggered()
+{
+	ServerUseShield();
+}
+
+void ASpartaArcadePlayerController::ServerUseShield_Implementation()
+{
+	if (ASpartaArcadeCharacter* ArcadeCharacter = Cast<ASpartaArcadeCharacter>(GetPawn()))
+	{
+		ArcadeCharacter->UseShield();
+	}
 }
 
 
