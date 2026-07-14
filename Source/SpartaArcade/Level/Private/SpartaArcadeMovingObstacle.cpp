@@ -5,6 +5,8 @@
 #include "Engine/StaticMesh.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Kismet/GameplayStatics.h"
+#include "SpartaArcadeCharacter.h"
+#include "Engine/DamageEvents.h"
 
 ASpartaArcadeMovingObstacle::ASpartaArcadeMovingObstacle()
 {
@@ -26,6 +28,8 @@ ASpartaArcadeMovingObstacle::ASpartaArcadeMovingObstacle()
     bOrientRotationToMovement = true;
     bUseSelfRotation = false;
     SelfRotationSpeed = 180.f;
+
+    Collision->OnComponentBeginOverlap.AddDynamic(this, &ASpartaArcadeMovingObstacle::OnOverlapBegin);
 }
 
 void ASpartaArcadeMovingObstacle::SetMapBuilder(ASpartaArcadeMapBuilder* InMap)
@@ -170,5 +174,17 @@ void ASpartaArcadeMovingObstacle::Tick(float DeltaSeconds)
     {
         const FVector2D Move = To / Dist * Step;
         SetActorLocation(FVector(Cur.X + Move.X, Cur.Y + Move.Y, PlaneZ));
+    }
+}
+
+void ASpartaArcadeMovingObstacle::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+    if (HasAuthority() && IsValid(OtherActor))
+    {
+        if (OtherActor->IsA(ASpartaArcadeCharacter::StaticClass()))
+        {
+            FDamageEvent DamageEvent;
+            OtherActor->TakeDamage(1.f, DamageEvent, nullptr, this);
+        }
     }
 }

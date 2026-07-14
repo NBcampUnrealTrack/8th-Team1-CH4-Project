@@ -10,6 +10,7 @@ void ASpartaPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 	DOREPLIFETIME(ASpartaPlayerState, TeamID);
 	DOREPLIFETIME(ASpartaPlayerState, Hearts);
 	DOREPLIFETIME(ASpartaPlayerState, CurrentState);
+	DOREPLIFETIME(ASpartaPlayerState, Shields);
 }
 
 void ASpartaPlayerState::SetCharacterType(ESpartaArcadeCharacterType NewType)
@@ -23,6 +24,20 @@ void ASpartaPlayerState::SetCharacterType(ESpartaArcadeCharacterType NewType)
 ESpartaArcadeCharacterType ASpartaPlayerState::GetCharacterType() const
 {
 	return CharacterType;
+}
+
+void ASpartaPlayerState::SetShields(int32 NewCount)
+{
+	if (Shields != NewCount)
+	{
+		Shields = NewCount;
+		OnRep_Shields();
+	}
+}
+
+int32 ASpartaPlayerState::GetShields() const
+{
+	return Shields;
 }
 
 void ASpartaPlayerState::SetFirstAidKits(int32 NewCount)
@@ -106,6 +121,14 @@ void ASpartaPlayerState::OnRep_Hearts()
 	if (OnHeartsChanged.IsBound())
 	{
 		OnHeartsChanged.Broadcast(Hearts, StartHearts);
+	}
+}
+
+void ASpartaPlayerState::OnRep_Shields()
+{
+	if (OnShieldsChanged.IsBound())
+	{
+		OnShieldsChanged.Broadcast(Shields);
 	}
 }
 

@@ -6,6 +6,8 @@
 #include "Net/UnrealNetwork.h"
 #include "Damageable.h"
 #include "AbilitySystemInterface.h"
+#include "UI/Public/SpartaUIDefs.h" 
+#include "Components/WidgetComponent.h"
 #include "SpartaArcadeCharacter.generated.h"
 
 // 컴포넌트 의존 관계 설정을 위한 전방 선언
@@ -15,6 +17,7 @@ class ASpartaPlayerState;
 class UAbilitySystemComponent;   
 class UBomberAttributeSet;       
 class UGameplayAbility;          
+class UWidgetComponent;
 
 // 캐릭터 스탯 특화 선택을 위한 타입 열거형
 UENUM(BlueprintType)
@@ -70,12 +73,21 @@ public:
 	void UseFirstAidKit();
 	
 	UFUNCTION(BlueprintCallable, Category = "Gameplay")
+	void UseShield();
+	
+	UFUNCTION(BlueprintCallable, Category = "Gameplay")
 	void KickBomb();
 
 	// 아이템 획득 및 쿨다운 처리를 위한 상태 함수 추가
 	void AddFirstAidKit();
 	void AddShield();
 	void OnBombExploded();
+	void PerformUseShield();
+	void UnlockKickBomb();
+
+	void UpdateNickname(); 
+
+	void ShowMatchResultUI(EMatchResult Result);
 
 	// UI 및 HUD 연동을 위한 Getter 함수
 	UFUNCTION(BlueprintPure, Category = "Gameplay")
@@ -113,6 +125,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UCombatComponent> CombatComponent;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UWidgetComponent> NicknameWidgetComponent;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PlayerState")
 	TObjectPtr<ASpartaPlayerState> SpartaPlayerState;
 
@@ -147,6 +162,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TSubclassOf<UGameplayAbility> KickBombAbilityClass;
+	
+	UPROPERTY(EditdefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	TSubclassOf<UGameplayAbility> UseShieldAbilityClass;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TSubclassOf<UGameplayAbility> UseFirstAidKitAbilityClass;
@@ -175,6 +193,8 @@ protected:
 private:
 	// 연쇄 폭발 다단 히트 차단을 위한 콜리전 복구 타이머 핸들
 	FTimerHandle CollisionRestoreTimerHandle;
+
+	bool bMatchResultShown = false;
 
 	// 무시되었던 Visibility 콜리전 채널을 다시 Block 상태로 원상 복구하는 헬퍼 함수
 	void RestoreCollisionResponse();

@@ -62,9 +62,6 @@ protected:
     UPROPERTY(meta = (BindWidget))
     UTextBlock* MatchTimeText;
 
-    UPROPERTY(meta = (BindWidget))
-    UTextBlock* ZonePhaseText;
-
     // --- 피격 피드백 UI 에셋 ---
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI | Feedback")
     TSubclassOf<UUserWidget> DamageTextWidgetClass;
@@ -89,6 +86,9 @@ protected:
     UPROPERTY(meta = (BindWidget, OptionalWidget = true))
     UImage* MedImg;
 
+    UPROPERTY(meta = (BindWidget, OptionalWidget = true))
+    class USpartaMinimapWidget* WBP_MinimapWidget; // Modified: 미니맵 UI 연동 변수 추가
+
 
 
 public:
@@ -111,7 +111,7 @@ public:
     void UpdateCharacterStats(float ExplosionRange, float MoveSpeed, bool bHasShield);
 
     UFUNCTION(BlueprintCallable, Category = "UI | Update")
-    void UpdateGameStateInfo(int32 AlivePlayers, int32 MatchSeconds, int32 ZonePhase);
+    void UpdateGameStateInfo(int32 AlivePlayers, int32 MatchSeconds);
 
     // 쉴드 및 구급약 획득 여부에 따른 개별 아이콘 가시성 갱신 함수 선언
     UFUNCTION(BlueprintCallable, Category = "UI | Update")
@@ -119,6 +119,9 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "UI | Update")
     void UpdateMedKitStatus(int32 MedKitCount);
+
+    UFUNCTION(BlueprintCallable, Category = "UI | Update")
+    void UpdateShieldItemStatus(int32 ShieldCount);
     
     // OnHit 델리게이트와 시그니처를 맞추기 위해 매개변수가 없는 HandleOnHit 추가
     UFUNCTION()

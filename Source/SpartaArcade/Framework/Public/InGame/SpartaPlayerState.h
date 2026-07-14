@@ -13,6 +13,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStunStateChangedSignature, bool, 
 // 구급약 보유 개수 변화 통지용 델리게이트 선언
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnFirstAidKitsChangedSignature, int32, NewCount);
 
+//실드
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnShieldsChangedSignature, int32, NewCount);
+
 enum class ESpartaArcadeCharacterType : uint8;
 enum class EBomberPlayerState : uint8;
 
@@ -31,6 +34,11 @@ public:
 	void SetCharacterType(ESpartaArcadeCharacterType NewType);
 	UFUNCTION(BlueprintCallable, Category = "Character")
 	ESpartaArcadeCharacterType GetCharacterType() const;
+	
+	UFUNCTION(BlueprintCallable, Category = "Character")
+	void SetShields(int32 NewCount);  
+	UFUNCTION(BlueprintCallable, Category = "Character")
+	int32 GetShields() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Character")
 	void SetFirstAidKits(int32 NewCount);
@@ -67,6 +75,8 @@ public:
 	UFUNCTION()
 	void OnRep_Hearts();
 	UFUNCTION()
+	void OnRep_Shields();
+	UFUNCTION()
 	void OnRep_CurrentState();
 	UFUNCTION()
 	void OnRep_FirstAidKits();
@@ -86,6 +96,10 @@ public:
 	// 구급약 개수 변동 델리게이트 변수 정의
 	UPROPERTY(BlueprintAssignable, Category = "Events | UI")
 	FOnFirstAidKitsChangedSignature OnFirstAidKitsChanged;
+	
+	// 실드
+	UPROPERTY(BlueprintAssignable, Category = "Events | UI")
+	FOnShieldsChangedSignature OnShieldsChanged;
 
 protected:
 
@@ -97,6 +111,9 @@ protected:
 	// 구급상자 초기 보유 개수
 	UPROPERTY(ReplicatedUsing = OnRep_FirstAidKits, VisibleAnywhere, BlueprintReadOnly, Category = "Character")
 	int32 FirstAidKits = 0;
+	
+	UPROPERTY(ReplicatedUsing = OnRep_Shields, VisibleAnywhere, BlueprintReadOnly, Category = "Character")
+	int32 Shields = 0;
 
 	// 팀전 구분을 위한 TeamID 속성
 	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Character")
