@@ -6,6 +6,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Damageable.h"
 #include "AbilitySystemInterface.h"
+#include "UI/Public/SpartaUIDefs.h" 
 #include "Components/WidgetComponent.h"
 #include "SpartaArcadeCharacter.generated.h"
 
@@ -77,7 +78,9 @@ public:
 	void AddShield();
 	void OnBombExploded();
 
-	void UpdateNickname();
+	void UpdateNickname(); 
+
+	void ShowMatchResultUI(EMatchResult Result);
 
 	// UI 및 HUD 연동을 위한 Getter 함수
 	UFUNCTION(BlueprintPure, Category = "Gameplay")
@@ -142,6 +145,8 @@ protected:
 private:
 	// 연쇄 폭발 다단 히트 차단을 위한 콜리전 복구 타이머 핸들
 	FTimerHandle CollisionRestoreTimerHandle;
+
+	bool bMatchResultShown = false;
 
 	// 무시되었던 Visibility 콜리전 채널을 다시 Block 상태로 원상 복구하는 헬퍼 함수
 	void RestoreCollisionResponse();

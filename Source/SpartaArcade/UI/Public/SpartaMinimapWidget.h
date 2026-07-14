@@ -16,17 +16,17 @@ protected:
     virtual void NativeConstruct() override;
     virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
-    // --- UMG 위젯 바인딩 ---
-    UPROPERTY(meta = (BindWidget))
+    // --- UMG 위젯 바인딩 (OptionalWidget = true 지정 및 동적 수립 탑재) ---
+    UPROPERTY(meta = (BindWidget, OptionalWidget = true))
     UCanvasPanel* MinimapCanvas;
 
-    UPROPERTY(meta = (BindWidget))
+    UPROPERTY(meta = (BindWidget, OptionalWidget = true))
     UImage* MinimapBackground;
 
-    UPROPERTY(meta = (BindWidget))
+    UPROPERTY(meta = (BindWidget, OptionalWidget = true))
     UImage* PlayerMarker;
 
-    UPROPERTY(meta = (BindWidget))
+    UPROPERTY(meta = (BindWidget, OptionalWidget = true))
     UImage* SafeZoneIndicator;
 
     // --- 미니맵 설정 값 (임시 수치) ---
@@ -46,6 +46,9 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "UI | Minimap")
     void SetupMapStructure(UTexture2D* MapTexture, float WorldSize);
+
+    // Slate resource leak 방지를 위해 ReleaseSlateResources 오버라이드 선언 추가
+    virtual void ReleaseSlateResources(bool bReleaseChildren) override;
 
 private:
     // 월드 좌표를 미니맵 2D UI 캔버스 좌표로 변환

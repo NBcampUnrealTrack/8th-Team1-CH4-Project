@@ -20,9 +20,13 @@
 #include "AbilitySystemComponent.h"
 #include "BomberAttributeSet.h"
 #include "BomberGameplayTags.h"
+#include "UI/Public/SpartaMenuFlowWidget.h"
+#include "UObject/UObjectIterator.h"
+#include "GameFramework/GameStateBase.h"
 #include "Components/WidgetComponent.h"
 #include "Components/TextBlock.h"
 #include "Blueprint/WidgetTree.h"
+#include "Styling/SlateColor.h"
 
 
 ASpartaArcadeCharacter::ASpartaArcadeCharacter()
@@ -456,6 +460,7 @@ void ASpartaArcadeCharacter::HandleOnSelfRevive()
 void ASpartaArcadeCharacter::HandleOnEliminated()
 {
 	UE_LOG(LogTemp, Log, TEXT("%s 게임에서 탈락(소멸)되었습니다."), *GetName());
+	ShowMatchResultUI(EMatchResult::Defeat);
 	Destroy();
 }
 
@@ -530,6 +535,24 @@ void ASpartaArcadeCharacter::UpdateNickname()
 		if (TargetText)
 		{
 			TargetText->SetText(FText::FromString(PlayerName));
+
+			// Team 1이면 빨간색, Team 2면 파란색으로 닉네임 색상 표시
+			if (ASpartaPlayerState* SPS = Cast<ASpartaPlayerState>(PS))
+			{
+				int32 TeamID = SPS->GetTeamID();
+				if (TeamID == 1)
+				{
+					TargetText->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.25f, 0.25f)));
+				}
+				else if (TeamID == 2)
+				{
+					TargetText->SetColorAndOpacity(FSlateColor(FLinearColor(0.25f, 0.5f, 1.0f)));
+				}
+				else
+				{
+					TargetText->SetColorAndOpacity(FSlateColor(FLinearColor::White)); // 기본 색상 (흰색)
+				}
+			}
 		}
 	}
 	else
@@ -537,5 +560,52 @@ void ASpartaArcadeCharacter::UpdateNickname()
 		// PlayerState가 유효해질 때까지 재시도
 		FTimerHandle TempHandle;
 		GetWorldTimerManager().SetTimer(TempHandle, this, &ASpartaArcadeCharacter::UpdateNickname, 0.1f, false);
+	}
+}
+
+void ASpartaArcadeCharacter::ShowMatchResultUI(EMatchResult Result)
+{
+	if (bMatchResultShown || !IsLocallyControlled())
+	{
+		return;
+	}
+	bMatchResultShown = true;
+
+	for (TObjectIterator<USpartaMenuFlowWidget> It; It; ++It)
+	{
+		if (It->GetWorld() == GetWorld())
+		{
+			int32 AliveCount = 0;
+			TArray<FMatchPlayerResult> MatchResults;
+
+			if (AGameStateBase* GS = GetWorld()->GetGameState())
+			{
+				for (APlayerState* PS : GS->PlayerArray)
+				{
+					if (ASpartaPlayerState* SPS = Cast<ASpartaPlayerState>(PS))
+					{
+						if (SPS->GetCurrentState() != EBomberPlayerState::Eliminated)
+						{
+							AliveCount++;
+						}
+
+						FMatchPlayerResult Res;
+						Res.PlayerName = SPS->GetPlayerName();
+						Res.Rank = (SPS->GetCurrentState() == EBomberPlayerState::Eliminated) ? 4 : 1;
+						MatchResults.Add(Res);
+					}
+				}
+			}
+
+			int32 FinalRank = (Result == EMatchResult::Defeat) ? FMath::Max(1, AliveCount) : 1;
+			It->ShowMatchResult(Result, FinalRank, MatchResults);
+
+			if (APlayerController* PC = Cast<APlayerController>(GetController()))
+			{
+				PC->SetShowMouseCursor(true);
+				PC->SetInputMode(FInputModeUIOnly());
+			}
+			return;
+		}
 	}
 }

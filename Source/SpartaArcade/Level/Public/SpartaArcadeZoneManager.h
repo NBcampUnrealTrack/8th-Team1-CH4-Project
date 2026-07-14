@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -42,6 +42,9 @@ public:
     /** 압사당한 액터 알림(플레이어=사망 처리는 게임 시스템, 장애물=자체 소멸). */
     UPROPERTY(BlueprintAssignable, Category = "SpartaArcade|Zone")
     FOnActorCrushed OnActorCrushed;
+
+    FORCEINLINE float GetElapsed() const { return Elapsed; }
+    FORCEINLINE float GetShrinkProgress() const { return ShrinkProgress; }
 
     // ---- 타이밍(초) — 전부 조절 가능. 테스트 시 ActivationDelay를 작게. ----
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SpartaArcade|Zone", meta = (ClampMin = "0.0"))
@@ -97,7 +100,8 @@ protected:
     TArray<FIntPoint> SpiralCells;  // 외곽→중앙 나선(중앙 아레나 제외)
     bool bSpiralBuilt = false;
     bool bStarted = false;
-    float Elapsed = 0.f;
+    UPROPERTY(Replicated)
+    float Elapsed = 0.f; 
     int32 RenderedCrush = 0;        // 지금까지 렌더한 낙하 블록 수
     int32 KillIndex = 0;            // 지금까지 압사 처리한 인덱스(서버)
 
