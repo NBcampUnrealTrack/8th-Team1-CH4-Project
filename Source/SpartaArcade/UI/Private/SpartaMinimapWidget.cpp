@@ -359,9 +359,22 @@ void USpartaMinimapWidget::InitializeDynamicRenderTarget()
                 CachedCameraRelativeZ = 1500.f; // 높이가 비정상적인 경우 디폴트 1500 설정
             }
 
-            MinimapBackground->SetBrushResourceObject(DynamicRenderTarget);
+            // 미니맵 UI 머티리얼(MinimapMaterialClass)이 지정된 경우 동적 인스턴스를 생성해 렌더타겟 텍스처를 바인딩
+            if (MinimapMaterialClass)
+            {
+                DynamicMinimapMaterial = UMaterialInstanceDynamic::Create(MinimapMaterialClass, this);
+                if (DynamicMinimapMaterial)
+                {
+                    DynamicMinimapMaterial->SetTextureParameterValue(TEXT("RT_Minimap"), DynamicRenderTarget);
+                    MinimapBackground->SetBrushFromMaterial(DynamicMinimapMaterial);
+                }
+            }
+            else
+            {
+                MinimapBackground->SetBrushResourceObject(DynamicRenderTarget);
+            }
             
-            UE_LOG(LogTemp, Warning, TEXT("[MinimapSystem] 플레이어 %s 를 위한 동적 미니맵 렌더타겟(텍스처 직접 주입)이 성공적으로 생성되었습니다."), *PlayerPawn->GetName());
+            UE_LOG(LogTemp, Warning, TEXT("[MinimapSystem] 플레이어 %s 를 위한 동적 미니맵 렌더타겟 및 머터리얼 인스턴스 연동이 완료되었습니다."), *PlayerPawn->GetName());
             bInitializedDynamicRT = true;
         }
     }

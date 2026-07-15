@@ -213,7 +213,11 @@ void UUW_TitleUserWidget::OnCreateSessionButtonClicked()
 		CreationSettings.MaxPlayers = MaxPlayers;
 
 		CreationSettings.bIsPrivate = (IsPrivateCheckBox->GetCheckedState() == ECheckBoxState::Checked);
-		CreationSettings.GameModeType = SoloModeButton->bIsEnabled ? static_cast<int32>(EGameModeType::Team) : static_cast<int32>(EGameModeType::Solo);
+		// Removed: bIsEnabled 직접 접근은 deprecated 되어 주석 처리
+		// CreationSettings.GameModeType = SoloModeButton->bIsEnabled ? static_cast<int32>(EGameModeType::Team) : static_cast<int32>(EGameModeType::Solo);
+
+		// Modified: GetIsEnabled() 함수를 사용하도록 수정
+		CreationSettings.GameModeType = SoloModeButton->GetIsEnabled() ? static_cast<int32>(EGameModeType::Team) : static_cast<int32>(EGameModeType::Solo);
 
 		EOSGameInstanceSubsystem->GetSessionService()->CreateSession(CreationSettings);
 	}

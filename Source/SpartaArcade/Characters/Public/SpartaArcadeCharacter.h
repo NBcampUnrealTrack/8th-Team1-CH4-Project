@@ -225,4 +225,6 @@ private:
 
 	int32 MaxInitializedComponentsCount;
 	int32 InitializedComponentsCount;
+
+	bool bComponentsInitialized = false;
 };
