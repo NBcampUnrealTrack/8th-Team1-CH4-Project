@@ -285,10 +285,14 @@ void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UBomberAtt
 		PlayerState->OnStunStateChanged.AddDynamic(this, &USpartaHUDWidget::SetStunActive);
 		PlayerState->OnFirstAidKitsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateMedKitStatus);
 		PlayerState->OnShieldsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateShieldItemStatus);
+		// 발차기 잠금 해제 상태 변화 이벤트 바인딩
+		PlayerState->OnKickUnlockedChanged.AddDynamic(this, &USpartaHUDWidget::HandleOnKickUnlockedChanged);
 
 		// 초기 가시성 상태 세팅
 		UpdateMedKitStatus(PlayerState->GetFirstAidKits());
 		UpdateShieldItemStatus(PlayerState->GetShields());
+		// 발차기 기능 초기 가시성 상태 세팅
+		UpdateKickStatus(PlayerState->IsKickUnlocked());
     }
     
 
@@ -352,4 +356,19 @@ void USpartaHUDWidget::UpdateMedKitStatus(int32 MedKitCount)
 	{
 		MedImg->SetVisibility(MedKitCount > 0 ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	}
+}
+
+// 발차기 활성화 여부에 따른 아이콘 가시성 제어 구현
+void USpartaHUDWidget::UpdateKickStatus(bool bCanKick)
+{
+	if (KickImg)
+	{
+		KickImg->SetVisibility(bCanKick ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+}
+
+// 발차기 델리게이트 이벤트 수신 시 처리
+void USpartaHUDWidget::HandleOnKickUnlockedChanged(bool bIsUnlocked)
+{
+	UpdateKickStatus(bIsUnlocked);
 }

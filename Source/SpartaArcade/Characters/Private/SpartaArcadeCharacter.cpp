@@ -327,6 +327,11 @@ void ASpartaArcadeCharacter::UnlockKickBomb()
 	
 	AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(KickBombAbilityClass,1, INDEX_NONE, this));
 	
+	// 발차기 활성화 시 PlayerState에도 해당 상태를 업데이트하여 UI와 동기화
+	if (IsValid(SpartaPlayerState))
+	{
+		SpartaPlayerState->SetKickUnlocked(true);
+	}
 }
 
 // 구급 상자 사용 어빌리티 트리거
