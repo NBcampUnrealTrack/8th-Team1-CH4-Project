@@ -94,7 +94,26 @@ void ASpartaArcadeMovingObstacle::BeginPlay()
 
 bool ASpartaArcadeMovingObstacle::CellOpen(const FIntPoint& C) const
 {
-    return Map.IsValid() && Map->IsCellWalkable(C.X, C.Y);
+    if (!Map.IsValid() || !Map->IsCellWalkable(C.X, C.Y))
+    {
+        return false;
+    }
+
+    // 시작하는 방(구석 3x3 안전지대) 안으로는 움직이는 장애물이 절대 침입하지 못하도록 경로 탐색 시 차단 (벽 취급)
+    const int32 W = Map->GetGridWidth();
+    const int32 H = Map->GetGridHeight();
+
+    // 4개 모서리 구석 3x3 타일 범위 판정
+    // 좌상단 구석: (0~2, 0~2)
+    if (C.X <= 2 && C.Y <= 2) return false;
+    // 우상단 구석: (W-3~W-1, 0~2)
+    if (C.X >= W - 3 && C.Y <= 2) return false;
+    // 좌하단 구석: (0~2, H-3~H-1)
+    if (C.X <= 2 && C.Y >= H - 3) return false;
+    // 우하단 구석: (W-3~W-1, H-3~H-1)
+    if (C.X >= W - 3 && C.Y >= H - 3) return false;
+
+    return true;
 }
 
 void ASpartaArcadeMovingObstacle::ChooseNextTarget()

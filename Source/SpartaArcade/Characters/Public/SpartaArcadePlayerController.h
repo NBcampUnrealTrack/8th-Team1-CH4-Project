@@ -19,6 +19,10 @@ class ASpartaArcadePlayerController : public APlayerController
 public:
 	ASpartaArcadePlayerController();
 
+	// 이 플레이어 컨트롤러 세션에 영구 배정된 모서리 스폰 인덱스 (-1 이면 미배정)
+	UPROPERTY(Transient)
+	int32 AssignedSpawnIndex = -1;
+
 	// IMC
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputMappingContext* DefaultMappingContext;

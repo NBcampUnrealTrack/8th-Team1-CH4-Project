@@ -7,6 +7,9 @@
 #include "Level/Public/SpartaArcadeMapBuilder.h"
 #include "Level/Public/SpartaArcadeZoneManager.h"
 #include "Blueprint/WidgetTree.h"
+#include "Components/SceneCaptureComponent2D.h"
+#include "Engine/TextureRenderTarget2D.h"
+#include "Materials/MaterialInstanceDynamic.h"
 
 void USpartaMinimapWidget::NativeConstruct()
 {
@@ -59,7 +62,6 @@ void USpartaMinimapWidget::NativeConstruct()
                 ZoneSlot->SetPosition(FVector2D::ZeroVector);
                 ZoneSlot->SetZOrder(1);
             }
-            
             // 엔진 기본 원 텍스처 또는 흰색 평면에 적색 곱하기
             SafeZoneIndicator->SetColorAndOpacity(FLinearColor(1.f, 0.1f, 0.1f, 0.8f));
         }
@@ -76,7 +78,6 @@ void USpartaMinimapWidget::NativeConstruct()
                 MarkerSlot->SetSize(FVector2D(14.f, 14.f));
                 MarkerSlot->SetZOrder(2);
             }
-            PlayerMarker->SetColorAndOpacity(FLinearColor(1.f, 0.9f, 0.1f, 1.f)); // 노란색 마커 지정
         }
     }
 }
@@ -84,6 +85,9 @@ void USpartaMinimapWidget::NativeConstruct()
 void USpartaMinimapWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
     Super::NativeTick(MyGeometry, InDeltaTime);
+
+    // 동적 미니맵 렌더타겟 및 머터리얼 인스턴스 초기화 수행
+    InitializeDynamicRenderTarget();
 
     UWorld* World = GetWorld();
     if (World)
@@ -160,13 +164,46 @@ FVector2D USpartaMinimapWidget::WorldToMinimapPosition(const FVector& WorldLocat
 
 void USpartaMinimapWidget::UpdateMarkerPositions()
 {
-    APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+    // 로컬 플레이어별 개별 미니맵이 자신을 기준으로 표시되도록 GetOwningPlayerPawn() 기반으로 수정
+    APawn* PlayerPawn = GetOwningPlayerPawn();
+    if (!PlayerPawn)
+    {
+        if (APlayerController* PC = GetOwningPlayer())
+        {
+            PlayerPawn = PC->GetPawn();
+        }
+    }
+
+    if (!PlayerPawn)
+    {
+        PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+    }
+
     if (!PlayerPawn)
     {
         return;
     }
 
     FVector PlayerLocation = PlayerPawn->GetActorLocation();
+
+    // 미니맵 카메라가 각 로컬 캐릭터의 머리 위에 오도록 씬 캡처 위치를 매 틱 강제 이동
+    USceneCaptureComponent2D* SceneCapture = PlayerPawn->FindComponentByClass<USceneCaptureComponent2D>();
+    if (!SceneCapture)
+    {
+        TArray<USceneCaptureComponent2D*> Captures;
+        PlayerPawn->GetComponents<USceneCaptureComponent2D>(Captures);
+        if (Captures.Num() > 0)
+        {
+            SceneCapture = Captures[0];
+        }
+    }
+
+    if (SceneCapture)
+    {
+        FVector NewCaptureLoc = FVector(PlayerLocation.X, PlayerLocation.Y, PlayerLocation.Z + CachedCameraRelativeZ);
+        FRotator NewCaptureRot = FRotator(-90.f, 0.f, 0.f); // 수직 하방 촬영
+        SceneCapture->SetWorldLocationAndRotation(NewCaptureLoc, NewCaptureRot);
+    }
 
     // 1. 맵 배경 이미지는 캔버스 정중앙에 크기를 딱 맞춰 고정 (카메라가 촬영한 렌더 타겟이므로 시프트 불필요)
     if (MinimapBackground)
@@ -195,7 +232,7 @@ void USpartaMinimapWidget::UpdateMarkerPositions()
         // 캐릭터의 시선(회전각) 반영
         // 배경 지도가 고정된 상태이므로 플레이어 마커만 캐릭터 시선(Yaw)을 반영하여 회전
         float PlayerYaw = PlayerPawn->GetActorRotation().Yaw;
-        PlayerMarker->SetRenderTransformAngle(PlayerYaw + 90.0f);
+        PlayerMarker->SetRenderTransformAngle(PlayerYaw);
     }
 
     // 3. 자기장 안전 구역 상대 위치 갱신
@@ -273,5 +310,59 @@ void USpartaMinimapWidget::ReleaseSlateResources(bool bReleaseChildren)
             SafeZoneIndicator->Slot->ReleaseSlateResources(bReleaseChildren);
         }
         SafeZoneIndicator->ReleaseSlateResources(bReleaseChildren);
+    }
+}
+
+// 각 플레이어별 독립된 미니맵 렌더타겟 및 직접 텍스처 브러시 바인딩을 위한 함수 구현
+void USpartaMinimapWidget::InitializeDynamicRenderTarget()
+{
+    if (bInitializedDynamicRT) return;
+
+    APawn* PlayerPawn = GetOwningPlayerPawn();
+    if (!PlayerPawn)
+    {
+        if (APlayerController* PC = GetOwningPlayer())
+        {
+            PlayerPawn = PC->GetPawn();
+        }
+    }
+    if (!PlayerPawn) return;
+
+    // 캐릭터에서 SceneCaptureComponent2D 찾기
+    USceneCaptureComponent2D* SceneCapture = PlayerPawn->FindComponentByClass<USceneCaptureComponent2D>();
+    if (!SceneCapture)
+    {
+        TArray<USceneCaptureComponent2D*> Captures;
+        PlayerPawn->GetComponents<USceneCaptureComponent2D>(Captures);
+        if (Captures.Num() > 0)
+        {
+            SceneCapture = Captures[0];
+        }
+    }
+
+    if (SceneCapture && MinimapBackground)
+    {
+        // 1. 동적 렌더 타겟 생성 (256x256, RGBA8 포맷)
+        DynamicRenderTarget = NewObject<UTextureRenderTarget2D>(this);
+        if (DynamicRenderTarget)
+        {
+            DynamicRenderTarget->InitAutoFormat(256, 256);
+            DynamicRenderTarget->UpdateResourceImmediate(true);
+            
+            // SceneCapture의 타겟 렌더타겟을 동적으로 생성한 RT로 변경
+            SceneCapture->TextureTarget = DynamicRenderTarget;
+            
+            //씬 캡쳐 카메라의 상대 높이를 가져와 캐싱
+            CachedCameraRelativeZ = SceneCapture->GetRelativeLocation().Z;
+            if (CachedCameraRelativeZ < 100.f)
+            {
+                CachedCameraRelativeZ = 1500.f; // 높이가 비정상적인 경우 디폴트 1500 설정
+            }
+
+            MinimapBackground->SetBrushResourceObject(DynamicRenderTarget);
+            
+            UE_LOG(LogTemp, Warning, TEXT("[MinimapSystem] 플레이어 %s 를 위한 동적 미니맵 렌더타겟(텍스처 직접 주입)이 성공적으로 생성되었습니다."), *PlayerPawn->GetName());
+            bInitializedDynamicRT = true;
+        }
     }
 }

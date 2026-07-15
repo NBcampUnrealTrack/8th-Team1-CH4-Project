@@ -32,10 +32,11 @@ void ASpartaArcadePlayerController::BeginPlay()
 		return;
 	}
 
-	if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
-	{
-		Subsystem->AddMappingContext(DefaultMappingContext, 0);
-	}
+	// Removed: 중복 AddMappingContext 호출 제거 (SetupInputComponent에서 처리됨)
+	// if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+	// {
+	// 	Subsystem->AddMappingContext(DefaultMappingContext, 0);
+	// }
 
 	FInputModeGameOnly GameOnly;
 	SetInputMode(GameOnly);
