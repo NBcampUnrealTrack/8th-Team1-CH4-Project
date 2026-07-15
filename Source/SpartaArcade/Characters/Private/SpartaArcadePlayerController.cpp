@@ -1,4 +1,4 @@
-#include "SpartaArcadePlayerController.h"
+﻿#include "SpartaArcadePlayerController.h"
 #include "GameFramework/Pawn.h"
 #include "Blueprint/AIBlueprintHelperLibrary.h"
 #include "NiagaraSystem.h"
@@ -13,7 +13,6 @@
 #include "UI/Public/SpartaHUDWidget.h"
 #include "EOSGameInstanceSubsystem.h"
 #include "SessionService.h"
-#include "SpartaArcadeGameMode.h"
 #include "GameFlow/TravelGameInstanceSubsystem.h"
 #include "Framework/Public/InGame/SpartaPlayerState.h"
 
@@ -231,40 +230,4 @@ void ASpartaArcadePlayerController::HandleDestroySessionComplete(FName SessionNa
 		}
 	}
 }
-
-// 클라이언트가 로비 등에서 직접 팀(1 또는 2)을 선택해 서버로 변경을 요청하는 RPC 구현
-bool ASpartaArcadePlayerController::ServerSetTeam_Validate(int32 NewTeamID)
-{
-	return (NewTeamID == 1 || NewTeamID == 2);
-}
-
-void ASpartaArcadePlayerController::ServerSetTeam_Implementation(int32 NewTeamID)
-{
-	if (ASpartaPlayerState* SPS = GetPlayerState<ASpartaPlayerState>())
-	{
-		// 서버 게임모드의 bIsTeamMode 여부를 검사해 팀전 모드일 때만 팀 선택 변경 허용
-		bool bTeamModeActive = false;
-		if (ASpartaArcadeGameMode* GM = Cast<ASpartaArcadeGameMode>(GetWorld()->GetAuthGameMode()))
-		{
-			bTeamModeActive = GM->bIsTeamMode;
-		}
-
-		if (bTeamModeActive)
-		{
-			SPS->SetTeamID(NewTeamID);
-		}
-		else
-		{
-			SPS->SetTeamID(0); // 개인전일 경우 무조건 팀 ID는 0으로 고정
-		}
-
-		// 플레이어 캐릭터 닉네임 색상 즉시 업데이트 연동
-		if (ASpartaArcadeCharacter* ArcadeCharacter = Cast<ASpartaArcadeCharacter>(GetPawn()))
-		{
-			ArcadeCharacter->UpdateNickname();
-		}
-		UE_LOG(LogTemp, Warning, TEXT("[TeamSelection] %s 의 팀이 서버에서 Team %d 로 변경되었습니다."), *GetName(), SPS->GetTeamID());
-	}
-}
-
 
