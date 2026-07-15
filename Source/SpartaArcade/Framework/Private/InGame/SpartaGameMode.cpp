@@ -11,8 +11,11 @@
 #include "EngineUtils.h"
 #include "Engine/OverlapResult.h"
 #include "Level/Public/SpartaArcadeMapBuilder.h"
+#include "SpartaArcadePlayerController.h"
 
 ASpartaGameMode::ASpartaGameMode()
+	: MaxInitializeTeamInfoCount(10)
+	, CurrentInitializeTeamInfoCount(0)
 {
     GameStateClass = ASpartaGameState::StaticClass();
 	PlayerStateClass = ASpartaPlayerState::StaticClass();
@@ -24,11 +27,7 @@ void ASpartaGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 	SpartaGameState = GetGameState<ASpartaGameState>();
-
-	if (IsValid(SpartaGameState))
-	{
-		InitializeTeamInfo();
-	}
+	GetWorldTimerManager().SetTimerForNextTick(this, &ASpartaGameMode::InitializeTeamInfo);
 }
 
 void ASpartaGameMode::Logout(AController* Exiting)
@@ -99,28 +98,47 @@ void ASpartaGameMode::StartMatch()
 void ASpartaGameMode::EndMatch()
 {
 	Super::EndMatch();
+
 	UE_LOG(LogTemp, Warning, TEXT("Match Ended!"));
 
-	for(APlayerState* PlayerState : SpartaGameState->PlayerArray)
-	{
-		ASpartaPlayerState* SpartaPlayerState = Cast<ASpartaPlayerState>(PlayerState);
-		if (IsValid(SpartaPlayerState))
-		{
-			SetGameResult(SpartaPlayerState);
-		}
-	}
-}
-
-void ASpartaGameMode::HandlePlayerEliminated(ASpartaPlayerState* DeadPlayer)
-{
-	if (!IsValid(DeadPlayer))
+	if (!IsValid(SpartaGameState))
 	{
 		return;
 	}
 
-	DecreaseAlivePlayer();
-	int32 TeamID = DeadPlayer->GetTeamID();
+	for (TPair<int32, FTeamInfo>& TeamInfoPair : TeamInfoMap)
+	{
+		if (!TeamInfoPair.Value.bEliminated)
+		{
+			TeamInfoPair.Value.Rank = 1;
+			TeamInfoPair.Value.SurvivalTime = SpartaGameState->ElapsedTime;
 
+			for (ASpartaPlayerState* PlayerState : TeamInfoPair.Value.TeamPlayerStates)
+			{
+				if (IsValid(PlayerState))
+				{
+					MatchResults.Add(CreateGameResult(PlayerState));
+				}
+			}
+			break;
+		}
+	}
+	Algo::Reverse(MatchResults);
+	ShowGameResultToAllPlayers();
+}
+
+void ASpartaGameMode::HandlePlayerEliminated(ASpartaPlayerState* DeadPlayer)
+{
+	if (!IsValid(DeadPlayer) || !IsValid(SpartaGameState))
+	{
+		return;
+	}
+
+	int32 TeamID = SpartaGameState->GetGameModeType() == EGameModeType::Solo ?
+		DeadPlayer->GetPlayerId() : DeadPlayer->GetTeamID();
+
+	DecreaseAlivePlayer();
+	
 	if (TeamInfoMap.Contains(TeamID))
 	{
 		FTeamInfo& TeamInfo = TeamInfoMap[TeamID];
@@ -135,10 +153,18 @@ void ASpartaGameMode::HandlePlayerEliminated(ASpartaPlayerState* DeadPlayer)
 		if (TeamInfo.AliveCount <= 0 && !TeamInfo.bEliminated)
 		{
 			TeamInfo.bEliminated = true;
-			
+			for (ASpartaPlayerState* PlayerState : TeamInfoMap[TeamID].TeamPlayerStates)
+			{
+				if (IsValid(PlayerState))
+				{
+					MatchResults.Add(CreateGameResult(PlayerState));
+				}
+			}
 			DecreaseAliveTeam();
 		}
+		TeamInfo.bEliminated ? ShowGameResultToTeam(TeamID) : ShowGameResultToEliminatedPlayer(DeadPlayer);
 	}
+
 	CheckGameEnd();
 }
 
@@ -174,6 +200,22 @@ void ASpartaGameMode::InitializeTeamInfo()
 	
 	if (SpartaGameState)
 	{
+		for (APlayerState* PlayerState : SpartaGameState->PlayerArray)
+		{
+			ASpartaPlayerState* SpartaPlayerState = Cast<ASpartaPlayerState>(PlayerState);
+			if (IsValid(SpartaPlayerState) == false)
+			{
+				
+				if (CurrentInitializeTeamInfoCount < MaxInitializeTeamInfoCount)
+				{
+					++CurrentInitializeTeamInfoCount;
+					GetWorldTimerManager().SetTimerForNextTick(this, &ASpartaGameMode::InitializeTeamInfo);
+					return;
+				}
+				else break;
+			}
+		}
+
 		int32 TotalAlivePlayers = 0;
 		for (APlayerState* PlayerState : SpartaGameState->PlayerArray)
 		{
@@ -202,22 +244,76 @@ void ASpartaGameMode::InitializeTeamInfo()
 	}
 }
 
-void ASpartaGameMode::SetGameResult(ASpartaPlayerState* PlayerState)
+FMatchPlayerResult ASpartaGameMode::CreateGameResult(const ASpartaPlayerState* PlayerState)
 {
 	FMatchPlayerResult MatchResult;
+	MatchResult.PlayerName = TEXT("Unknown");
 
-	if(IsValid(PlayerState) && TeamInfoMap.Contains(PlayerState->GetTeamID()))
+	if(!IsValid(PlayerState) || !IsValid(SpartaGameState))
 	{
-		int32 TeamID = PlayerState->GetTeamID();
-		MatchResult.PlayerName = PlayerState->GetPlayerName();
-		MatchResult.Rank = TeamInfoMap[TeamID].Rank;
-		MatchResult.SurvivalTime = TeamInfoMap[TeamID].SurvivalTime;
+		int32 TeamID = SpartaGameState->GetGameModeType() == EGameModeType::Solo ?
+			PlayerState->GetPlayerId() : PlayerState->GetTeamID();
+		if (TeamInfoMap.Contains(TeamID))
+		{
+			MatchResult.PlayerName = PlayerState->GetPlayerName();
+			MatchResult.Rank = TeamInfoMap[TeamID].Rank;
+			MatchResult.SurvivalTime = TeamInfoMap[TeamID].SurvivalTime;
+		}
 	}
-	else
+
+	return MatchResult;
+}
+
+void ASpartaGameMode::ShowGameResultToAllPlayers()
+{
+	for (APlayerState* PlayerState : SpartaGameState->PlayerArray)
 	{
-		MatchResult.PlayerName = TEXT("Unknown");
-		MatchResult.Rank = 0;
-		MatchResult.SurvivalTime = 0;
+		ASpartaPlayerState* SpartaPlayerState = Cast<ASpartaPlayerState>(PlayerState);
+		if (IsValid(SpartaPlayerState))
+		{
+			ASpartaArcadePlayerController* PC = Cast<ASpartaArcadePlayerController>(SpartaPlayerState->GetOwner());
+			if(IsValid(PC))
+			{
+				int32 TeamID = SpartaGameState->GetGameModeType() == EGameModeType::Solo ?
+					SpartaPlayerState->GetPlayerId() : SpartaPlayerState->GetTeamID();
+				int32 PlayerRank = TeamInfoMap.Contains(TeamID) ? TeamInfoMap[TeamID].Rank : 0;
+				PC->ClientShowMatchResult(PlayerRank == 1 ? EMatchResult::Victory : EMatchResult::Defeat, PlayerRank, MatchResults);
+			}
+		}
+	}
+}
+
+void ASpartaGameMode::ShowGameResultToTeam(int32 TeamID)
+{
+	if (TeamInfoMap.Contains(TeamID))
+	{
+		for(ASpartaPlayerState* PlayerState : TeamInfoMap[TeamID].TeamPlayerStates)
+		{
+			if(IsValid(PlayerState))
+			{
+				ASpartaArcadePlayerController* PC = Cast<ASpartaArcadePlayerController>(PlayerState->GetOwner());
+				if(IsValid(PC))
+				{
+					int32 PlayerRank = TeamInfoMap[TeamID].Rank;
+					PC->ClientShowMatchResult(EMatchResult::Defeat, PlayerRank, TArray<FMatchPlayerResult>());
+				}
+			}
+		}
+	}
+}
+
+void ASpartaGameMode::ShowGameResultToEliminatedPlayer(ASpartaPlayerState* DeadPlayer)
+{
+	if(IsValid(DeadPlayer))
+	{
+		ASpartaArcadePlayerController* PC = Cast<ASpartaArcadePlayerController>(DeadPlayer->GetOwner());
+		if(IsValid(PC))
+		{
+			int32 TeamID = SpartaGameState->GetGameModeType() == EGameModeType::Solo ?
+				DeadPlayer->GetPlayerId() : DeadPlayer->GetTeamID();
+			int32 PlayerRank = TeamInfoMap.Contains(TeamID) ? TeamInfoMap[TeamID].Rank : 0;
+			PC->ClientShowMatchResult(EMatchResult::None, PlayerRank, TArray<FMatchPlayerResult>());
+		}
 	}
 }
 

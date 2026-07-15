@@ -109,7 +109,7 @@ void USpartaMenuFlowWidget::ShowMatchResult(EMatchResult Result, int32 MyRank, c
     {
         MenuWidgetSwitcher->SetActiveWidgetIndex(Index_ResultScreen);
     }
-
+	UE_LOG(LogTemp, Warning, TEXT("[MatchResult] ShowMatchResult() 호출: Result=%d, MyRank=%d, PlayerResults.Num()=%d"), static_cast<int32>(Result), MyRank, PlayerResults.Num());
     // 1. 승리/패배 타이틀 텍스트 설정
     if (ResultTitleText)
     {

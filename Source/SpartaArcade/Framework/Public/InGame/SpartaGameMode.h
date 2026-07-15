@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameMode.h"
+#include "SpartaUIDefs.h"
 #include "SpartaGameMode.generated.h"
 
 class ASpartaGameState;
@@ -11,25 +12,28 @@ class ASpartaPlayerState;
 class UCombatComponent;
 
 USTRUCT(BlueprintType)
-	struct FTeamInfo
-	{
-		GENERATED_BODY()
+struct FTeamInfo
+{
+	GENERATED_BODY()
 
-		UPROPERTY(BlueprintReadOnly)
-		int32 TeamID;
+	UPROPERTY(BlueprintReadOnly)
+	int32 TeamID;
 
-		UPROPERTY(BlueprintReadOnly)
-		int32 AliveCount;
+	UPROPERTY(BlueprintReadOnly)
+	int32 AliveCount;
 
-		UPROPERTY(BlueprintReadOnly)
-		bool bEliminated;
+	UPROPERTY(BlueprintReadOnly)
+	bool bEliminated;
 
-		UPROPERTY(BlueprintReadOnly)
-		int32 Rank;
+	UPROPERTY(BlueprintReadOnly)
+	int32 Rank;
 
-		UPROPERTY(BlueprintReadOnly)
-		int32 SurvivalTime;
-	};
+	UPROPERTY(BlueprintReadOnly)
+	int32 SurvivalTime;
+
+	UPROPERTY(BlueprintReadOnly)
+	TArray<ASpartaPlayerState*> TeamPlayerStates;
+};
 
 UCLASS()
 class SPARTAARCADE_API ASpartaGameMode : public AGameMode
@@ -40,7 +44,6 @@ public:
 	ASpartaGameMode();
 		
 	virtual void BeginPlay() override;
-
 	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 	virtual void Logout(AController* Exiting) override;
 	virtual void RestartPlayer(AController* NewPlayer) override;
@@ -59,7 +62,13 @@ public:
 
 	void InitializeTeamInfo();
 
-	void SetGameResult(ASpartaPlayerState* PlayerState);
+	void ShowGameResultToAllPlayers();
+
+	void ShowGameResultToTeam(int32 TeamID);
+
+	void ShowGameResultToEliminatedPlayer(ASpartaPlayerState* DeadPlayer);
+
+	FMatchPlayerResult CreateGameResult(const ASpartaPlayerState* PlayerState);
 
 	//----------------------
 	// 스폰 위치 조정 함수
@@ -73,11 +82,19 @@ public:
 
 	void ClearAroundLocation(const FVector& Location, APawn* IgnoredPawn);
 
+
+
 private:
 	TObjectPtr<ASpartaGameState> SpartaGameState;
 
 	TMap<int32, FTeamInfo> TeamInfoMap;
 
+	TArray<FMatchPlayerResult> MatchResults;
+
+	int32 MaxInitializeTeamInfoCount;
+	int32 CurrentInitializeTeamInfoCount;
+
 	UPROPERTY()
 	TMap<class AController*, int32> AssignedSpawnIndices;
+
 };

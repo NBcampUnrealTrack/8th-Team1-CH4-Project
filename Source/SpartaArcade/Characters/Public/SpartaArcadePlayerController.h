@@ -3,11 +3,13 @@
 #include "CoreMinimal.h"
 #include "Templates/SubclassOf.h"
 #include "GameFramework/PlayerController.h"
+#include "SpartaUIDefs.h"
 #include "SpartaArcadePlayerController.generated.h"
 
 class UNiagaraSystem;
 class UInputMappingContext;
 class UInputAction;
+class USpartaMenuFlowWidget;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -53,12 +55,23 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
 	TObjectPtr<UUserWidget> HUDUIWidgetInstance;
 
+	// 메인 메뉴 UI 위젯 클래스 및 인스턴스
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
+	TSubclassOf<USpartaMenuFlowWidget> MainMenuWidgetClass;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
+	TObjectPtr<USpartaMenuFlowWidget> MainMenuWidgetInstance;
+
+
 public:
 	// LeaveGame
 	void LeaveGame();
 
 	// HandleDestroySessionComplete
 	void HandleDestroySessionComplete(FName SessionName, bool bWasSuccessful);
+
+	UFUNCTION(Client, Reliable)
+	void ClientShowMatchResult(EMatchResult Result, int32 MyRank, const TArray<FMatchPlayerResult>& PlayerResults);
 
 protected:
 
@@ -86,4 +99,5 @@ protected:
 
 	UFUNCTION(Server, Reliable)
 	void ServerUseShield();
+
 };

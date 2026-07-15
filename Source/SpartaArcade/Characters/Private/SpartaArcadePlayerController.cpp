@@ -15,6 +15,7 @@
 #include "SessionService.h"
 #include "GameFlow/TravelGameInstanceSubsystem.h"
 #include "Framework/Public/InGame/SpartaPlayerState.h"
+#include "UI/Public/SpartaMenuFlowWidget.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -39,6 +40,7 @@ void ASpartaArcadePlayerController::BeginPlay()
 
 	FInputModeGameOnly GameOnly;
 	SetInputMode(GameOnly);
+	bShowMouseCursor = false;
 
 	// 테스트용 HUD UI 위젯 생성 및 뷰포트에 추가
 	if(IsValid(HUDUIWidgetClass))
@@ -47,6 +49,17 @@ void ASpartaArcadePlayerController::BeginPlay()
 		if (IsValid(HUDUIWidgetInstance))
 		{
 			HUDUIWidgetInstance->AddToViewport();
+		}
+	}
+
+	// 메인 메뉴 위젯 생성 및 뷰포트에 추가, 초기 상태는 숨김
+	if (IsValid(MainMenuWidgetClass))
+	{
+		MainMenuWidgetInstance = CreateWidget<USpartaMenuFlowWidget>(this, MainMenuWidgetClass);
+		if (IsValid(MainMenuWidgetInstance))
+		{
+			MainMenuWidgetInstance->AddToViewport();
+			MainMenuWidgetInstance->SetVisibility(ESlateVisibility::Collapsed);
 		}
 	}
 
@@ -187,6 +200,24 @@ void ASpartaArcadePlayerController::ServerUseFirstAidKit_Implementation()
 	if (ArcadeCharacter)
 	{
 		ArcadeCharacter->UseFirstAidKit();
+	}
+}
+
+void ASpartaArcadePlayerController::ClientShowMatchResult_Implementation(EMatchResult Result, int32 MyRank, const TArray<FMatchPlayerResult>& PlayerResults)
+{
+	if (IsValid(HUDUIWidgetInstance))
+	{
+		HUDUIWidgetInstance->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	if(IsValid(MainMenuWidgetInstance))
+	{
+		MainMenuWidgetInstance->SetVisibility(ESlateVisibility::Visible);
+		MainMenuWidgetInstance->ShowMatchResult(Result, MyRank, PlayerResults);
+		FInputModeUIOnly Mode;
+		Mode.SetWidgetToFocus(MainMenuWidgetInstance->GetCachedWidget());
+		SetInputMode(Mode);
+		bShowMouseCursor = true;
 	}
 }
 
