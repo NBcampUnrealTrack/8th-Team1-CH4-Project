@@ -6,25 +6,30 @@
 #include "GameFramework/GameMode.h"
 #include "SpartaGameMode.generated.h"
 
-USTRUCT(BlueprintType)
-struct FTeamInfo
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 TeamID;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 AliveCount;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool bEliminated;
-
-};
-
 class ASpartaGameState;
 class ASpartaPlayerState;
 class UCombatComponent;
+
+USTRUCT(BlueprintType)
+	struct FTeamInfo
+	{
+		GENERATED_BODY()
+
+		UPROPERTY(BlueprintReadOnly)
+		int32 TeamID;
+
+		UPROPERTY(BlueprintReadOnly)
+		int32 AliveCount;
+
+		UPROPERTY(BlueprintReadOnly)
+		bool bEliminated;
+
+		UPROPERTY(BlueprintReadOnly)
+		int32 Rank;
+
+		UPROPERTY(BlueprintReadOnly)
+		int32 SurvivalTime;
+	};
 
 UCLASS()
 class SPARTAARCADE_API ASpartaGameMode : public AGameMode
@@ -33,7 +38,7 @@ class SPARTAARCADE_API ASpartaGameMode : public AGameMode
 	
 public:
 	ASpartaGameMode();
-
+		
 	virtual void BeginPlay() override;
 
 	virtual void StartMatch() override;
@@ -42,8 +47,6 @@ public:
 
     void HandlePlayerEliminated(ASpartaPlayerState* DeadPlayer);
 
-    void AddPlayerScore(ASpartaPlayerState* PlayerState, int32 Score);
-
     void DecreaseAlivePlayer();
 
     void DecreaseAliveTeam();
@@ -51,6 +54,8 @@ public:
     void CheckGameEnd();
 
 	void InitializeTeamInfo();
+
+	void SetGameResult(ASpartaPlayerState* PlayerState);
 
 private:
 	TObjectPtr<ASpartaGameState> SpartaGameState;

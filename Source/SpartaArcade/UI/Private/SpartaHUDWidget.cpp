@@ -1,4 +1,4 @@
-#include "SpartaHUDWidget.h"
+﻿#include "SpartaHUDWidget.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
@@ -99,7 +99,7 @@ void USpartaHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime
         UpdateGameStateInfo(AliveCount, MatchSeconds);
 
         // 2-4. 최후의 1인 우승(Victory) 결과창 연동 트리거
-        if (AliveCount == 1 && IsValid(SpartaPlayerState) && SpartaPlayerState->GetCurrentState() != EBomberPlayerState::Eliminated)
+        if (AliveCount <= 1 && IsValid(SpartaPlayerState) && SpartaPlayerState->GetCurrentState() != EBomberPlayerState::Eliminated)
         {
             if (ASpartaArcadeCharacter* LocalChar = Cast<ASpartaArcadeCharacter>(GetOwningPlayerPawn()))
             {

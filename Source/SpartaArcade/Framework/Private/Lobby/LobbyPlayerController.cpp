@@ -10,6 +10,8 @@
 #include "EOSGameInstanceSubsystem.h"
 #include "SessionService.h"
 #include "GameFlow/TravelGameInstanceSubsystem.h"
+#include "SpartaMenuFlowWidget.h"
+
 void ALobbyPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
@@ -19,24 +21,18 @@ void ALobbyPlayerController::BeginPlay()
 		return;
 	}
 
-	if (IsValid(LobbyUIWidgetClass) == true)
-	{
-		LobbyUIWidgetInstance = CreateWidget<UUserWidget>(this, LobbyUIWidgetClass);
-		if (IsValid(LobbyUIWidgetInstance) == true)
+	if (IsValid(MainMenuWidgetClass) == true)
+	{;
+		MainMenuWidgetInstance = CreateWidget<USpartaMenuFlowWidget>(this, MainMenuWidgetClass);
+		if (IsValid(MainMenuWidgetInstance) == true)
 		{
-			LobbyUIWidgetInstance->AddToViewport();
-
+			MainMenuWidgetInstance->AddToViewport();
+			MainMenuWidgetInstance->ShowLobbyMenu();
 			FInputModeUIOnly Mode;
-			Mode.SetWidgetToFocus(LobbyUIWidgetInstance->GetCachedWidget());
+			Mode.SetWidgetToFocus(MainMenuWidgetInstance->GetCachedWidget());
 			SetInputMode(Mode);
 
 			bShowMouseCursor = true;
-
-			if(ALobbyGameStateBase* LobbyGameState = GetWorld()->GetGameState<ALobbyGameStateBase>())
-			{
-				LobbyGameState->SetLobbyUIWidget(Cast<USpartaLobbyWidget>(LobbyUIWidgetInstance));
-				LobbyGameState->RefreshLobbyUI();
-			}
 		}
 	}
 

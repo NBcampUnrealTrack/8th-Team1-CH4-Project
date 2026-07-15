@@ -1,4 +1,4 @@
-#include "SpartaLobbyWidget.h"
+﻿#include "SpartaLobbyWidget.h"
 #include "SpartaButton.h"
 #include "Components/ScrollBox.h"
 #include "Components/Button.h"
@@ -6,7 +6,9 @@
 #include "Components/Widget.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerController.h"
-#include "Framework/Public/Lobby/LobbyPlayerController.h"
+#include "Lobby/LobbyPlayerController.h"
+#include "Lobby/LobbyGameStateBase.h"
+#include "Lobby/LobbyPlayerState.h"
 
 void USpartaLobbyWidget::NativeConstruct()
 {
@@ -56,11 +58,23 @@ void USpartaLobbyWidget::NativeConstruct()
     {
         StartButton->SetVisibility(ESlateVisibility::Collapsed);
 	}
+
+    if (ALobbyGameStateBase* LobbyGameState = GetWorld()->GetGameState<ALobbyGameStateBase>())
+    {
+        LobbyGameState->OnLobbyInfoChanged.AddUObject(this, &USpartaLobbyWidget::RefreshLobbyUI);
+        LobbyGameState->OnCountdownChanged.AddUObject(this, &USpartaLobbyWidget::UpdateCountdown);
+    }
 }
 
 void USpartaLobbyWidget::NativeDestruct()
 {
+    if (ALobbyGameStateBase* LobbyGameState = GetWorld()->GetGameState<ALobbyGameStateBase>())
+    {
+        LobbyGameState->OnLobbyInfoChanged.RemoveAll(this);
+        LobbyGameState->OnCountdownChanged.RemoveAll(this);
+    }
     Super::NativeDestruct();
+
 }
 
 void USpartaLobbyWidget::UpdatePlayerList(const TArray<FString>& PlayerNames, const TArray<bool>& ReadyStates)
@@ -281,4 +295,18 @@ void USpartaLobbyWidget::OnQuitClicked()
 			LobbyPC->LeaveLobby();
         }
     }
+}
+
+void USpartaLobbyWidget::RefreshLobbyUI(const TArray<FString>& PlayerNames, const TArray<bool>& ReadyStates, bool bIsHost, bool bCanStart, int32 RemainingSeconds)
+{
+    if (bIsHost)
+    {
+        SetStartButtonVisibility(true, bCanStart);
+    }
+    else
+    {
+        SetStartButtonVisibility(false, false);
+    }
+
+    UpdatePlayerList(PlayerNames, ReadyStates);
 }

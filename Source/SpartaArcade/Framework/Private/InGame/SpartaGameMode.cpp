@@ -5,7 +5,6 @@
 #include "InGame/SpartaGameState.h"
 #include "InGame/SpartaPlayerState.h"
 #include "SpartaUIDefs.h"
-#include "GameFlow/TravelGameInstanceSubsystem.h"
 #include "CombatComponent.h"
 
 ASpartaGameMode::ASpartaGameMode()
@@ -38,6 +37,14 @@ void ASpartaGameMode::EndMatch()
 	Super::EndMatch();
 	UE_LOG(LogTemp, Warning, TEXT("Match Ended!"));
 
+	for(APlayerState* PlayerState : SpartaGameState->PlayerArray)
+	{
+		ASpartaPlayerState* SpartaPlayerState = Cast<ASpartaPlayerState>(PlayerState);
+		if (IsValid(SpartaPlayerState))
+		{
+			SetGameResult(SpartaPlayerState);
+		}
+	}
 }
 
 void ASpartaGameMode::HandlePlayerEliminated(ASpartaPlayerState* DeadPlayer)
@@ -55,18 +62,20 @@ void ASpartaGameMode::HandlePlayerEliminated(ASpartaPlayerState* DeadPlayer)
 		FTeamInfo& TeamInfo = TeamInfoMap[TeamID];
 		--TeamInfo.AliveCount;
 
+		if (SpartaGameState)
+		{
+			TeamInfo.Rank = SpartaGameState->GetAliveTeamCount();
+			TeamInfo.SurvivalTime = SpartaGameState->ElapsedTime;
+		}
+
 		if (TeamInfo.AliveCount <= 0 && !TeamInfo.bEliminated)
 		{
 			TeamInfo.bEliminated = true;
+			
 			DecreaseAliveTeam();
 		}
 	}
 	CheckGameEnd();
-}
-
-void ASpartaGameMode::AddPlayerScore(ASpartaPlayerState* PlayerState, int32 Score)
-{
-	// 점수 로직은 추후에 추가
 }
 
 void ASpartaGameMode::DecreaseAlivePlayer()
@@ -115,6 +124,7 @@ void ASpartaGameMode::InitializeTeamInfo()
 					NewTeamInfo.TeamID = TeamID;
 					NewTeamInfo.AliveCount = 0;
 					NewTeamInfo.bEliminated = false;
+					NewTeamInfo.Rank = 0;
 					TeamInfoMap.Add(TeamID, NewTeamInfo);
 				}
 				++TeamInfoMap[TeamID].AliveCount;
@@ -125,5 +135,24 @@ void ASpartaGameMode::InitializeTeamInfo()
 		SpartaGameState->SetAlivePlayerCount(TotalAlivePlayers);
 		SpartaGameState->SetAliveTeamCount(TeamInfoMap.Num());
 		SpartaGameState->SetTotalAliveTeamCount(TeamInfoMap.Num());
+	}
+}
+
+void ASpartaGameMode::SetGameResult(ASpartaPlayerState* PlayerState)
+{
+	FMatchPlayerResult MatchResult;
+
+	if(IsValid(PlayerState) && TeamInfoMap.Contains(PlayerState->GetTeamID()))
+	{
+		int32 TeamID = PlayerState->GetTeamID();
+		MatchResult.PlayerName = PlayerState->GetPlayerName();
+		MatchResult.Rank = TeamInfoMap[TeamID].Rank;
+		MatchResult.SurvivalTime = TeamInfoMap[TeamID].SurvivalTime;
+	}
+	else
+	{
+		MatchResult.PlayerName = TEXT("Unknown");
+		MatchResult.Rank = 0;
+		MatchResult.SurvivalTime = 0;
 	}
 }

@@ -83,6 +83,6 @@ void ALobbyPlayerState::OnRep_LobbyStateChanged()
 
 	if (ALobbyGameStateBase* LobbyGameState = GetWorld()->GetGameState<ALobbyGameStateBase>())
 	{
-		LobbyGameState->RefreshLobbyUI();
+		LobbyGameState->NotifyLobbyUI();
 	}
 }

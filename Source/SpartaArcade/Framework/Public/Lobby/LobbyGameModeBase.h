@@ -24,8 +24,6 @@ public:
 
 	void InitializeLobbyGameState();
 
-	void OnPlayerReadyStateChanged();
-
 	void StartInGameMatch();
 
 	bool IsCanStartMatch() const;

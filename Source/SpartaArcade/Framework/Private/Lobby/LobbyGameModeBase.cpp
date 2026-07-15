@@ -97,15 +97,6 @@ void ALobbyGameModeBase::InitializeLobbyGameState()
 	}
 }
 
-void ALobbyGameModeBase::OnPlayerReadyStateChanged()
-{
-	ALobbyGameStateBase* LobbyGameState = GetGameState<ALobbyGameStateBase>();
-	if (IsValid(LobbyGameState))
-	{
-		LobbyGameState->RefreshLobbyUI();
-	}
-}
-
 bool ALobbyGameModeBase::IsCanStartMatch() const
 {
 	ALobbyGameStateBase* LobbyGameState = GetGameState<ALobbyGameStateBase>();

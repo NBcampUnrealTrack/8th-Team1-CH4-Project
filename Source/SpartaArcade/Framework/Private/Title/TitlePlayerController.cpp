@@ -6,6 +6,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "EOSGameInstanceSubsystem.h"
 #include "SessionService.h"
+#include "AuthService.h"
 #include "GameFlow/TravelGameInstanceSubsystem.h"
 
 void ATitlePlayerController::BeginPlay()
@@ -66,3 +67,15 @@ void ATitlePlayerController::HandleJoinSessionComplete(FName SessionName, EOnJoi
 		TravelSubsystem->TravelToSession(Connect);
 	}
 }
+
+#if WITH_EDITOR || UE_BUILD_DEVELOPMENT || UE_BUILD_DEBUG
+void ATitlePlayerController::DevLogin(const FString& InAuthToken)
+{
+	UE_LOG(LogTemp, Log, TEXT("DevLogin called with AuthToken: %s"), *InAuthToken);
+	UEOSGameInstanceSubsystem* EOSSubsystem = GetGameInstance()->GetSubsystem<UEOSGameInstanceSubsystem>();
+	if (IsValid(EOSSubsystem))
+	{
+		EOSSubsystem->GetAuthService()->Login(InAuthToken);
+	}
+}
+#endif
