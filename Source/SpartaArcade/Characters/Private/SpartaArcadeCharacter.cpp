@@ -3,6 +3,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/DecalComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/SceneCaptureComponent2D.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -101,7 +102,6 @@ void ASpartaArcadeCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	InitializeCharacterComponents();
-	
 }
 
 void ASpartaArcadeCharacter::PossessedBy(AController* NewController)
@@ -148,7 +148,8 @@ void ASpartaArcadeCharacter::OnRep_PlayerState()
 float ASpartaArcadeCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser)
 {
 	// [디버그 로그 추가] - 데미지 수신이 되는지 확인!
-	UE_LOG(LogTemp, Warning, TEXT("ASpartaArcadeCharacter::TakeDamage 호출됨! 피해량: %f, 원인 제공자: %s"), DamageAmount, DamageCauser ? *DamageCauser->GetName() : TEXT("None"));
+	// 과도한 Warning 로그 방지를 위해 Verbose 레벨로 변경
+	UE_LOG(LogTemp, Verbose, TEXT("ASpartaArcadeCharacter::TakeDamage 호출됨! 피해량: %f, 원인 제공자: %s"), DamageAmount, DamageCauser ? *DamageCauser->GetName() : TEXT("None"));
 	// CombatComponent에 데미지 처리 위임
 	if (CombatComponent)
 	{
@@ -176,8 +177,15 @@ float ASpartaArcadeCharacter::TakeDamage(float DamageAmount, struct FDamageEvent
 	}
 	return 0.f;
 }
+
 void ASpartaArcadeCharacter::InitializeCharacterComponents()
 {
+	// 이미 초기화가 완료되어 SpartaPlayerState가 할당되어 있다면 중복 실행을 차단합니다.
+	if (IsValid(SpartaPlayerState))
+	{
+		return;
+	}
+
 	if (!IsValid(GetPlayerState()) || !IsValid(CombatComponent))
 	{
 		if(InitializedComponentsCount >= MaxInitializedComponentsCount)
@@ -194,6 +202,7 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 
 	// 컴포넌트 기반 초기화 및 델리게이트 바인딩
 	FName RowName = FName(TEXT("Default"));
+	UMaterialInstance* TargetMaterial = nullptr;
 	SpartaPlayerState = GetPlayerState<ASpartaPlayerState>();
 	if (IsValid(SpartaPlayerState))
 	{
@@ -201,14 +210,21 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 		{
 		case ESpartaArcadeCharacterType::Explosive:
 			RowName = FName(TEXT("Explosion"));
+			TargetMaterial = ExplosiveMaterial;
 			break;
 		case ESpartaArcadeCharacterType::Speed:
 			RowName = FName(TEXT("Speed"));
+			TargetMaterial = SpeedMaterial;
 			break;
 		case ESpartaArcadeCharacterType::BombCount:
 			RowName = FName(TEXT("BombCount"));
+			TargetMaterial = BombCountMaterial;
 			break;
 		}
+	}
+	if (TargetMaterial && GetMesh())
+	{
+		GetMesh()->SetMaterial(0, TargetMaterial);
 	}
 
 	if (IsValid(AttributeSet) && IsValid(CharacterStatTable))
@@ -247,15 +263,28 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 }
 
 
-
-
 // 클래식 봄버맨 타일 일치를 위해 캐릭터의 현재 발밑 좌표를 100단위 그리드로 보정하여 스폰
 void ASpartaArcadeCharacter::PlaceBomb()
 {
+	// 기절(Stunned) 혹은 사망(Eliminated) 상태일 때는 폭탄 설치 불가
+	if (CombatComponent && CombatComponent->GetPlayerState() != EBomberPlayerState::Alive)
+	{
+		return;
+	}
+
 	// GA_PlaceBomb 어빌리티에 폭탄 설치 위임
 	if (IsValid(AbilitySystemComponent) && IsValid(PlaceBombAbilityClass))
 	{
 		AbilitySystemComponent->TryActivateAbilityByClass(PlaceBombAbilityClass);
+	}
+}
+
+void ASpartaArcadeCharacter::PlayPlaceBombAnim()
+{
+	// 실제 스폰 성공 시 어빌리티 단에서 이 함수를 호출하여 몽타주 재생
+	if (PlaceBombMontage)
+	{
+		PlayAnimMontage(PlaceBombMontage, 1.0f);
 	}
 }
 
@@ -341,9 +370,6 @@ void ASpartaArcadeCharacter::PerformUseFirstAidKit()
 	}
 }
 
-
-
-
 // 캐릭터 오버랩 시 기절 상태인 다른 플레이어를 판별하여 구조(아군) 혹은 처치(적군) 처리 수행
 void ASpartaArcadeCharacter::NotifyActorBeginOverlap(AActor* OtherActor)
 {
@@ -389,6 +415,12 @@ FVector ASpartaArcadeCharacter::GetSnappedKickDirection() const
 // 폭탄 차기 어빌리티 트리거
 void ASpartaArcadeCharacter::KickBomb()
 {
+	// 기절(Stunned) 혹은 사망(Eliminated) 상태일 때는 폭탄 차기 불가
+	if (CombatComponent && CombatComponent->GetPlayerState() != EBomberPlayerState::Alive)
+	{
+		return;
+	}
+
 	if (IsValid(AbilitySystemComponent) && IsValid(KickBombAbilityClass))
 	{
 		AbilitySystemComponent->TryActivateAbilityByClass(KickBombAbilityClass);
@@ -398,8 +430,6 @@ void ASpartaArcadeCharacter::KickBomb()
 // 캐릭터 정면에 인접한 폭탄이 있다면 격자 축 정렬 방향 보내는 기능
 void ASpartaArcadeCharacter::PerformKickBomb()
 {
-	// 기절 여부는 GA_KickBomb의 ActivationBlockedTags(State_Stunned)에서 이미 차단됨
-
 	FVector StartLoc = GetActorLocation();
 	TArray<FHitResult> OutHits;
 	FCollisionShape DetectionSphere = FCollisionShape::MakeSphere(120.f); // 전방 120 유닛 범위 검사
@@ -438,8 +468,13 @@ void ASpartaArcadeCharacter::PerformKickBomb()
 		
 		// 헬퍼 함수 호출
 		FVector KickDir = GetSnappedKickDirection();
+		if (KickBombMontage)
+		{
+			PlayAnimMontage(KickBombMontage, 1.0f);
+		}
 		Bomb->Kick(KickDir);
-		UE_LOG(LogTemp, Log, TEXT("%s 가 폭탄을 %s 방향으로 찼습니다!"), *GetName(), *KickDir.ToString());break;
+		UE_LOG(LogTemp, Log, TEXT("%s 가 폭탄을 %s 방향으로 찼습니다!"), *GetName(), *KickDir.ToString());
+		break;
 	}
 }
 
@@ -449,6 +484,7 @@ float ASpartaArcadeCharacter::GetHP() const
 	return SpartaPlayerState ? (float)SpartaPlayerState->GetHearts() : 0.f;
 }
 
+// 최대 하트 설정값 반환
 float ASpartaArcadeCharacter::GetMaxHP() const
 {
 	return SpartaPlayerState ? (float)SpartaPlayerState->GetStartHearts() : 0.f;
@@ -468,25 +504,89 @@ bool ASpartaArcadeCharacter::IsStunned() const
 void ASpartaArcadeCharacter::HandleOnStun()
 {
 	GetCharacterMovement()->DisableMovement();
+
+	// 기절 진입 시 현재 재생 중인 몽타주(폭탄 설치/차기 등)를 강제 정지하여 상태 기계 핑퐁 방지
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		AnimInstance->Montage_Stop(0.2f);
+	}
+
 	UE_LOG(LogTemp, Warning, TEXT("%s 기절 상태 진입!"), *GetName());
 }
 
 void ASpartaArcadeCharacter::HandleOnRevived()
 {
-	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+	// 이미 돌고 있던 사망 소멸 타이머를 확실하게 해제합니다.
+	if (GetWorld())
+	{
+		GetWorld()->GetTimerManager().ClearTimer(DestroyTimerHandle);
+	}
+
+	// 꺼져있던 캡슐 콜리전과 이동 상태를 복구합니다.
+	if (GetCapsuleComponent())
+	{
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+	}
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+	}
+
 	UE_LOG(LogTemp, Log, TEXT("%s 부활/구출 완료!"), *GetName());
 }
 
 void ASpartaArcadeCharacter::HandleOnSelfRevive()
 {
-	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+	// 자력 부활 시에도 동일하게 사망 타이머 및 콜리전 복구를 수행합니다.
+	if (GetWorld())
+	{
+		GetWorld()->GetTimerManager().ClearTimer(DestroyTimerHandle);
+	}
+
+	if (GetCapsuleComponent())
+	{
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+	}
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+	}
+
 	UE_LOG(LogTemp, Log, TEXT("%s 자력 부활 완료!"), *GetName());
 }
 
 void ASpartaArcadeCharacter::HandleOnEliminated()
 {
-	UE_LOG(LogTemp, Log, TEXT("%s 게임에서 탈락(소멸)되었습니다."), *GetName());
+	UE_LOG(LogTemp, Log, TEXT("%s 게임에서 탈락(소멸)되었습니다. 사망 연출을 시작합니다."), *GetName());
+	
+	// 팀원의 패배 UI 호출 보존
 	ShowMatchResultUI(EMatchResult::Defeat);
+
+	// 이동 및 충돌을 완전히 무력화하여 사망 중 조작/충돌 이상을 방지
+	if (GetCapsuleComponent())
+	{
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->DisableMovement();
+	}
+
+	// 애니메이션이 출력될 동안 대기 후 소멸 타이머 등록
+	GetWorld()->GetTimerManager().SetTimer(
+		DestroyTimerHandle,
+		this,
+		&ASpartaArcadeCharacter::EliminateDestroy,
+		DestroyDelay,
+		false
+	);
+}
+
+void ASpartaArcadeCharacter::EliminateDestroy()
+{
+	UE_LOG(LogTemp, Log, TEXT("%s 캐릭터 액터가 월드에서 완전히 제거(소멸)됩니다."), *GetName());
 	Destroy();
 }
 
@@ -495,11 +595,8 @@ void ASpartaArcadeCharacter::RestoreCollisionResponse()
 	if (GetCapsuleComponent())
 	{
 		// Visibility 채널을 다시 Block(차단)으로 돌려놓아 피해를 입을 수 있게 만듭니다.
-
 		GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
-
 		UE_LOG(LogTemp, Warning, TEXT("%s 의 폭풍 콜리전 채널이 Block(활성화) 상태로 복구되었습니다."), *GetName());
-
 	}
 }
 
@@ -552,9 +649,13 @@ void ASpartaArcadeCharacter::UpdateNickname()
 		UTextBlock* TargetText = nullptr;
 		UserWidget->WidgetTree->ForEachWidget([&TargetText](UWidget* Widget)
 		{
-			if (UTextBlock* TextBlock = Cast<UTextBlock>(Widget))
+			// 첫 번째 발견한 TextBlock만 선택되도록 수정
+			if (!TargetText)
 			{
-				TargetText = TextBlock;
+				if (UTextBlock* TextBlock = Cast<UTextBlock>(Widget))
+				{
+					TargetText = TextBlock;
+				}
 			}
 		});
 
@@ -565,12 +666,12 @@ void ASpartaArcadeCharacter::UpdateNickname()
 			// Team 1이면 빨간색, Team 2면 파란색으로 닉네임 색상 표시
 			if (ASpartaPlayerState* SPS = Cast<ASpartaPlayerState>(PS))
 			{
-				int32 TeamID = SPS->GetTeamID();
-				if (TeamID == 1)
+				int32 LocalTeamID = SPS->GetTeamID();
+				if (LocalTeamID == 1)
 				{
 					TargetText->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.25f, 0.25f)));
 				}
-				else if (TeamID == 2)
+				else if (LocalTeamID == 2)
 				{
 					TargetText->SetColorAndOpacity(FSlateColor(FLinearColor(0.25f, 0.5f, 1.0f)));
 				}
@@ -635,3 +736,38 @@ void ASpartaArcadeCharacter::ShowMatchResultUI(EMatchResult Result)
 		}
 	}
 }
+
+// 매 프레임 캐릭터 씬 캡쳐 위치 강제 보정 및 최적화를 위해 Tick 구현
+void ASpartaArcadeCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	// 캐릭터에 부착된 SceneCaptureComponent2D 검색
+	USceneCaptureComponent2D* SceneCapture = FindComponentByClass<USceneCaptureComponent2D>();
+
+	if (SceneCapture)
+	{
+		if (IsLocallyControlled())
+		{
+			// 1. 로컬 플레이어 캐릭터의 경우 씬 캡처 활성화 보장
+			if (!SceneCapture->IsActive())
+			{
+				SceneCapture->SetActive(true);
+			}
+
+			// 2. 상대 위치/회전을 로컬 캐릭터의 정수리 위 1500 uu 상공, 수직 하방으로 고정
+			FVector TargetRelativeLoc = FVector(0.f, 0.f, 1500.f);
+			FRotator TargetRelativeRot = FRotator(-90.f, 0.f, 0.f);
+			SceneCapture->SetRelativeLocationAndRotation(TargetRelativeLoc, TargetRelativeRot);
+		}
+		else
+		{
+			// 3. 원격 클라이언트 복제본 캐릭터들의 씬 캡처는 렌더링 부하 절감 및 간섭 예방을 위해 비활성화
+			if (SceneCapture->IsActive())
+			{
+				SceneCapture->SetActive(false);
+			}
+		}
+	}
+}
+

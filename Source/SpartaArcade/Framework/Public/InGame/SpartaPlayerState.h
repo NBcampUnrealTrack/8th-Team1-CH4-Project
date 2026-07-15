@@ -105,7 +105,7 @@ protected:
 
 	// -------------------------------------------------------
 	// Characters
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Character")
+	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Character")
 	ESpartaArcadeCharacterType CharacterType;
 
 	// 구급상자 초기 보유 개수

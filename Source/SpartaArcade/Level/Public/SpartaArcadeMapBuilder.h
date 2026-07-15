@@ -35,9 +35,16 @@ public:
     ASpartaArcadeMapBuilder();
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+    // 서버 측에서 맵 데이터 빌드가 완료되었는지 여부 (게임모드 선제 맵 빌드 감지용)
+    UPROPERTY(Transient, BlueprintReadOnly, Category = "SpartaArcade|Map")
+    bool bMapBuilt = false;
+
     /** 서버: 그리드 데이터 생성(복제됨). */
     UFUNCTION(BlueprintCallable, Category = "SpartaArcade|Map")
     void BuildMap();
+
+    /** 서버·클라 공통: 그리드를 읽어 벽/박스 인스턴스 + 바닥 배치(로컬, 복제 안 함) */
+    void BuildVisuals();
 
     /** 칸 (X,Y)의 월드 좌표(이 액터 위치 기준). */
     UFUNCTION(BlueprintCallable, Category = "SpartaArcade|Map")
@@ -152,13 +159,17 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Map")
     int32 Seed = 1;                 // 같은 값=같은 맵. 0이면 랜덤(로그에 시드 출력)
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Map")
+    // 서버 측에서 결정되어 클라이언트로 복제 동기화되는 최종 랜덤 시드
+    UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Map")
+    int32 UsedSeed = 0;
+
+    UPROPERTY(Replicated, EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Map")
     int32 GridWidth = 100;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Map")
+    UPROPERTY(Replicated, EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Map")
     int32 GridHeight = 100;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Map")
+    UPROPERTY(Replicated, EditAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Map")
     float TileSize = 100.f;         // 한 칸 월드 크기(uu). 100 = 1m
 
     // ---- 방 생성(정렬) ----
@@ -213,7 +224,7 @@ protected:
     int32 SafeRadius = 3;             // 스폰 주변 비울 사각 반경(넉넉할수록 큰 시작 공간)
 
     /** 4모서리 스폰 월드 좌표(서버에서 생성 시 채워짐). GameMode가 플레이어 스폰에 사용. */
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Spawns")
+    UPROPERTY(ReplicatedUsing = OnRep_SpawnWorldLocations, VisibleAnywhere, BlueprintReadOnly, Category = "SpartaArcade|Spawns")
     TArray<FVector> SpawnWorldLocations;
 
     // ---- 변형 타일(지형 효과) ----
@@ -289,13 +300,16 @@ protected:
 
     // 런타임 상자 액터 스폰 헬퍼 함수
     void SpawnBreakableBoxes();
-
+	
     // ---- 상태(복제) ----
     UPROPERTY(ReplicatedUsing = OnRep_MapGrid)
     FSpartaArcadeMapGrid MapGrid;
 
     UFUNCTION()
     void OnRep_MapGrid();
+
+    UFUNCTION()
+    void OnRep_SpawnWorldLocations();
 
     // ---- 컴포넌트 ----
     UPROPERTY(VisibleAnywhere, Category = "SpartaArcade|Visual")
@@ -333,10 +347,7 @@ protected:
 
     /** 테스트용 장애물/자기장 액터 스폰(런타임 전용, BuildMap에서 호출). */
     void SpawnTestActors();
-
-    /** 서버·클라 공통: 그리드를 읽어 벽/박스 인스턴스 + 바닥 배치(로컬, 복제 안 함). */
-    void BuildVisuals();
-
+	
     /** 박스 셀 인덱스(Y*W+X) → BoxISM 인스턴스 인덱스.
      *  파괴 시 인스턴스를 '숨김'(제거 아님)으로 처리해 다른 인스턴스 인덱스가 안 흔들리게 유지. */
     TMap<int32, int32> BoxCellToInstance;
@@ -346,4 +357,7 @@ protected:
 
     /** 그리드와 대조해 더 이상 박스가 아닌 칸의 인스턴스를 숨김(서버·클라 공통 증분 갱신). */
     void RefreshDestroyedBoxVisuals();
+
+    // 스폰 포인트에 겹치는 액터 및 ISM 인스턴스 강제 제거 함수
+    void ClearStructuresAtSpawns();
 };
