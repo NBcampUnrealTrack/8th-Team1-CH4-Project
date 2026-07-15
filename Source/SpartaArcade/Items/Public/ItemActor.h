@@ -41,7 +41,10 @@ public:
 	// (타입별로 다른 GE를 적용해야 하므로 단일 필드가 아닌 ItemVisualMap과 동일한 TMap 패턴 사용)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="GAS")
 	TMap<EBomberItemType, TSubclassOf<UGameplayEffect>> ItemEffectMap;
-
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Audio")
+	class USoundBase* PickupSound;
+	
 protected:
 	virtual void BeginPlay() override;
 	virtual void NotifyActorBeginOverlap(AActor* OtherActor) override;
@@ -68,6 +71,9 @@ protected:
 	float RotationSpeed;
 
 	FVector StartLocation;
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayPickupSound(FVector Location);
 
 private:
 	// ReplicatedUsing을 적용하여 클라이언트에서도 아이템 데이터 복제 시 비주얼이 동적 갱신되도록 처리

@@ -3,6 +3,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "ItemDropComponent.h"
 #include "GameplayEffect.h"
+#include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "SpartaArcadeCharacter.h"
 
@@ -142,7 +143,17 @@ void AItemActor::NotifyActorBeginOverlap(AActor* OtherActor)
             FString::Printf(TEXT("%s 아이템 획득! (%s)"), *ItemTypeName, *OtherActor->GetName()));
     }
 
+    Multicast_PlayPickupSound(GetActorLocation());
+    
     Destroy();
+}
+
+void AItemActor::Multicast_PlayPickupSound_Implementation(FVector Location)
+{
+    if (PickupSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(this, PickupSound, Location);
+    }
 }
 
 // 클라이언트에서 아이템 데이터 복제 수신 시 비주얼 동적 갱신
