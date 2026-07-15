@@ -158,6 +158,10 @@ public:
 	void InitializeHUD(ASpartaPlayerState* PlayerState, UBomberAttributeSet* InAttributeSet, UCombatComponent* CombatComp, UBombPlacerComponent* BombPlacerComp);
 
 private:
+    // 매 틱마다 무거운 정보(생존 플레이어 루프, 자기장 탐색, 텍스트 리빌드)를 갱신하지 않도록 1초 주기 타이머 추가
+    FTimerHandle GameStateTimerHandle;
+    void UpdateGameStateTimer();
+
     // 내부 헬퍼 함수
     FString FormatTime(int32 TotalSeconds) const;
 

@@ -352,6 +352,11 @@ void USpartaMinimapWidget::InitializeDynamicRenderTarget()
             // SceneCapture의 타겟 렌더타겟을 동적으로 생성한 RT로 변경
             SceneCapture->TextureTarget = DynamicRenderTarget;
             
+            //미니맵 카메라 갱신 누락 방지를 위해 매 프레임 캡처 및 움직임 기반 캡처를 강제 활성화하고 즉시 1회 캡처
+            SceneCapture->bCaptureEveryFrame = true;
+            SceneCapture->bCaptureOnMovement = true;
+            SceneCapture->CaptureScene();
+            
             //씬 캡쳐 카메라의 상대 높이를 가져와 캐싱
             CachedCameraRelativeZ = SceneCapture->GetRelativeLocation().Z;
             if (CachedCameraRelativeZ < 100.f)

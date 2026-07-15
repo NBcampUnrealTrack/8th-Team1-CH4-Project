@@ -28,83 +28,100 @@ void USpartaHUDWidget::NativeConstruct()
     UpdateBombStats(1, 1);
     UpdateCharacterStats(1.0f, 1.0f, false);
     UpdateGameStateInfo(0, 0);
+
+    // 틱 대신 1초 주기 타이머 실행
+    if (GetWorld())
+    {
+        GetWorld()->GetTimerManager().SetTimer(GameStateTimerHandle, this, &USpartaHUDWidget::UpdateGameStateTimer, 1.0f, true);
+    }
 }
 
 void USpartaHUDWidget::NativeDestruct()
 {
     Super::NativeDestruct();
+
+    if (GetWorld())
+    {
+        GetWorld()->GetTimerManager().ClearTimer(GameStateTimerHandle);
+    }
 }
 
-// 기절 게이지 실시간 갱신 및 경기 정보(생존 플레이어, 자기장 카운트다운) 실시간 업데이트
+// 기절 게이지 실시간 갱신 (최적화: 기절 상태가 아닐 때는 바로 조기 리턴하여 틱 비용 극소화)
 void USpartaHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
     Super::NativeTick(MyGeometry, InDeltaTime);
 
-    // 1. 기절 탈출 게이지 실시간 갱신
-    if (CombatComponent && SpartaPlayerState && SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Stunned)
+    // 1. 기절 상태가 아닐 시 스킵
+    if (!SpartaPlayerState || SpartaPlayerState->GetCurrentState() != EBomberPlayerState::Stunned)
+    {
+        return;
+    }
+
+    // 2. 기절 탈출 게이지 실시간 갱신
+    if (CombatComponent)
     {
         float Progress = CombatComponent->GetStunProgressPercent();
         UpdateStunProgress(Progress);
     }
+}
 
-    // 2. 실시간 자기장 시간, 생존자 수, 우승 결과 연계 갱신
+// 1초 주기로 안전하게 경기 시간 및 생존자 수를 업데이트하는 함수 구현
+void USpartaHUDWidget::UpdateGameStateTimer()
+{
     UWorld* World = GetWorld();
-    if (World)
+    if (!World) return;
+
+    // 1. 생존 플레이어 수 카운트
+    int32 AliveCount = 0;
+    if (AGameStateBase* GS = World->GetGameState())
     {
-        // 2-1. 생존 플레이어 수 카운트
-        int32 AliveCount = 0;
-        if (AGameStateBase* GS = World->GetGameState())
+        for (APlayerState* PS : GS->PlayerArray)
         {
-            for (APlayerState* PS : GS->PlayerArray)
+            if (ASpartaPlayerState* SPS = Cast<ASpartaPlayerState>(PS))
             {
-                if (ASpartaPlayerState* SPS = Cast<ASpartaPlayerState>(PS))
+                if (SPS->GetCurrentState() != EBomberPlayerState::Eliminated)
                 {
-                    if (SPS->GetCurrentState() != EBomberPlayerState::Eliminated)
-                    {
-                        AliveCount++;
-                    }
+                    AliveCount++;
                 }
             }
         }
+    }
 
-        // 2-2. 자기장 매니저 탐색 및 남은 시간(초) 산출
-        static TWeakObjectPtr<ASpartaArcadeZoneManager> CachedZoneManager = nullptr;
-        if (!CachedZoneManager.IsValid())
+    // 2. 자기장 매니저 탐색 및 남은 시간(초) 산출
+    static TWeakObjectPtr<ASpartaArcadeZoneManager> CachedZoneManager = nullptr;
+    if (!CachedZoneManager.IsValid())
+    {
+        CachedZoneManager = Cast<ASpartaArcadeZoneManager>(UGameplayStatics::GetActorOfClass(World, ASpartaArcadeZoneManager::StaticClass()));
+    }
+
+    int32 MatchSeconds = 0;
+    if (CachedZoneManager.IsValid())
+    {
+        float Elapsed = CachedZoneManager->GetElapsed();
+        float ActivationDelay = CachedZoneManager->ActivationDelay;
+        float ShrinkDuration = CachedZoneManager->ShrinkDuration;
+
+        if (Elapsed < ActivationDelay)
         {
-            CachedZoneManager = Cast<ASpartaArcadeZoneManager>(UGameplayStatics::GetActorOfClass(World, ASpartaArcadeZoneManager::StaticClass()));
+            // 자기장 수축 전: 남은 작동 대기 시간 카운트다운
+            MatchSeconds = FMath::Max(0, FMath::RoundToInt(ActivationDelay - Elapsed));
         }
-
-        int32 MatchSeconds = 0;
-        int32 ZonePhase = 0;
-
-        if (CachedZoneManager.IsValid())
+        else
         {
-            float Elapsed = CachedZoneManager->GetElapsed();
-            float ActivationDelay = CachedZoneManager->ActivationDelay;
-            float ShrinkDuration = CachedZoneManager->ShrinkDuration;
-
-            if (Elapsed < ActivationDelay)
-            {
-                // 자기장 수축 전: 남은 작동 대기 시간 카운트다운
-                MatchSeconds = FMath::Max(0, FMath::RoundToInt(ActivationDelay - Elapsed));
-            }
-            else
-            {
-                // 자기장 수축 중: 남은 수축 시간 카운트다운
-                MatchSeconds = FMath::Max(0, FMath::RoundToInt((ActivationDelay + ShrinkDuration) - Elapsed));
-            }
+            // 자기장 수축 중: 남은 수축 시간 카운트다운
+            MatchSeconds = FMath::Max(0, FMath::RoundToInt((ActivationDelay + ShrinkDuration) - Elapsed));
         }
+    }
 
-        // 2-3. HUD 텍스트 컴포넌트 갱신
-        UpdateGameStateInfo(AliveCount, MatchSeconds);
+    // 3. HUD 텍스트 컴포넌트 갱신
+    UpdateGameStateInfo(AliveCount, MatchSeconds);
 
-        // 2-4. 최후의 1인 우승(Victory) 결과창 연동 트리거
-        if (AliveCount == 1 && IsValid(SpartaPlayerState) && SpartaPlayerState->GetCurrentState() != EBomberPlayerState::Eliminated)
+    // 4. 최후의 1인 우승(Victory) 결과창 연동 트리거
+    if (AliveCount == 1 && IsValid(SpartaPlayerState) && SpartaPlayerState->GetCurrentState() != EBomberPlayerState::Eliminated)
+    {
+        if (ASpartaArcadeCharacter* LocalChar = Cast<ASpartaArcadeCharacter>(GetOwningPlayerPawn()))
         {
-            if (ASpartaArcadeCharacter* LocalChar = Cast<ASpartaArcadeCharacter>(GetOwningPlayerPawn()))
-            {
-                LocalChar->ShowMatchResultUI(EMatchResult::Victory);
-            }
+            LocalChar->ShowMatchResultUI(EMatchResult::Victory);
         }
     }
 }
