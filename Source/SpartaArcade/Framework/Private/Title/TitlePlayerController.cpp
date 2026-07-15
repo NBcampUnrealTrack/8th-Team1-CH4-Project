@@ -8,6 +8,7 @@
 #include "SessionService.h"
 #include "AuthService.h"
 #include "GameFlow/TravelGameInstanceSubsystem.h"
+#include "SpartaMenuFlowWidget.h"
 
 void ATitlePlayerController::BeginPlay()
 {
@@ -20,11 +21,11 @@ void ATitlePlayerController::BeginPlay()
 
 	if (IsValid(UIWidgetClass) == true)
 	{
-		UIWidgetInstance = CreateWidget<UUserWidget>(this, UIWidgetClass);
+		UIWidgetInstance = CreateWidget<USpartaMenuFlowWidget>(this, UIWidgetClass);
 		if (IsValid(UIWidgetInstance) == true)
-		{
+		{	
 			UIWidgetInstance->AddToViewport();
-
+			UIWidgetInstance->ShowMainMenu();
 			FInputModeUIOnly Mode;
 			Mode.SetWidgetToFocus(UIWidgetInstance->GetCachedWidget());
 			SetInputMode(Mode);

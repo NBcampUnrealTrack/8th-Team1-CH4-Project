@@ -63,6 +63,7 @@ void USpartaLobbyWidget::NativeConstruct()
     {
         LobbyGameState->OnLobbyInfoChanged.AddUObject(this, &USpartaLobbyWidget::RefreshLobbyUI);
         LobbyGameState->OnCountdownChanged.AddUObject(this, &USpartaLobbyWidget::UpdateCountdown);
+		LobbyGameState->NotifyLobbyUI();
     }
 }
 

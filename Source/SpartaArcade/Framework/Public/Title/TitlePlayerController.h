@@ -7,7 +7,7 @@
 #include "Interfaces/OnlineSessionInterface.h"
 #include "TitlePlayerController.generated.h"
 
-class UUserWidget;
+class USpartaMenuFlowWidget;
 
 UCLASS()
 class SPARTAARCADE_API ATitlePlayerController : public APlayerController
@@ -30,8 +30,8 @@ public:
 
 private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
-	TSubclassOf<UUserWidget> UIWidgetClass;
+	TSubclassOf<USpartaMenuFlowWidget> UIWidgetClass;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
-	TObjectPtr<UUserWidget> UIWidgetInstance;
+	TObjectPtr<USpartaMenuFlowWidget> UIWidgetInstance;
 };
