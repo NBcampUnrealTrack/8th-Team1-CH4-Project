@@ -3,6 +3,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/DecalComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/SceneCaptureComponent2D.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -147,7 +148,8 @@ void ASpartaArcadeCharacter::OnRep_PlayerState()
 float ASpartaArcadeCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser)
 {
 	// [디버그 로그 추가] - 데미지 수신이 되는지 확인!
-	UE_LOG(LogTemp, Warning, TEXT("ASpartaArcadeCharacter::TakeDamage 호출됨! 피해량: %f, 원인 제공자: %s"), DamageAmount, DamageCauser ? *DamageCauser->GetName() : TEXT("None"));
+	// 과도한 Warning 로그 방지를 위해 Verbose 레벨로 변경
+	UE_LOG(LogTemp, Verbose, TEXT("ASpartaArcadeCharacter::TakeDamage 호출됨! 피해량: %f, 원인 제공자: %s"), DamageAmount, DamageCauser ? *DamageCauser->GetName() : TEXT("None"));
 	// CombatComponent에 데미지 처리 위임
 	if (CombatComponent)
 	{
@@ -647,9 +649,13 @@ void ASpartaArcadeCharacter::UpdateNickname()
 		UTextBlock* TargetText = nullptr;
 		UserWidget->WidgetTree->ForEachWidget([&TargetText](UWidget* Widget)
 		{
-			if (UTextBlock* TextBlock = Cast<UTextBlock>(Widget))
+			// 첫 번째 발견한 TextBlock만 선택되도록 수정
+			if (!TargetText)
 			{
-				TargetText = TextBlock;
+				if (UTextBlock* TextBlock = Cast<UTextBlock>(Widget))
+				{
+					TargetText = TextBlock;
+				}
 			}
 		});
 
@@ -660,12 +666,12 @@ void ASpartaArcadeCharacter::UpdateNickname()
 			// Team 1이면 빨간색, Team 2면 파란색으로 닉네임 색상 표시
 			if (ASpartaPlayerState* SPS = Cast<ASpartaPlayerState>(PS))
 			{
-				int32 TeamID = SPS->GetTeamID();
-				if (TeamID == 1)
+				int32 LocalTeamID = SPS->GetTeamID();
+				if (LocalTeamID == 1)
 				{
 					TargetText->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.25f, 0.25f)));
 				}
-				else if (TeamID == 2)
+				else if (LocalTeamID == 2)
 				{
 					TargetText->SetColorAndOpacity(FSlateColor(FLinearColor(0.25f, 0.5f, 1.0f)));
 				}
@@ -730,3 +736,38 @@ void ASpartaArcadeCharacter::ShowMatchResultUI(EMatchResult Result)
 		}
 	}
 }
+
+// 매 프레임 캐릭터 씬 캡쳐 위치 강제 보정 및 최적화를 위해 Tick 구현
+void ASpartaArcadeCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	// 캐릭터에 부착된 SceneCaptureComponent2D 검색
+	USceneCaptureComponent2D* SceneCapture = FindComponentByClass<USceneCaptureComponent2D>();
+
+	if (SceneCapture)
+	{
+		if (IsLocallyControlled())
+		{
+			// 1. 로컬 플레이어 캐릭터의 경우 씬 캡처 활성화 보장
+			if (!SceneCapture->IsActive())
+			{
+				SceneCapture->SetActive(true);
+			}
+
+			// 2. 상대 위치/회전을 로컬 캐릭터의 정수리 위 1500 uu 상공, 수직 하방으로 고정
+			FVector TargetRelativeLoc = FVector(0.f, 0.f, 1500.f);
+			FRotator TargetRelativeRot = FRotator(-90.f, 0.f, 0.f);
+			SceneCapture->SetRelativeLocationAndRotation(TargetRelativeLoc, TargetRelativeRot);
+		}
+		else
+		{
+			// 3. 원격 클라이언트 복제본 캐릭터들의 씬 캡처는 렌더링 부하 절감 및 간섭 예방을 위해 비활성화
+			if (SceneCapture->IsActive())
+			{
+				SceneCapture->SetActive(false);
+			}
+		}
+	}
+}
+

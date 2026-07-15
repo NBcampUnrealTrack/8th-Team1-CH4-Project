@@ -33,6 +33,10 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MinimapSettings")
     float MapWorldSize = 10000.0f; // 실제 월드의 가로/세로 크기 (cm)
 
+    // 캐릭터 주변 반경 제어를 위한 뷰 반경 설정 변수 추가
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MinimapSettings")
+    float MinimapViewRadius = 3000.0f; // 캐릭터 주변 표시할 월드 반경 (cm)
+
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MinimapSettings")
     FVector2D MinimapCanvasSize = FVector2D(250.0f, 250.0f); // UI 상의 캔버스 크기 (DP)
 
@@ -51,12 +55,26 @@ public:
     virtual void ReleaseSlateResources(bool bReleaseChildren) override;
 
 private:
-    // 월드 좌표를 미니맵 2D UI 캔버스 좌표로 변환
-    FVector2D WorldToMinimapPosition(const FVector& WorldLocation) const;
+
+    // 캐릭터 주변 반경을 기준으로 하는 상대 좌표 변환 함수 선언 추가
+    FVector2D WorldToMinimapPosition(const FVector& WorldLocation, const FVector& PlayerLocation) const;
 
     // 자기장 및 마커들의 UI 렌더 위치 업데이트
     void UpdateMarkerPositions();
 
     FVector CachedSafeZoneCenter = FVector::ZeroVector;
     float CachedSafeZoneRadius = 0.0f;
+
+	// 각 플레이어별 독립된 미니맵 렌더타겟 및 동적 머터리얼 인스턴스 생성을 위한 변수/함수 추가
+	UPROPERTY()
+	class UTextureRenderTarget2D* DynamicRenderTarget = nullptr;
+
+	UPROPERTY()
+	class UMaterialInstanceDynamic* DynamicMinimapMaterial = nullptr;
+
+	bool bInitializedDynamicRT = false;
+
+	float CachedCameraRelativeZ = 2500.f;
+
+	void InitializeDynamicRenderTarget();
 };

@@ -37,6 +37,9 @@ class SPARTAARCADE_API ASpartaArcadeCharacter : public ACharacter, public IDamag
 public:
 	ASpartaArcadeCharacter();
 
+	// 매 프레임 캐릭터 및 씬 캡쳐 상태 제어를 위한 Tick 오버라이드
+	virtual void Tick(float DeltaSeconds) override;
+
 	// IDamageable 인터페이스 구현 선언
 	virtual void TakeExplosionDamage_Implementation() override;
 	virtual bool CanTakeDamage_Implementation() const override;
@@ -163,7 +166,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TSubclassOf<UGameplayAbility> KickBombAbilityClass;
 	
-	UPROPERTY(EditdefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TSubclassOf<UGameplayAbility> UseShieldAbilityClass;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
