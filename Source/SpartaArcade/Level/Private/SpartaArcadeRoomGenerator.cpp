@@ -1,4 +1,4 @@
-﻿#include "SpartaArcadeRoomGenerator.h"
+#include "SpartaArcadeRoomGenerator.h"
 
 namespace
 {
@@ -177,10 +177,34 @@ namespace
 
             // 2) 작은 방부터 "지워도 나머지 방이 연결된 채 남는 것만" void로 제거(작은 정사각형 제거 + 빈 공간↑).
             struct FCandKey { int32 Room; int32 Key; };
+            // 4개 모서리 슬롯(스폰 위치)에는 항상 방이 존재하도록 제거 대상에서 모서리 방 제외
+            const int32 CornerSlotsIdx[4] = {
+                Sidx(0, 0),
+                Sidx(P.SectorCols - 1, 0),
+                Sidx(0, P.SectorRows - 1),
+                Sidx(P.SectorCols - 1, P.SectorRows - 1)
+            };
+
             TArray<FCandKey> CK;
             for (int32 r = 1; r < RoomCount; ++r)   // center(0) 제외
+            {
                 if (RoomSlots[r].Num() > 0)
-                    CK.Add({ r, RoomSlots[r].Num() * 1000 + Rng.RandRange(0, 999) });
+                {
+                    bool bContainsCorner = false;
+                    for (int32 csIdx : CornerSlotsIdx)
+                    {
+                        if (RoomSlots[r].Contains(csIdx))
+                        {
+                            bContainsCorner = true;
+                            break;
+                        }
+                    }
+                    if (!bContainsCorner)
+                    {
+                        CK.Add({ r, RoomSlots[r].Num() * 1000 + Rng.RandRange(0, 999) });
+                    }
+                }
+            }
             CK.Sort([](const FCandKey& A, const FCandKey& B) { return A.Key < B.Key; });
 
             TSet<int32> Voided;
@@ -523,10 +547,32 @@ namespace
                 for (int32 y = FMath::Max(0, Sp.Y - SafeRadius); y <= FMath::Min(H - 1, Sp.Y + SafeRadius); ++y)
                     for (int32 x = FMath::Max(0, Sp.X - SafeRadius); x <= FMath::Min(W - 1, Sp.X + SafeRadius); ++x)
                     {
-                        if (CellRoomAt(x, y) != Rid) continue;
+                        // 스폰 지점 주변 3x3 영역(반경 1)은 방 ID가 다르거나 Void여도 무조건 비우고, 그 외 안전 반경은 동일 방일 때만 비움
+                        const bool bIn3x3 = FMath::Max(FMath::Abs(x - Sp.X), FMath::Abs(y - Sp.Y)) <= 1;
+                        if (!bIn3x3 && CellRoomAt(x, y) != Rid) continue;
+
                         const ESpartaArcadeTileType T = Grid.GetTile(x, y);
-                        if (T == ESpartaArcadeTileType::FixedWall || T == ESpartaArcadeTileType::DestructibleBox)
-                            Grid.SetTile(x, y, ESpartaArcadeTileType::Empty);
+                        if (T == ESpartaArcadeTileType::FixedWall)
+                        {
+                            // 고정벽은 3x3 영역이더라도 비우지 않고 유지, 오직 스폰 포인트 1칸(x == Sp.X && y == Sp.Y)만 비움
+                            if (x == Sp.X && y == Sp.Y)
+                            {
+                                Grid.SetTile(x, y, ESpartaArcadeTileType::Empty);
+                            }
+                        }
+                        else if (T == ESpartaArcadeTileType::DestructibleBox || T == ESpartaArcadeTileType::Void)
+                        {
+                            // Void 타일 또한 3x3 영역이더라도 비우지 않고 유지, 오직 스폰 포인트 1칸(x == Sp.X && y == Sp.Y)만 비움
+                            // 박스(DestructibleBox)는 기존대로 3x3 안전구역 내에서도 통로 확보를 위해 빈 공간으로 변환
+                            if (T == ESpartaArcadeTileType::DestructibleBox || (x == Sp.X && y == Sp.Y))
+                            {
+                                Grid.SetTile(x, y, ESpartaArcadeTileType::Empty);
+                                if (bIn3x3 && CellRoomAt(x, y) < 0)
+                                {
+                                    CellRoom[Grid.IndexOf(x, y)] = Rid;
+                                }
+                            }
+                        }
                     }
                 Grid.SetTile(Sp.X, Sp.Y, ESpartaArcadeTileType::Empty);
             }

@@ -11,6 +11,9 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/ConstructorHelpers.h"
 #include "TimerManager.h"
+#include "GameFramework/PlayerStart.h"
+#include "Kismet/GameplayStatics.h"
+#include "Framework/Public/SpartaArcadeGameMode.h"
 
 ASpartaArcadeMapBuilder::ASpartaArcadeMapBuilder()
 {
@@ -144,6 +147,11 @@ void ASpartaArcadeMapBuilder::GetLifetimeReplicatedProps(TArray<FLifetimePropert
     DOREPLIFETIME(ASpartaArcadeMapBuilder, MapGrid);
     DOREPLIFETIME(ASpartaArcadeMapBuilder, CenterMin);
     DOREPLIFETIME(ASpartaArcadeMapBuilder, CenterMax);
+    DOREPLIFETIME(ASpartaArcadeMapBuilder, SpawnWorldLocations);
+    DOREPLIFETIME(ASpartaArcadeMapBuilder, GridWidth);
+    DOREPLIFETIME(ASpartaArcadeMapBuilder, GridHeight);
+    DOREPLIFETIME(ASpartaArcadeMapBuilder, TileSize);
+    DOREPLIFETIME(ASpartaArcadeMapBuilder, UsedSeed);
 }
 
 void ASpartaArcadeMapBuilder::BeginPlay()
@@ -177,6 +185,10 @@ void ASpartaArcadeMapBuilder::BeginPlay()
 
 void ASpartaArcadeMapBuilder::BuildMap()
 {
+    // 중복 생성 방지 및 선제 빌드 상태 기록
+    if (bMapBuilt) return;
+    bMapBuilt = true;
+
     if (!HasAuthority())
     {
         return;
@@ -186,6 +198,19 @@ void ASpartaArcadeMapBuilder::BuildMap()
     // 파괴 가능한 상자 액터 스폰
     SpawnBreakableBoxes();
     SpawnTestActors();    // 테스트 액터 스폰(런타임 전용)
+
+    // 스폰 포인트 겹침 구조물 제거 함수 호출
+    ClearStructuresAtSpawns();
+
+    // 맵 데이터 및 스폰 좌표 빌드가 완료 -> 대기실에 스폰해 있던 플레이어들을 고유 목적지로 즉시 텔레포트
+    if (GetWorld())
+    {
+        ASpartaArcadeGameMode* GM = Cast<ASpartaArcadeGameMode>(GetWorld()->GetAuthGameMode());
+        if (GM)
+        {
+            GM->TeleportPlayersToSpawns(SpawnWorldLocations);
+        }
+    }
 }
 
 void ASpartaArcadeMapBuilder::GenerateGridData()
@@ -197,7 +222,12 @@ void ASpartaArcadeMapBuilder::GenerateGridData()
         ApplyMapGenRow();
     }
 
-    const int32 UsedSeed = (Seed != 0) ? Seed : FMath::Rand();
+    // 서버 권위 하에 최종 랜덤 시드를 설정하고 클라이언트로 동기화합니다.
+    if (HasAuthority())
+    {
+        UsedSeed = (Seed != 0) ? Seed : FMath::Rand();
+    }
+
     if (Seed == 0)
     {
         UE_LOG(LogTemp, Display, TEXT("[MapBuilder] Random seed this match: %d"), UsedSeed);
@@ -231,15 +261,69 @@ void ASpartaArcadeMapBuilder::GenerateGridData()
     FSpartaArcadeRoomGenerator::Generate(MapGrid, UsedSeed, P, &SpawnCells, &ObstacleCells, &CenterMin, &CenterMax);
 
     // 스폰 칸 → 월드 좌표(GameMode가 플레이어 스폰에 사용).
+    // 3x3 외곽 고정벽/Void 훼손을 최소화하면서 캡슐 충돌(Adjust Position)로 인해 
+    // 캐릭터가 벽 위로 얹어지는 물리 현상을 방어하기 위해, 분면(Quadrant) 판정 기반으로 맵 안쪽 방향으로 25.f uu 오프셋 부여
     SpawnWorldLocations.Reset();
+    const int32 HX = MapGrid.Width / 2;
+    const int32 HY = MapGrid.Height / 2;
+
     for (const FIntPoint& C : SpawnCells)
-        SpawnWorldLocations.Add(TileToWorld(C.X, C.Y));
+    {
+        // 구석으로부터 3x3 안전지대 공간의 정중앙 한가운데 타일 좌표로 스폰 위치 강제 교정하여 텔레포트 안착점 수립
+        int32 CenterX = 1;
+        int32 CenterY = 1;
+
+        if (C.X < HX && C.Y < HY)
+        {
+            CenterX = 1;
+            CenterY = 1;
+        }
+        else if (C.X >= HX && C.Y < HY)
+        {
+            CenterX = MapGrid.Width - 2;
+            CenterY = 1;
+        }
+        else if (C.X < HX && C.Y >= HY)
+        {
+            CenterX = 1;
+            CenterY = MapGrid.Height - 2;
+        }
+        else // C.X >= HX && C.Y >= HY
+        {
+            CenterX = MapGrid.Width - 2;
+            CenterY = MapGrid.Height - 2;
+        }
+
+        FVector WorldLoc = TileToWorld(CenterX, CenterY);
+        // Z축 높이를 지상에 가깝게 낮춤
+        WorldLoc.Z = GetActorLocation().Z + 10.f;
+
+        SpawnWorldLocations.Add(WorldLoc);
+    }
     UE_LOG(LogTemp, Display, TEXT("[MapBuilder] Spawn points: %d"), SpawnWorldLocations.Num());
 
     // 이동 장애물 스폰 칸 → 월드 좌표.
     ObstacleSpawnWorldLocations.Reset();
     for (const FIntPoint& C : ObstacleCells)
+    {
+        // 시작하는 방에는 움직이는 장애물이 스폰되지 않도록 플레이어 스폰 위치로부터 반경 3칸 이내 영역을 정밀하게 필터링하여 스킵 처리합니다.
+        bool bTooCloseToSpawn = false;
+        for (const FIntPoint& SC : SpawnCells)
+        {
+            if (FMath::Abs(SC.X - C.X) <= 3 && FMath::Abs(SC.Y - C.Y) <= 3)
+            {
+                bTooCloseToSpawn = true;
+                break;
+            }
+        }
+        if (bTooCloseToSpawn)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("[MapBuilder] 시작방 스폰지점과 근접한 (%d, %d) 구역의 장애물 스폰을 차단 스킵했습니다."), C.X, C.Y);
+            continue;
+        }
+
         ObstacleSpawnWorldLocations.Add(TileToWorld(C.X, C.Y));
+    }
     UE_LOG(LogTemp, Display, TEXT("[MapBuilder] Obstacle spawns: %d"), ObstacleSpawnWorldLocations.Num());
 
     // 연결성 검증: 벽/빈공간이 아닌 칸(바닥+박스)이 한 덩어리로 이어졌는지.
@@ -367,6 +451,15 @@ void ASpartaArcadeMapBuilder::OnRep_MapGrid()
     BuildVisuals();   // 최초 수신: 복제된 그리드로 로컬 비주얼 생성
 }
 
+// 스폰 위치 좌표 정보가 복제 완료되었을 때 호출되어 비주얼을 정확하게 다시 렌더링
+void ASpartaArcadeMapBuilder::OnRep_SpawnWorldLocations()
+{
+    if (bVisualsBuilt)
+    {
+        BuildVisuals();
+    }
+}
+
 void ASpartaArcadeMapBuilder::BuildVisuals()
 {
     if (MapGrid.Tiles.Num() == 0)
@@ -443,8 +536,9 @@ void ASpartaArcadeMapBuilder::BuildVisuals()
     // 배경 바닥 플레인: 맵 전체를 덮게(= 빈 공간 색). 룸은 그 위에 밝은 타일로 따로.
     if (FloorPlane->GetStaticMesh())
     {
-        FloorPlane->SetRelativeScale3D(FVector(GridWidth * S / CubeUU, GridHeight * S / CubeUU, 1.f));
-        FloorPlane->SetRelativeLocation(FVector((GridWidth - 1) * S * 0.5f, (GridHeight - 1) * S * 0.5f, 0.f));
+        // 클라이언트 갱신(Replicate) 시에도 올바른 바닥 크기 및 위치 동기화를 보장하기 위해 GridWidth/Height 대신 MapGrid.Width/Height 사용
+        FloorPlane->SetRelativeScale3D(FVector(MapGrid.Width * S / CubeUU, MapGrid.Height * S / CubeUU, 1.f));
+        FloorPlane->SetRelativeLocation(FVector((MapGrid.Width - 1) * S * 0.5f, (MapGrid.Height - 1) * S * 0.5f, 0.f));
     }
 
     // 타일별 트랜스폼을 먼저 전부 모은 뒤 '한 번에' 추가(배치).
@@ -498,6 +592,23 @@ void ASpartaArcadeMapBuilder::BuildVisuals()
     TPair<FVector, FVector> MudVis = GetVisualInfo(ESpartaArcadeTileType::MudWater, FVector(WallScale), FVector(0.f, 0.f, 2.f));
     TPair<FVector, FVector> BushVis = GetVisualInfo(ESpartaArcadeTileType::Bush, FVector(WallScale), FVector(0.f, 0.f, 2.f));
 
+    // 동적 모퉁이 방 검색 결과로 유동 결정된 스폰 위치 좌표를 복제된 SpawnWorldLocations를 기반으로 정확히 겹침 판정
+    auto IsSpawnCell = [this](int32 CX, int32 CY) -> bool
+    {
+        for (const FVector& SpawnLoc : SpawnWorldLocations)
+        {
+            int32 SpawnX = 0, SpawnY = 0;
+            if (WorldToTile(SpawnLoc, SpawnX, SpawnY))
+            {
+                if (CX == SpawnX && CY == SpawnY)
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+
     for (int32 Y = 0; Y < MapGrid.Height; ++Y)
     {
         for (int32 X = 0; X < MapGrid.Width; ++X)
@@ -510,6 +621,13 @@ void ASpartaArcadeMapBuilder::BuildVisuals()
                 break;
             case ESpartaArcadeTileType::FixedWall:
             {
+                // 스폰 위치와 겹치는 고정벽의 경우 인스턴스를 그리지 않고 바닥으로 안전하게 우회 대체
+                if (IsSpawnCell(X, Y))
+                {
+                    FloorXfs.Emplace(FRotator::ZeroRotator, Pos + EmptyVis.Value, EmptyVis.Key);
+                    break;
+                }
+
                 if (CountFixedNeighbors(X, Y) <= 1)
                 {
                     PillarXfs.Emplace(FRotator::ZeroRotator, Pos + PillarVis.Value, PillarVis.Key);
@@ -521,6 +639,12 @@ void ASpartaArcadeMapBuilder::BuildVisuals()
                 break;
             }
             case ESpartaArcadeTileType::DestructibleBox:
+                // 스폰 위치와 겹치는 상자의 경우 그리지 않고 바닥으로 우회 대체
+                if (IsSpawnCell(X, Y))
+                {
+                    FloorXfs.Emplace(FRotator::ZeroRotator, Pos + EmptyVis.Value, EmptyVis.Key);
+                    break;
+                }
                 if (bShouldDrawBoxISM)
                 {
                     BoxXfs.Emplace(FRotator::ZeroRotator, Pos + BoxVis.Value, BoxVis.Key);
@@ -612,6 +736,9 @@ void ASpartaArcadeMapBuilder::BuildVisuals()
     BushISM->MarkRenderStateDirty();
 
     bVisualsBuilt = true;   // 이후 OnRep은 증분 갱신 경로로
+
+    // 스폰 포인트 겹침 구조물 제거 함수 호출
+    ClearStructuresAtSpawns();
 }
 
 FVector ASpartaArcadeMapBuilder::TileToWorld(int32 X, int32 Y) const
@@ -877,3 +1004,76 @@ void ASpartaArcadeMapBuilder::PostEditChangeProperty(FPropertyChangedEvent& Prop
     }
 }
 #endif
+
+// 스폰 포인트에 겹치는 구조물 액터 및 ISM 인스턴스 강제 제거 함수 구현
+void ASpartaArcadeMapBuilder::ClearStructuresAtSpawns()
+{
+    if (!GetWorld()) return;
+
+    // 타일 크기 1칸 전체(90%)를 덮어 겹치는 모든 구조물 액터를 완전히 제거
+    const float ClearRadius = TileSize * 0.90f; 
+
+    for (const FVector& SpawnLoc : SpawnWorldLocations)
+    {
+        // 1. 해당 스폰 위치 반경 내에 존재하는 구조물/장애물 액터들 탐색 후 파괴
+        TArray<AActor*> OverlappingActors;
+        UGameplayStatics::GetAllActorsOfClass(GetWorld(), AActor::StaticClass(), OverlappingActors);
+
+        for (AActor* Actor : OverlappingActors)
+        {
+            if (!IsValid(Actor) || Actor == this || Actor->IsA(APlayerStart::StaticClass())) continue;
+
+            FVector ActorLoc = Actor->GetActorLocation();
+            float Distance2D = FVector::Dist2D(SpawnLoc, ActorLoc);
+            float DistanceZ = FMath::Abs(SpawnLoc.Z - ActorLoc.Z);
+
+            if (Distance2D < ClearRadius && DistanceZ < 200.f)
+            {
+                FString ClassName = Actor->GetClass()->GetName();
+                if (ClassName.Contains(TEXT("Wall")) || 
+                    ClassName.Contains(TEXT("Block")) || 
+                    ClassName.Contains(TEXT("Box")) || 
+                    ClassName.Contains(TEXT("Pillar")) ||
+                    ClassName.Contains(TEXT("Obstacle")))
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("[MapBuilder] 스폰 위치(%s)에 겹치는 구조물 액터 %s 를 파괴합니다."), *SpawnLoc.ToString(), *Actor->GetName());
+                    Actor->Destroy();
+                }
+            }
+        }
+
+        // 2. ISM 인스턴스 (WallISM, PillarISM, BoxISM 등) 중 스폰 위치와 겹치는 인스턴스 제거
+        // 언리얼 피지컬/월드 트랜스폼 지연 오류를 완벽히 우회하기 위해 로컬 좌표 기준으로 안전하고 정확하게 제거
+        FVector LocalSpawnLoc = SpawnLoc - GetActorLocation();
+
+        TArray<UHierarchicalInstancedStaticMeshComponent*> ISMComponents = { WallISM, PillarISM, BoxISM };
+        for (UHierarchicalInstancedStaticMeshComponent* ISMComp : ISMComponents)
+        {
+            if (!ISMComp) continue;
+
+            TArray<int32> InstancesToRemove;
+            int32 InstanceCount = ISMComp->GetInstanceCount();
+            for (int32 i = 0; i < InstanceCount; ++i)
+            {
+                FTransform InstTransform;
+                if (ISMComp->GetInstanceTransform(i, InstTransform, false)) // 로컬 스페이스 획득
+                {
+                    FVector InstLoc = InstTransform.GetLocation();
+                    float Dist2D = FVector::Dist2D(LocalSpawnLoc, InstLoc);
+                    float DistZ = FMath::Abs(LocalSpawnLoc.Z - InstLoc.Z);
+
+                    if (Dist2D < ClearRadius && DistZ < 200.f)
+                    {
+                        InstancesToRemove.Add(i);
+                    }
+                }
+            }
+
+            for (int32 i = InstancesToRemove.Num() - 1; i >= 0; --i)
+            {
+                UE_LOG(LogTemp, Warning, TEXT("[MapBuilder] 스폰 로컬 위치(%s)에 겹치는 ISM 인스턴스를 제거합니다. (%s, 인덱스: %d)"), *LocalSpawnLoc.ToString(), *ISMComp->GetName(), InstancesToRemove[i]);
+                ISMComp->RemoveInstance(InstancesToRemove[i]);
+            }
+        }
+    }
+}

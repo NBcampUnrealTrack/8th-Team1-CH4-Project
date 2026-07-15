@@ -33,10 +33,6 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	// Removed: 물리 및 Z축 오작동을 방지하기 위해 사용하지 않는 구체 콜라이더 제거
-	// UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	// class USphereComponent* CollisionComponent;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* MeshComponent;
 

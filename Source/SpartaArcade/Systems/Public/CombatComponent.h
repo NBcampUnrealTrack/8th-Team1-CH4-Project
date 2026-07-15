@@ -56,6 +56,9 @@ public:
     UFUNCTION(BlueprintCallable)
     void Heal(int32 Amount);
 
+    UFUNCTION(BlueprintPure, meta = (DisplayName = "Get Combat Player State"))
+    EBomberPlayerState GetPlayerState() const;
+
     UFUNCTION(BlueprintPure)
     bool IsShielded() const { return bHasShield; }
 
@@ -106,6 +109,9 @@ protected:
     
     UPROPERTY(ReplicatedUsing=OnRep_HasShield)
     bool bHasShield = false;
+
+    UPROPERTY(BlueprintReadOnly, Category = "PlayerState")
+    EBomberPlayerState CurrentState = EBomberPlayerState::Alive;
 
     UPROPERTY()
     TObjectPtr<ASpartaPlayerState> SpartaPlayerState;

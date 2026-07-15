@@ -101,11 +101,9 @@ UBomberAttributeSet* UCombatComponent::GetMutableAttributeSet() const
 
 void UCombatComponent::ApplyDamage()
 {
-    if (IsValid(SpartaPlayerState))
-    {
-        UE_LOG(LogTemp, Warning, TEXT("UCombatComponent::ApplyDamage 진입! 현재 Hearts: %d, 무적 여부: %s"),
-            SpartaPlayerState->GetHearts(), bInvincible ? TEXT("True") : TEXT("False"));
-    }
+    if (!IsValid(SpartaPlayerState)) return;
+
+    UE_LOG(LogTemp, Warning, TEXT("UCombatComponent::ApplyDamage 진입! 현재 Hearts: %d, 무적 여부: %s"), SpartaPlayerState->GetHearts(), bInvincible ? TEXT("True") : TEXT("False"));
 
     if (!GetOwner()->HasAuthority()) return;
 
@@ -149,6 +147,8 @@ void UCombatComponent::ApplyDamage()
 
 bool UCombatComponent::CanTakeDamage() const
 {
+    if (!IsValid(SpartaPlayerState)) return true;
+    if (SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Eliminated) return false;
     return !IsValid(CachedASC) || !CachedASC->HasMatchingGameplayTag(BomberGameplayTags::State_Eliminated);
 }
 
@@ -174,6 +174,7 @@ void UCombatComponent::GrantShield()
 
 void UCombatComponent::EnterStun()
 {
+    if (!IsValid(SpartaPlayerState)) return;
     SpartaPlayerState->SetCurrentState(EBomberPlayerState::Stunned);
     OnStun.Broadcast();
 
@@ -205,6 +206,9 @@ void UCombatComponent::EnterStun()
 
 void UCombatComponent::Eliminate()
 {
+    if (!IsValid(SpartaPlayerState)) return;
+    GetWorld()->GetTimerManager().ClearTimer(StunTimerHandle);
+
     SpartaPlayerState->SetCurrentState(EBomberPlayerState::Eliminated);
 
     if (IsValid(CachedASC))
@@ -226,14 +230,17 @@ void UCombatComponent::Eliminate()
 
 void UCombatComponent::Revive()
 {
+    if (!IsValid(SpartaPlayerState)) return;
+    GetWorld()->GetTimerManager().ClearTimer(StunTimerHandle);
+
+    SpartaPlayerState->SetHearts(SpartaPlayerState->GetStartHearts());
+    SpartaPlayerState->SetCurrentState(EBomberPlayerState::Alive);
+    bInvincible = true;
+
     if (UBomberAttributeSet* AttrSet = GetMutableAttributeSet())
     {
         CachedASC->ApplyModToAttribute(UBomberAttributeSet::GetHealthAttribute(), EGameplayModOp::Override, AttrSet->GetMaxHealth());
     }
-    SpartaPlayerState->SetCurrentState(EBomberPlayerState::Alive);
-    bInvincible = true;
-
-    GetWorld()->GetTimerManager().ClearTimer(StunTimerHandle);
 
     if (IsValid(CachedASC))
     {
@@ -258,6 +265,7 @@ void UCombatComponent::Revive()
 void UCombatComponent::SelfRevive()
 {
     if (!GetOwner()->HasAuthority()) return;
+    if (!IsValid(SpartaPlayerState)) return;
     if (!IsValid(CachedASC) || !CachedASC->HasMatchingGameplayTag(BomberGameplayTags::State_Stunned)) return;
 
     // 상태를 먼저 바꾼다
@@ -281,6 +289,7 @@ void UCombatComponent::SelfRevive()
 void UCombatComponent::InstantEliminate()
 {
     if (!GetOwner()->HasAuthority()) return;
+    if (!IsValid(SpartaPlayerState)) return;
 
     GetWorld()->GetTimerManager().ClearTimer(StunTimerHandle);
 
@@ -343,6 +352,12 @@ void UCombatComponent::OnRep_HasShield()
 // 추가 — 헤더에 선언만 있고 정의가 없어서 링크 에러 나던 함수
 void UCombatComponent::OnAnyGameplayEffectRemoved(const FGameplayEffectRemovalInfo& RemovalInfo)
 {
+    // 이미 부활(SelfRevive/Revive 등)하여 살아난 상태라면, 이펙트 제거로 인한 사망 처리를 무시합니다.
+    if (IsValid(SpartaPlayerState) && SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Alive)
+    {
+        return;
+    }
+
     if (!IsValid(CachedASC) || !CachedASC->HasMatchingGameplayTag(BomberGameplayTags::State_Stunned)) return;
 
     // 아직 Stunned인데 GE가 사라졌다 = 자연 만료였다는 뜻
@@ -351,12 +366,17 @@ void UCombatComponent::OnAnyGameplayEffectRemoved(const FGameplayEffectRemovalIn
 
 void UCombatComponent::Heal(int32 Amount)
 {
+    if (!IsValid(SpartaPlayerState)) return;
+    if (SpartaPlayerState->GetCurrentState() != EBomberPlayerState::Alive) return;
+
     if (IsValid(CachedASC) &&
         (CachedASC->HasMatchingGameplayTag(BomberGameplayTags::State_Stunned) ||
          CachedASC->HasMatchingGameplayTag(BomberGameplayTags::State_Eliminated)))
     {
         return;
     }
+
+    SpartaPlayerState->SetHearts(FMath::Clamp(SpartaPlayerState->GetHearts() + Amount, 0, SpartaPlayerState->GetStartHearts()));
 
     if (IsValid(CachedASC))
     {
@@ -382,4 +402,9 @@ float UCombatComponent::GetStunProgressPercent() const
 void UCombatComponent::BroadcastCurrentState()
 {
     OnRep_HasShield();
+}
+
+EBomberPlayerState UCombatComponent::GetPlayerState() const
+{
+    return SpartaPlayerState ? SpartaPlayerState->GetCurrentState() : CurrentState;
 }

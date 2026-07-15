@@ -109,7 +109,8 @@ void ASpartaArcadeBomb::ApplyExplosionDamage(AActor* Target)
 	// 맞은 목록에 등록
 	DamagedActors.Add(Target);
 
-	UE_LOG(LogTemp, Warning, TEXT("폭풍 대미지 적용 완료! 대상: %s, 남은 하트: %f"),
+	// 과도한 Warning 로그 방지를 위해 Verbose 레벨로 변경
+	UE_LOG(LogTemp, Verbose, TEXT("대미지 적용 완료! 대상: %s, 남은 하트: %f"),
 		*Target->GetName(),
 		Cast<ASpartaArcadeCharacter>(Target) ? Cast<ASpartaArcadeCharacter>(Target)->GetHP() : 0.f);
 }
@@ -153,12 +154,14 @@ bool ASpartaArcadeBomb::SweepAndApplyDamage(const FVector& Start, const FVector&
 
 	if (!bHit || !HitResult.GetActor())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Bomb] SweepAndApplyDamage: 스윕에 아무것도 안 걸림 (Start=%s, End=%s, Radius=%.1f)"),
+		// 과도한 Warning 로그 방지를 위해 Verbose 레벨로 변경
+		UE_LOG(LogTemp, Verbose, TEXT("[Bomb] SweepAndApplyDamage: 스윕에 아무것도 안 걸림 (Start=%s, End=%s, Radius=%.1f)"),
 			*Start.ToString(), *End.ToString(), Radius);
 		return false; // 부딪힌 지형이나 액터가 없으므로 불길 차단 없이 계속 진행
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("[Bomb] SweepAndApplyDamage: %s 에 충돌 감지됨"), *HitResult.GetActor()->GetName());
+	// 과도한 Warning 로그 방지를 위해 Verbose 레벨로 변경
+	UE_LOG(LogTemp, Verbose, TEXT("[Bomb] SweepAndApplyDamage: %s 에 충돌 감지됨"), *HitResult.GetActor()->GetName());
 
 	// 충돌 결과 분석 및 반응 처리는 HandleExplosionHit 함수로 분리 위임
 	return HandleExplosionHit(HitResult.GetActor());
@@ -178,14 +181,16 @@ bool ASpartaArcadeBomb::HandleExplosionHit(AActor* HitActor)
 	// IDamageable 인터페이스를 사용하는 대상(상자, 캐릭터 등) 일괄 피격 처리
 	if (HitActor->GetClass()->ImplementsInterface(UDamageable::StaticClass()))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Bomb] HandleExplosionHit: %s 는 IDamageable 구현함, CanTakeDamage=%s"),
+		// 과도한 Warning 로그 방지를 위해 Verbose 레벨로 변경
+		UE_LOG(LogTemp, Verbose, TEXT("[Bomb] HandleExplosionHit: %s 는 IDamageable 구현함, CanTakeDamage=%s"),
 			*HitActor->GetName(), IDamageable::Execute_CanTakeDamage(HitActor) ? TEXT("true") : TEXT("false"));
 
 		if (IDamageable::Execute_CanTakeDamage(HitActor))
 		{
 			if (!DamagedActors.Contains(HitActor))
 			{
-				UE_LOG(LogTemp, Warning, TEXT("[Bomb] HandleExplosionHit: %s 에 TakeExplosionDamage 호출"), *HitActor->GetName());
+				// 과도한 Warning 로그 방지를 위해 Verbose 레벨로 변경
+				UE_LOG(LogTemp, Verbose, TEXT("[Bomb] HandleExplosionHit: %s 에 TakeExplosionDamage 호출"), *HitActor->GetName());
 				IDamageable::Execute_TakeExplosionDamage(HitActor);
 				DamagedActors.Add(HitActor);
 			}
@@ -199,7 +204,8 @@ bool ASpartaArcadeBomb::HandleExplosionHit(AActor* HitActor)
 		return IDamageable::Execute_BlocksExplosion(HitActor);
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("[Bomb] HandleExplosionHit: %s 는 IDamageable을 구현하지 않음 (벽/지형으로 간주하고 차단)"), *HitActor->GetName());
+	// 과도한 Warning 로그 방지를 위해 Verbose 레벨로 변경
+	UE_LOG(LogTemp, Verbose, TEXT("[Bomb] HandleExplosionHit: %s 는 IDamageable을 구현하지 않음 (벽/지형으로 간주하고 차단)"), *HitActor->GetName());
 
 	// 다른 폭탄이 아닌 고정 벽 지형이면 즉시 차단
 	return true;

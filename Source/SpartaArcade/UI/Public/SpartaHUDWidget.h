@@ -87,7 +87,7 @@ protected:
     UImage* MedImg;
 
     UPROPERTY(meta = (BindWidget, OptionalWidget = true))
-    class USpartaMinimapWidget* WBP_MinimapWidget; // Modified: 미니맵 UI 연동 변수 추가
+    class USpartaMinimapWidget* WBP_MinimapWidget; // 미니맵 UI 연동 변수 추가
 
 
 
