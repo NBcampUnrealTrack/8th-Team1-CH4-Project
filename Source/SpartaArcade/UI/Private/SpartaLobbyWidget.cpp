@@ -80,10 +80,13 @@ void USpartaLobbyWidget::UpdatePlayerList(const TArray<FString>& PlayerNames, co
             UUserWidget* EntryWidget = CreateWidget<UUserWidget>(GetWorld(), PlayerEntryWidgetClass);
             if (EntryWidget)
             {
-                // EntryWidget 내부에 NameText, ReadyText를 찾아 데이터를 주입
-                // C++ 클래스를 상속한 경우 캐스팅하여 주입 가능, 일단 텍스트블록 바인딩 등으로 직접 접근 처리
-                UTextBlock* NameText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("PlayerNameTextBlock")));
-                UTextBlock* ReadyText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("ReadyStatusTextBlock")));
+                // 실제 위젯 트리(WBP_PlayerEntry)의 이름과 불일치하여 주석 처리 (PlayerNameTextBlock -> PlayerNameText, ReadyStatusTextBlock -> ReadyStateText)
+                // UTextBlock* NameText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("PlayerNameTextBlock")));
+                // UTextBlock* ReadyText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("ReadyStatusTextBlock")));
+
+                //WBP_PlayerEntry 위젯 트리에 존재하는 PlayerNameText와 ReadyStateText 명칭으로 가져오도록 연동 수정
+                UTextBlock* NameText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("PlayerNameText")));
+                UTextBlock* ReadyText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("ReadyStateText")));
 
                 if (NameText)
                 {

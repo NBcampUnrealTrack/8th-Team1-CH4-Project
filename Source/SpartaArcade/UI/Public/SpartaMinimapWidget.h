@@ -43,6 +43,10 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MinimapSettings")
     bool bShowTeammates = true;
 
+    // 미니맵 마스킹 및 꾸미기용 머티리얼을 지정하기 위한 변수 추가
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MinimapSettings")
+    TObjectPtr<UMaterialInterface> MinimapMaterialClass;
+
 public:
     // --- 외부 레벨/게임 시스템으로부터 데이터 업데이트 수신 ---
     UFUNCTION(BlueprintCallable, Category = "UI | Minimap")
