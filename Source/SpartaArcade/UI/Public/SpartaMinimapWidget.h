@@ -64,4 +64,17 @@ private:
 
     FVector CachedSafeZoneCenter = FVector::ZeroVector;
     float CachedSafeZoneRadius = 0.0f;
+
+	// 각 플레이어별 독립된 미니맵 렌더타겟 및 동적 머터리얼 인스턴스 생성을 위한 변수/함수 추가
+	UPROPERTY()
+	class UTextureRenderTarget2D* DynamicRenderTarget = nullptr;
+
+	UPROPERTY()
+	class UMaterialInstanceDynamic* DynamicMinimapMaterial = nullptr;
+
+	bool bInitializedDynamicRT = false;
+
+	float CachedCameraRelativeZ = 2500.f;
+
+	void InitializeDynamicRenderTarget();
 };

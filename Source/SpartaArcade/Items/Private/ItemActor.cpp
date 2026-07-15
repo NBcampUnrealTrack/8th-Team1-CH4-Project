@@ -135,12 +135,13 @@ void AItemActor::NotifyActorBeginOverlap(AActor* OtherActor)
         break;
     }
 
-    if (GEngine)
-    {
-        const FString ItemTypeName = StaticEnum<EBomberItemType>()->GetNameStringByValue(static_cast<int64>(Row->ItemType));
-        GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Green,
-            FString::Printf(TEXT("%s 아이템 획득! (%s)"), *ItemTypeName, *OtherActor->GetName()));
-    }
+    // 디버그 메시지 주석 처리
+    // if (GEngine)
+    // {
+    //     const FString ItemTypeName = StaticEnum<EBomberItemType>()->GetNameStringByValue(static_cast<int64>(Row->ItemType));
+    //     GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Green,
+    //         FString::Printf(TEXT("%s 아이템 획득! (%s)"), *ItemTypeName, *OtherActor->GetName()));
+    // }
 
     Destroy();
 }
