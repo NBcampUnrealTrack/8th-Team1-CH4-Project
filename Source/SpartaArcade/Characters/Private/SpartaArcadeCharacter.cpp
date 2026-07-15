@@ -666,12 +666,12 @@ void ASpartaArcadeCharacter::UpdateNickname()
 			// Team 1이면 빨간색, Team 2면 파란색으로 닉네임 색상 표시
 			if (ASpartaPlayerState* SPS = Cast<ASpartaPlayerState>(PS))
 			{
-				int32 TeamID = SPS->GetTeamID();
-				if (TeamID == 1)
+				int32 LocalTeamID = SPS->GetTeamID();
+				if (LocalTeamID == 1)
 				{
 					TargetText->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.25f, 0.25f)));
 				}
-				else if (TeamID == 2)
+				else if (LocalTeamID == 2)
 				{
 					TargetText->SetColorAndOpacity(FSlateColor(FLinearColor(0.25f, 0.5f, 1.0f)));
 				}
@@ -744,18 +744,6 @@ void ASpartaArcadeCharacter::Tick(float DeltaSeconds)
 
 	// 캐릭터에 부착된 SceneCaptureComponent2D 검색
 	USceneCaptureComponent2D* SceneCapture = FindComponentByClass<USceneCaptureComponent2D>();
-	// Removed: FindComponentByClass가 실패할 시 GetComponents로 이중 검색하는 무의미한 중복 로직 제거
-	/*
-	if (!SceneCapture)
-	{
-		TArray<USceneCaptureComponent2D*> Captures;
-		GetComponents<USceneCaptureComponent2D>(Captures);
-		if (Captures.Num() > 0)
-		{
-			SceneCapture = Captures[0];
-		}
-	}
-	*/
 
 	if (SceneCapture)
 	{
