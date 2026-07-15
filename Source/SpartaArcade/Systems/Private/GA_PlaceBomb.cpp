@@ -90,6 +90,9 @@ void UGA_PlaceBomb::ActivateAbility(
 
 	if (IsValid(NewBomb))
 	{
+		// 실제 폭탄 설치 및 스폰 성공 시에만 몽타주를 재생하도록 변경
+		Character->PlayPlaceBombAnim();
+
 		NewBomb->InitializeBomb(Character, BombRange);
 		NewBomb->OnBombExploded.BindUObject(this, &UGA_PlaceBomb::HandleBombExploded);
 
@@ -121,7 +124,7 @@ FVector UGA_PlaceBomb::CalcGridSnappedSpawnLocation(AActor* AvatarActor) const
 	FVector MyLocation = OwnerCharacter->GetActorLocation();
 	float RoundedX = FMath::RoundToFloat(MyLocation.X / 100.f) * 100.f;
 	float RoundedY = FMath::RoundToFloat(MyLocation.Y / 100.f) * 100.f;
-	float SpawnZ = MyLocation.Z - OwnerCharacter->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + 50.f;
+	float SpawnZ = MyLocation.Z - OwnerCharacter->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + 35.f;
 
 	return FVector(RoundedX, RoundedY, SpawnZ);
 }

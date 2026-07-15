@@ -67,6 +67,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Gameplay")
 	void PlaceBomb();
 
+	void PlayPlaceBombAnim();
+
 	UFUNCTION(BlueprintCallable, Category = "Gameplay")
 	void UseFirstAidKit();
 	
@@ -104,7 +106,14 @@ public:
 	void PerformKickBomb();
 	void PerformUseFirstAidKit();
 
+	UFUNCTION(BlueprintPure, Category = "Gameplay")
+	FORCEINLINE int32 GetFirstAidKitCount() const { return FirstAidKits; }
+
 protected:
+	// 캐릭터의 하트 체력, 속도 레벨, 폭탄 소지 한도 및 기절 상태 속성
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attributes|Setup")
+	ESpartaArcadeCharacterType CharacterType;
+
 	// 컴포넌트 초기화를 위한 데이터 테이블 구조 노출
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attributes|Setup")
 	TObjectPtr<UDataTable> CharacterStatTable;
@@ -122,11 +131,25 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PlayerState")
 	TObjectPtr<ASpartaPlayerState> SpartaPlayerState;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attributes|Movement")
+	float BaseMovementSpeed;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Attributes|Health")
+	int32 FirstAidKits;
+
+	// 팀전 구분을 위한 TeamID 속성
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attributes|Team")
+	int32 TeamID;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay")
 	TSubclassOf<class ASpartaArcadeBomb> BombClass;
 
-	int32 MaxInitializedComponentsCount;
-	int32 InitializedComponentsCount;
+	// 애니메이션 몽타주 에셋 변수
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attributes|Animation")
+	TObjectPtr<UAnimMontage> PlaceBombMontage;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attributes|Animation")
+	TObjectPtr<UAnimMontage> KickBombMontage;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
@@ -145,10 +168,27 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TSubclassOf<UGameplayAbility> UseFirstAidKitAbilityClass;
+
+	// 지연 사망 소멸 처리용 변수 및 함수
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attributes|Death")
+	float DestroyDelay = 1.5f;
+
+	FTimerHandle DestroyTimerHandle;
+
+	// 타이머 만료 시 최종적으로 Destroy()를 호출할 함수
+	void EliminateDestroy();
 	
-	// CombatComponent 측 기절 및 무적 타이머로 통합
-	// FTimerHandle StunTimerHandle;
-	// FTimerHandle InvulnerableTimerHandle;
+	// 폭발형 전용 머티리얼 인스턴스 (Red)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Visuals|Material")
+	TObjectPtr<UMaterialInstance> ExplosiveMaterial;
+
+	// 속도형 전용 머티리얼 인스턴스 (Blue)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Visuals|Material")
+	TObjectPtr<UMaterialInstance> SpeedMaterial;
+
+	// 폭탄갯수형 전용 머티리얼 인스턴스 (Green)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Visuals|Material")
+	TObjectPtr<UMaterialInstance> BombCountMaterial;
 
 private:
 	// 연쇄 폭발 다단 히트 차단을 위한 콜리전 복구 타이머 핸들
@@ -179,4 +219,7 @@ private:
 
 	UFUNCTION()
 	void HandleOnEliminated();
+
+	int32 MaxInitializedComponentsCount;
+	int32 InitializedComponentsCount;
 };
