@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -32,6 +32,9 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	class USphereComponent* CollisionComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* MeshComponent;
@@ -78,7 +81,10 @@ protected:
 	ASpartaArcadeCharacter* InstigatorCharacter;
 
 	// 굴리기 운동 상태를 추적하기 위한 변수
+	UPROPERTY(Replicated)
 	bool bIsRolling;
+
+	UPROPERTY(Replicated)
 	FVector RollDirection;
 	
 	// 중복 폭발로 인한 Stack Overflow 방지 플래그
@@ -113,4 +119,7 @@ public:
 	void Explode();
 
 	void InitializeBomb(ASpartaArcadeCharacter* InInstigator, int32 InFirePower);
+
+	// 네트워크 복제를 위해 GetLifetimeReplicatedProps 오버라이드 선언
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 };
