@@ -1,6 +1,8 @@
 ﻿#include "SpartaArcadeCharacter.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Camera/CameraComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Level/Public/SpartaArcadeMapBuilder.h"
 #include "Components/DecalComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SceneCaptureComponent2D.h"
@@ -63,9 +65,9 @@ ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 	TopDownCameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	TopDownCameraComponent->bUsePawnControlRotation = false;
 
-	// Tick 낭비 방지를 위해 bCanEverTick 비활성화
-	PrimaryActorTick.bCanEverTick = false;
-	PrimaryActorTick.bStartWithTickEnabled = false;
+	// 타일 지형 효과 및 카메라 상태 제어를 위해 틱 활성화
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = true;
 
 	// 컴포넌트 기반 아키텍처 적용
 	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
@@ -102,6 +104,20 @@ void ASpartaArcadeCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	InitializeCharacterComponents();
+
+	// 블루프린트 덮어쓰기 설정을 방어하기 위해 런타임에 틱 강제 활성화
+	SetActorTickEnabled(true);
+
+	// 맵 빌더 인스턴스 검색 및 캐싱
+	CachedMapBuilder = Cast<ASpartaArcadeMapBuilder>(UGameplayStatics::GetActorOfClass(GetWorld(), ASpartaArcadeMapBuilder::StaticClass()));
+
+	// 기본 무브먼트 매개변수 백업
+	if (GetCharacterMovement())
+	{
+		DefaultMaxWalkSpeed = GetCharacterMovement()->MaxWalkSpeed;
+		DefaultGroundFriction = GetCharacterMovement()->GroundFriction;
+		DefaultBrakingDeceleration = GetCharacterMovement()->BrakingDecelerationWalking;
+	}
 }
 
 void ASpartaArcadeCharacter::PossessedBy(AController* NewController)
@@ -751,6 +767,9 @@ void ASpartaArcadeCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
+	// 지형 지물 효과를 이동 속도 및 상태에 반영
+	ApplyTileEffectToMovement(DeltaSeconds);
+
 	// 캐릭터에 부착된 SceneCaptureComponent2D 검색
 	USceneCaptureComponent2D* SceneCapture = FindComponentByClass<USceneCaptureComponent2D>();
 
@@ -777,6 +796,62 @@ void ASpartaArcadeCharacter::Tick(float DeltaSeconds)
 				SceneCapture->SetActive(false);
 			}
 		}
+	}
+}
+
+void ASpartaArcadeCharacter::ApplyTileEffectToMovement(float DeltaSeconds)
+{
+	// 맵 빌더를 아직 캐싱하지 못한 경우 런타임에 실시간 탐색 및 캐싱 시도
+	if (!IsValid(CachedMapBuilder))
+	{
+		CachedMapBuilder = Cast<ASpartaArcadeMapBuilder>(UGameplayStatics::GetActorOfClass(GetWorld(), ASpartaArcadeMapBuilder::StaticClass()));
+	}
+
+	if (!IsValid(CachedMapBuilder) || !GetCharacterMovement())
+	{
+		return;
+	}
+
+	// 현재 캐릭터가 서 있는 위치의 지형 타일 타입 조회
+	FVector CurrentLocation = GetActorLocation();
+	ESpartaArcadeTileType TileType = CachedMapBuilder->GetTileTypeAtWorldPosition(CurrentLocation);
+
+	switch (TileType)
+	{
+	case ESpartaArcadeTileType::Ice:
+		// 얼음 타일: 마찰력을 대폭 줄이고 제동 감속도를 낮추어 미끄러지도록 설정
+		GetCharacterMovement()->GroundFriction = IceFriction;
+		GetCharacterMovement()->BrakingDecelerationWalking = IceBrakingDeceleration;
+		GetCharacterMovement()->MaxWalkSpeed = DefaultMaxWalkSpeed;
+		break;
+
+	case ESpartaArcadeTileType::MudWater:
+		// 진흙 타일: 기본 속도를 절반(MudSpeedMultiplier)으로 감속
+		GetCharacterMovement()->GroundFriction = DefaultGroundFriction;
+		GetCharacterMovement()->BrakingDecelerationWalking = DefaultBrakingDeceleration;
+		GetCharacterMovement()->MaxWalkSpeed = DefaultMaxWalkSpeed * MudSpeedMultiplier;
+		break;
+
+	case ESpartaArcadeTileType::Conveyor:
+		// 컨베이어 타일: 이동 속도와 마찰은 기본으로 유지하고, 컨베이어의 추진 방향으로 강제 입력 추가
+		GetCharacterMovement()->GroundFriction = DefaultGroundFriction;
+		GetCharacterMovement()->BrakingDecelerationWalking = DefaultBrakingDeceleration;
+		GetCharacterMovement()->MaxWalkSpeed = DefaultMaxWalkSpeed;
+		
+		// [임시 방향 벡터]: 현재는 가로(Y축) 방향으로 캐릭터를 서서히 밀어내도록 임시 구현
+		// 실제 기획 또는 맵의 컨베이어 방향 데이터에 대응하여 방향 벡터를 조절할 수 있습니다.
+		{
+			FVector PushDirection = FVector(0.f, 1.f, 0.f); 
+			GetCharacterMovement()->AddInputVector(PushDirection * ConveyorPushSpeed * DeltaSeconds, true);
+		}
+		break;
+
+	default:
+		// 일반 바닥 타일: 원래 백업해 두었던 기본 마찰력, 감속도, 이동 속도로 안전하게 복원
+		GetCharacterMovement()->GroundFriction = DefaultGroundFriction;
+		GetCharacterMovement()->BrakingDecelerationWalking = DefaultBrakingDeceleration;
+		GetCharacterMovement()->MaxWalkSpeed = DefaultMaxWalkSpeed;
+		break;
 	}
 }
 

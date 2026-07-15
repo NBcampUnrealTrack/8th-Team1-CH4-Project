@@ -1,5 +1,7 @@
 #include "SpartaArcadeBomb.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/SphereComponent.h"
+#include "Net/UnrealNetwork.h"
 #include "Components/CapsuleComponent.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
@@ -19,10 +21,17 @@ ASpartaArcadeBomb::ASpartaArcadeBomb()
 	bReplicates = true;
 	SetReplicateMovement(true);
 
-	//  루트 컴포넌트를 기존과 같이 MeshComponent로 원복하여 BlockAll을 기본으로 동작시킴
+	// 구체 콜리전을 생성하여 루트 컴포넌트로 지정 (물리 스윕 감지용)
+	CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionComponent"));
+	RootComponent = CollisionComponent;
+	CollisionComponent->SetSphereRadius(50.f);
+	CollisionComponent->SetCollisionProfileName(TEXT("BlockAll"));
+	CollisionComponent->SetGenerateOverlapEvents(true);
+
+	// MeshComponent를 자식 컴포넌트로 생성 및 첨부 (렌더링 및 자전 비주얼 전담)
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
-	RootComponent = MeshComponent;
-	MeshComponent->SetCollisionProfileName(TEXT("BlockAll"));
+	MeshComponent->SetupAttachment(RootComponent);
+	MeshComponent->SetCollisionProfileName(TEXT("NoCollision"));
 	MeshComponent->SetGenerateOverlapEvents(false);
 
 	ExplosionDelay = 3.0f;
@@ -303,6 +312,19 @@ void ASpartaArcadeBomb::Tick(float DeltaTime)
 		}
 	}
 
+	// 서버와 클라이언트 모두가 렌더링을 위해 실행
+	if (bIsRolling && MeshComponent)
+	{
+		// 구르는 속도(RollSpeed)에 비례하여 자전 속도(초당 회전 각도) 결정
+		// RollSpeed가 800일 때 초당 약 560도 자전하도록 설정
+		float RotationSpeed = RollSpeed * 0.7f; 
+		float YawDelta = RotationSpeed * DeltaTime;
+
+		// 세워진 상태 그대로 좌측(반시계 방향)으로 자전하도록 Yaw 값만 추가 적용
+		MeshComponent->AddRelativeRotation(FRotator(0.f, YawDelta, 0.f));
+	}
+
+	// 오직 서버 권한을 가진 경우에만 수행
 	if (!HasAuthority() || !bIsRolling)
 	{
 		return;
@@ -357,4 +379,12 @@ void ASpartaArcadeBomb::Multicast_PlayExplosionEffects_Implementation(const TArr
 			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ExplosionCascadeVFX, Location);
 		}
 	}
+}
+
+void ASpartaArcadeBomb::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ASpartaArcadeBomb, bIsRolling);
+	DOREPLIFETIME(ASpartaArcadeBomb, RollDirection);
 }
