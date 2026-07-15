@@ -172,6 +172,32 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TSubclassOf<UGameplayAbility> UseFirstAidKitAbilityClass;
 
+protected:
+	// 지형 타일 효과를 이동에 반영하는 처리 함수
+	void ApplyTileEffectToMovement(float DeltaSeconds);
+
+	// 맵 빌더 캐싱용 포인터
+	UPROPERTY()
+	class ASpartaArcadeMapBuilder* CachedMapBuilder;
+
+	// 캐릭터의 기본 무브먼트 값 백업용
+	float DefaultMaxWalkSpeed;
+	float DefaultGroundFriction;
+	float DefaultBrakingDeceleration;
+
+	// 지형 효과 밸런싱 변수 (디렉토리 디테일 패널 개방)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement|TileEffects")
+	float MudSpeedMultiplier = 0.5f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement|TileEffects")
+	float IceFriction = 0.05f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement|TileEffects")
+	float IceBrakingDeceleration = 100.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement|TileEffects")
+	float ConveyorPushSpeed = 250.f;
+
 	// 지연 사망 소멸 처리용 변수 및 함수
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attributes|Death")
 	float DestroyDelay = 1.5f;

@@ -66,6 +66,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "SpartaArcade|Map")
     bool WorldToTile(const FVector& World, int32& OutX, int32& OutY) const;
 
+    /** 월드 좌표를 입력받아 해당 타일의 타입을 반환하는 헬퍼 함수 */
+    UFUNCTION(BlueprintCallable, Category = "SpartaArcade|Map")
+    ESpartaArcadeTileType GetTileTypeAtWorldPosition(const FVector& WorldPos) const;
+
     UFUNCTION(BlueprintCallable, Category = "SpartaArcade|Map")
     int32 GetGridWidth() const { return MapGrid.Width; }
 

@@ -763,6 +763,16 @@ bool ASpartaArcadeMapBuilder::WorldToTile(const FVector& World, int32& OutX, int
     return (OutX >= 0 && OutY >= 0 && OutX < MapGrid.Width && OutY < MapGrid.Height);
 }
 
+ESpartaArcadeTileType ASpartaArcadeMapBuilder::GetTileTypeAtWorldPosition(const FVector& WorldPos) const
+{
+    int32 TileX, TileY;
+    if (WorldToTile(WorldPos, TileX, TileY))
+    {
+        return MapGrid.GetTile(TileX, TileY);
+    }
+    return ESpartaArcadeTileType::Void;
+}
+
 // ---- 런타임 그리드 갱신 (E 연동: 박스 파괴 → 칸 뚫림) ----
 
 bool ASpartaArcadeMapBuilder::NotifyTileDestroyed(int32 X, int32 Y)
