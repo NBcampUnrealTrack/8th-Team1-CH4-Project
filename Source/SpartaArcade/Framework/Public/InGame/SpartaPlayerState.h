@@ -16,6 +16,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnFirstAidKitsChangedSignature, int
 //실드
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnShieldsChangedSignature, int32, NewCount);
 
+// 발차기 활성화 여부 변경 통지용 델리게이트 선언
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnKickUnlockedChangedSignature, bool, bIsUnlocked);
+
 enum class ESpartaArcadeCharacterType : uint8;
 enum class EBomberPlayerState : uint8;
 
@@ -50,6 +53,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Character")
 	int32 GetTeamID() const;
 
+	// 발차기 활성화 함수 및 반환 함수 추가
+	UFUNCTION(BlueprintCallable, Category = "Character")
+	void SetKickUnlocked(bool bUnlocked);
+	UFUNCTION(BlueprintPure, Category = "Character")
+	bool IsKickUnlocked() const;
+
 	// -------------------------------------------------------
 	// CombatComponent
 	UFUNCTION(BlueprintCallable, Category = "CombatComponent")
@@ -80,6 +89,10 @@ public:
 	void OnRep_CurrentState();
 	UFUNCTION()
 	void OnRep_FirstAidKits();
+	
+	// 발차기 상태 복제 노티파이 함수 추가
+	UFUNCTION()
+	void OnRep_bIsKickUnlocked();
 
 	void BroadcastCurrentState();
 
@@ -101,6 +114,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Events | UI")
 	FOnShieldsChangedSignature OnShieldsChanged;
 
+	// 발차기 활성화 변경 통지용 델리게이트 변수 추가
+	UPROPERTY(BlueprintAssignable, Category = "Events | UI")
+	FOnKickUnlockedChangedSignature OnKickUnlockedChanged;
+
 protected:
 
 	// -------------------------------------------------------
@@ -118,6 +135,10 @@ protected:
 	// 팀전 구분을 위한 TeamID 속성
 	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Character")
 	int32 TeamID;
+
+	// 발차기 기능 잠금해제 여부 동기화 변수 추가
+	UPROPERTY(ReplicatedUsing = OnRep_bIsKickUnlocked, VisibleAnywhere, BlueprintReadOnly, Category = "Character")
+	bool bIsKickUnlocked = false;
 
 	// -------------------------------------------------------
 	// CombatComponent
