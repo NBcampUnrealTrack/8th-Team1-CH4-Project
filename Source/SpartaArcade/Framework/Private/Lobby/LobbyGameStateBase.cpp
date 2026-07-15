@@ -31,6 +31,7 @@ void ALobbyGameStateBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 	DOREPLIFETIME(ALobbyGameStateBase, GameModeType);
 	DOREPLIFETIME(ALobbyGameStateBase, PlayerStates);
 	DOREPLIFETIME(ALobbyGameStateBase, bAutoBalanceTeam);
+	DOREPLIFETIME(ALobbyGameStateBase, TeamCount);
 }
 
 void ALobbyGameStateBase::OnRep_RoomInfoChanged()
