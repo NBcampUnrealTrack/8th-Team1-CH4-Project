@@ -28,8 +28,8 @@ protected:
     UPROPERTY(meta = (BindWidget))
     USpartaButton* JoinButton;
 
-    UPROPERTY(meta = (BindWidget))
-    USpartaButton* SettingsButton;
+    // UPROPERTY(meta = (BindWidget))
+    // USpartaButton* SettingsButton;
 
     UPROPERTY(meta = (BindWidget))
     USpartaButton* QuitButton;
