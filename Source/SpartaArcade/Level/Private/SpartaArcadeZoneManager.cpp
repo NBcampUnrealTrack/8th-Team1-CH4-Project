@@ -181,11 +181,13 @@ void ASpartaArcadeZoneManager::RefreshVisuals()
     // 낙하 블록 증분 추가(즉시 나타남 — 한 번 나오면 유지). 높이 = BlockHeightTiles 칸.
     const float HScale = CubeScale * FMath::Max(0.1f, BlockHeightTiles);
     const float HalfH = S * FMath::Max(0.1f, BlockHeightTiles) * 0.5f;   // 바닥에 딛고 위로
+    const float VisualScaleXY = CubeScale * BlockScaleRatio; // 자기장 블록 가로/세로 렌더링 축소 비율
+
     while (RenderedCrush < DropIndex)
     {
         const FIntPoint C = SpiralCells[RenderedCrush];
         const FVector P = Map->TileToWorld(C.X, C.Y) + FVector(0, 0, HalfH);
-        CrushISM->AddInstance(FTransform(FRotator::ZeroRotator, P, FVector(CubeScale, CubeScale, HScale)));
+        CrushISM->AddInstance(FTransform(FRotator::ZeroRotator, P, FVector(VisualScaleXY, VisualScaleXY, HScale)));
         ++RenderedCrush;
     }
 
@@ -199,7 +201,7 @@ void ASpartaArcadeZoneManager::RefreshVisuals()
             const FIntPoint C = SpiralCells[i];
             // 바닥 타일 머티리얼과 겹쳐서 깜빡이거나 묻히는 Z-fighting 방지를 위해 오프셋 높이를 10.f 로 상향 조정
             const FVector P = Map->TileToWorld(C.X, C.Y) + FVector(0, 0, 10.f);
-            WarningISM->AddInstance(FTransform(FRotator::ZeroRotator, P, FVector(CubeScale)));
+            WarningISM->AddInstance(FTransform(FRotator::ZeroRotator, P, FVector(VisualScaleXY, VisualScaleXY, 1.f)));
         }
     }
 }

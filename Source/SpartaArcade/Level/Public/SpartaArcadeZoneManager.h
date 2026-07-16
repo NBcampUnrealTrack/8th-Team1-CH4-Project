@@ -56,8 +56,12 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SpartaArcade|Zone", meta = (ClampMin = "0.0"))
     float WarningLead = 1.5f;       // 붉은 경고 ~ 낙하까지 리드타임
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SpartaArcade|Zone", meta = (ClampMin = "0.1"))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SpartaArcade|Zone", meta = (ClampMin = "0.0"))
     float BlockHeightTiles = 2.f;   // 압사 블록 높이(타일 단위). 2 = 2칸 높이
+
+    // 자기장 블록 가로/세로 크기 배율 추가
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SpartaArcade|Zone", meta = (ClampMin = "0.1", ClampMax = "2.0"))
+    float BlockScaleRatio = 0.9f;   // 기본값 0.9 (90% 크기)
 
     // ---- 밸런싱 DataTable ----
     /** 자기장 수치 DT. 비우면 위 값 사용. Row 구조: FSpartaArcadeZoneRow */
