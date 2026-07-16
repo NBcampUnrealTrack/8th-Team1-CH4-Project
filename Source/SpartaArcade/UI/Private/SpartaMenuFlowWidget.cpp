@@ -29,7 +29,7 @@ void USpartaMenuFlowWidget::NativeConstruct()
     }
     if (SpectateButton)
     {
-        ResumeButton->OnClicked.AddDynamic(this, &USpartaMenuFlowWidget::OnSpectateClicked);
+        SpectateButton->OnClicked.AddDynamic(this, &USpartaMenuFlowWidget::OnSpectateClicked);
     }
     if (ExitToLobbyButton)
     {
@@ -190,7 +190,18 @@ void USpartaMenuFlowWidget::OnResumeClicked()
 
 void USpartaMenuFlowWidget::OnSpectateClicked()
 {
-    // Todo: 관전 기능 연결
+    APlayerController* PC = GetOwningPlayer();
+    if (ASpartaArcadePlayerController* InGamePC = Cast<ASpartaArcadePlayerController>(PC))
+    {
+        InGamePC->StartSpectating();
+
+        // 결과/일시정지 UI를 닫고 인게임 조작 모드로 복귀
+        FInputModeGameOnly InputMode;
+        InGamePC->SetInputMode(InputMode);
+        InGamePC->SetShowMouseCursor(false);
+    }
+
+    SetVisibility(ESlateVisibility::Collapsed);
 }
 
 void USpartaMenuFlowWidget::OnExitToLobbyClicked()
