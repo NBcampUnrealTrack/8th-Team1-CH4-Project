@@ -1,4 +1,4 @@
-#include "SpartaArcadeCharacter.h"
+﻿#include "SpartaArcadeCharacter.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -23,6 +23,7 @@
 #include "AbilitySystemComponent.h"
 #include "BomberAttributeSet.h"
 #include "BomberGameplayTags.h"
+#include "InGame/SpartaGameMode.h"
 #include "UI/Public/SpartaMenuFlowWidget.h"
 #include "UObject/UObjectIterator.h"
 #include "GameFramework/GameStateBase.h"
@@ -30,7 +31,6 @@
 #include "Components/TextBlock.h"
 #include "Blueprint/WidgetTree.h"
 #include "Styling/SlateColor.h"
-
 
 ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 {
@@ -272,6 +272,15 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 		CombatComponent->OnRevived.AddDynamic(this, &ASpartaArcadeCharacter::HandleOnRevived);
 		CombatComponent->OnSelfRevive.AddDynamic(this, &ASpartaArcadeCharacter::HandleOnSelfRevive);
 		CombatComponent->OnEliminated.AddDynamic(this, &ASpartaArcadeCharacter::HandleOnEliminated);
+
+		if(HasAuthority())
+		{
+			ASpartaGameMode* SpartaGameMode = GetWorld()->GetAuthGameMode<ASpartaGameMode>();
+			if (IsValid(SpartaGameMode))
+			{
+				CombatComponent->OnEliminatedEvent.AddUObject(SpartaGameMode, &ASpartaGameMode::HandlePlayerEliminated);
+			}
+		}
 	}
 
 	if (IsLocallyControlled())

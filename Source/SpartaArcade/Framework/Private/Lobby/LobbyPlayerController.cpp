@@ -10,6 +10,8 @@
 #include "EOSGameInstanceSubsystem.h"
 #include "SessionService.h"
 #include "GameFlow/TravelGameInstanceSubsystem.h"
+#include "SpartaMenuFlowWidget.h"
+
 void ALobbyPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
@@ -19,24 +21,18 @@ void ALobbyPlayerController::BeginPlay()
 		return;
 	}
 
-	if (IsValid(LobbyUIWidgetClass) == true)
-	{
-		LobbyUIWidgetInstance = CreateWidget<UUserWidget>(this, LobbyUIWidgetClass);
-		if (IsValid(LobbyUIWidgetInstance) == true)
+	if (IsValid(MainMenuWidgetClass) == true)
+	{;
+		MainMenuWidgetInstance = CreateWidget<USpartaMenuFlowWidget>(this, MainMenuWidgetClass);
+		if (IsValid(MainMenuWidgetInstance) == true)
 		{
-			LobbyUIWidgetInstance->AddToViewport();
-
+			MainMenuWidgetInstance->AddToViewport();
+			MainMenuWidgetInstance->ShowLobbyMenu();
 			FInputModeUIOnly Mode;
-			Mode.SetWidgetToFocus(LobbyUIWidgetInstance->GetCachedWidget());
+			Mode.SetWidgetToFocus(MainMenuWidgetInstance->GetCachedWidget());
 			SetInputMode(Mode);
 
 			bShowMouseCursor = true;
-
-			if(ALobbyGameStateBase* LobbyGameState = GetWorld()->GetGameState<ALobbyGameStateBase>())
-			{
-				LobbyGameState->SetLobbyUIWidget(Cast<USpartaLobbyWidget>(LobbyUIWidgetInstance));
-				LobbyGameState->RefreshLobbyUI();
-			}
 		}
 	}
 
@@ -57,9 +53,9 @@ void ALobbyPlayerController::ServerSelectCharacter_Implementation(ESpartaArcadeC
 	ALobbyPlayerState* LobbyPlayerState = GetPlayerState<ALobbyPlayerState>();
 	if (IsValid(LobbyPlayerState) == true)
 	{
-		if(LobbyPlayerState->bIsReady == false && LobbyPlayerState->SelectedCharacterType != NewType)
+		if(LobbyPlayerState->GetIsReady() == false && LobbyPlayerState->GetSelectedCharacterType() != NewType)
 		{
-			LobbyPlayerState->SelectedCharacterType = NewType;
+			LobbyPlayerState->SetSelectedCharacterType(NewType);
 			LobbyPlayerState->OnRep_LobbyStateChanged();
 		}
 	}
@@ -76,7 +72,7 @@ void ALobbyPlayerController::ServerToggleReady_Implementation()
 	ALobbyPlayerState* LobbyPlayerState = GetPlayerState<ALobbyPlayerState>();
 	if (IsValid(LobbyPlayerState) == true)
 	{
-		LobbyPlayerState->bIsReady = !LobbyPlayerState->bIsReady;
+		LobbyPlayerState->SetIsReady(!LobbyPlayerState->GetIsReady());
 		LobbyPlayerState->OnRep_LobbyStateChanged();
 	}
 }

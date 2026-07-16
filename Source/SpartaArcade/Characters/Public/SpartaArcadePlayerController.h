@@ -1,13 +1,15 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Templates/SubclassOf.h"
 #include "GameFramework/PlayerController.h"
+#include "SpartaUIDefs.h"
 #include "SpartaArcadePlayerController.generated.h"
 
 class UNiagaraSystem;
 class UInputMappingContext;
 class UInputAction;
+class USpartaMenuFlowWidget;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -53,6 +55,14 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
 	TObjectPtr<UUserWidget> HUDUIWidgetInstance;
 
+	// 메인 메뉴 UI 위젯 클래스 및 인스턴스
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
+	TSubclassOf<USpartaMenuFlowWidget> MainMenuWidgetClass;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
+	TObjectPtr<USpartaMenuFlowWidget> MainMenuWidgetInstance;
+
+
 public:
 	// LeaveGame
 	void LeaveGame();
@@ -60,9 +70,8 @@ public:
 	// HandleDestroySessionComplete
 	void HandleDestroySessionComplete(FName SessionName, bool bWasSuccessful);
 
-	// 클라이언트가 로비 등에서 직접 팀(1 또는 2)을 선택해 서버로 변경을 요청하는 RPC 함수
-	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "SpartaArcade|Team")
-	void ServerSetTeam(int32 NewTeamID);
+	UFUNCTION(Client, Reliable)
+	void ClientShowMatchResult(EMatchResult Result, int32 MyRank, const TArray<FMatchPlayerResult>& PlayerResults);
 
 protected:
 
@@ -90,4 +99,5 @@ protected:
 
 	UFUNCTION(Server, Reliable)
 	void ServerUseShield();
+
 };

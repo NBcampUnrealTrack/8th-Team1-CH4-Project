@@ -1,4 +1,4 @@
-#include "SpartaArcadeMapBuilder.h"
+﻿#include "SpartaArcadeMapBuilder.h"
 #include "SpartaArcadeRoomGenerator.h"
 #include "SpartaArcadeMovingObstacle.h"
 #include "SpartaArcadeZoneManager.h"
@@ -13,7 +13,7 @@
 #include "TimerManager.h"
 #include "GameFramework/PlayerStart.h"
 #include "Kismet/GameplayStatics.h"
-#include "Framework/Public/SpartaArcadeGameMode.h"
+#include "InGame/SpartaGameMode.h"
 
 ASpartaArcadeMapBuilder::ASpartaArcadeMapBuilder()
 {
@@ -205,7 +205,7 @@ void ASpartaArcadeMapBuilder::BuildMap()
     // 맵 데이터 및 스폰 좌표 빌드가 완료 -> 대기실에 스폰해 있던 플레이어들을 고유 목적지로 즉시 텔레포트
     if (GetWorld())
     {
-        ASpartaArcadeGameMode* GM = Cast<ASpartaArcadeGameMode>(GetWorld()->GetAuthGameMode());
+        ASpartaGameMode* GM = Cast<ASpartaGameMode>(GetWorld()->GetAuthGameMode());
         if (GM)
         {
             GM->TeleportPlayersToSpawns(SpawnWorldLocations);

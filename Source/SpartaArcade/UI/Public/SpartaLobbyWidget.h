@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
@@ -76,6 +76,8 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "UI | Lobby")
     void UpdateCharacterPreview(ESpartaArcadeCharacterType CharacterType);
+
+	void RefreshLobbyUI(const TArray<FString>& PlayerNames, const TArray<bool>& ReadyStates, bool bIsHost, bool bCanStart, int32 RemainingSeconds);
 
 protected:
     // 네트워크/로비 파트로 요청 전달

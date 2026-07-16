@@ -1,4 +1,4 @@
-#include "CombatComponent.h"
+﻿#include "CombatComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Framework/Public/InGame/SpartaPlayerState.h"
 #include "BomberGameplayTags.h"
@@ -216,10 +216,16 @@ void UCombatComponent::Eliminate()
         CachedASC->AddLooseGameplayTag(BomberGameplayTags::State_Eliminated);
     }
 
-    OnEliminated.Broadcast();
+    // GameMode에 Eliminate 이벤트 전달
+    if (GetOwner()->HasAuthority() && IsValid(SpartaPlayerState))
+    {
+        OnEliminatedEvent.Broadcast(SpartaPlayerState);
+    }
 
-    // GameMode에 CheckMatchEnd() 호출 연결 필요
+    OnEliminated.Broadcast();
+    
     // 처치 보상 드롭 요청 (시스템3 ItemDropComponent::DropKillReward)
+    
 }
 
 void UCombatComponent::Revive()

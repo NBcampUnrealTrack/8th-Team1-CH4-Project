@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Lobby/LobbyGameStateBase.h"
@@ -8,12 +8,13 @@
 #include "Net/UnrealNetwork.h"
 
 ALobbyGameStateBase::ALobbyGameStateBase()
-	: LobbyUIWidget(nullptr)
-	, HostPlayerState(nullptr)
+	: HostPlayerState(nullptr)
 	, MaxPlayerCount(4)
 	, MinPlayerCount(2)
 	, CurrentPlayerCount(0)
 	, GameModeType(EGameModeType::Solo)
+	, bAutoBalanceTeam(true)
+	, TeamCount(2)
 {
 	bReplicates = true;
 }
@@ -29,6 +30,8 @@ void ALobbyGameStateBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 	DOREPLIFETIME(ALobbyGameStateBase, StartCountdownTime);
 	DOREPLIFETIME(ALobbyGameStateBase, GameModeType);
 	DOREPLIFETIME(ALobbyGameStateBase, PlayerStates);
+	DOREPLIFETIME(ALobbyGameStateBase, bAutoBalanceTeam);
+	DOREPLIFETIME(ALobbyGameStateBase, TeamCount);
 }
 
 void ALobbyGameStateBase::OnRep_RoomInfoChanged()
@@ -38,7 +41,7 @@ void ALobbyGameStateBase::OnRep_RoomInfoChanged()
 		return;
 	}
 
-	RefreshLobbyUI();
+    NotifyLobbyUI();
 }
 
 void ALobbyGameStateBase::OnRep_StartCountdownTime()
@@ -47,75 +50,50 @@ void ALobbyGameStateBase::OnRep_StartCountdownTime()
 	{
 		return;
 	}
-	if (IsValid(LobbyUIWidget))
-	{
-		LobbyUIWidget->UpdateCountdown(StartCountdownTime);
-	}
+	OnCountdownChanged.Broadcast(StartCountdownTime);
 }
 
-void ALobbyGameStateBase::RefreshLobbyUI()
+void ALobbyGameStateBase::NotifyLobbyUI()
 {
-	if (GetNetMode() == NM_DedicatedServer || !IsValid(LobbyUIWidget))
-	{
-		return;
-	}
+    TArray<FString> PlayerNames;
+    TArray<bool> ReadyStates;
 
-	TArray<FString> PlayerNames;
-	TArray<bool> ReadyStates;
-	bool bAllReady = true;
+    bool bAllReady = true;
 
-	// 모든 플레이어의 상태를 갱신
-	for (APlayerState* PlayerState : PlayerStates)
-	{
-		if(PlayerState == nullptr)
-		{
-			continue;
-		}
+    for (APlayerState* PlayerState : PlayerStates)
+    {
+        if (!PlayerState)
+        {
+            continue;
+        }
 
-		PlayerNames.Add(PlayerState->GetPlayerName());
+        PlayerNames.Add(PlayerState->GetPlayerName());
 
-		if (ALobbyPlayerState* LobbyPlayerState = Cast<ALobbyPlayerState>(PlayerState))
-		{
-			ReadyStates.Add(LobbyPlayerState->bIsReady);
+        if (ALobbyPlayerState* LobbyPlayerState = Cast<ALobbyPlayerState>(PlayerState))
+        {
+            ReadyStates.Add(LobbyPlayerState->GetIsReady());
 
-			if (!LobbyPlayerState->bIsReady)
-			{
-				bAllReady = false;
-			}
-		}
+            if (!LobbyPlayerState->GetIsReady())
+            {
+                bAllReady = false;
+            }
+        }
+        else
+        {
+            ReadyStates.Add(false);
+            bAllReady = false;
+        }
+    }
 
-		else
-		{
-			ReadyStates.Add(false);
-			bAllReady = false;
-		}
-	}
+    bool bIsHost = false;
+    if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+    {
+        if (ALobbyPlayerState* LocalPS = Cast<ALobbyPlayerState>(PC->PlayerState))
+        {
+            bIsHost = (LocalPS == HostPlayerState);
+        }
+    }
 
-	// 호스트인 경우 Start 버튼을 활성화
-	bool bIsHost = false;
-	if (APlayerController* LocalController = GetWorld()->GetFirstPlayerController())
-	{
-		if (ALobbyPlayerState* LocalLobbyPlayerState = Cast<ALobbyPlayerState>(LocalController->PlayerState))
-		{
-			bIsHost = (LocalLobbyPlayerState == HostPlayerState);
-
-			if(bIsHost)
-			{
-				LobbyUIWidget->SetStartButtonVisibility(true, bAllReady && PlayerStates.Num() >= MinPlayerCount);
-			}
-			else
-			{
-				LobbyUIWidget->SetStartButtonVisibility(false, false);
-			}
-		}
-	}
-	LobbyUIWidget->UpdatePlayerList(PlayerNames, ReadyStates);
-}
-
-void ALobbyGameStateBase::SetLobbyUIWidget(USpartaLobbyWidget* NewLobbyUIWidget)
-{
-	if(IsValid(NewLobbyUIWidget))
-	{
-		LobbyUIWidget = NewLobbyUIWidget;
-	}
+    const bool bCanStart = bAllReady && PlayerStates.Num() >= MinPlayerCount;
+    OnLobbyInfoChanged.Broadcast(PlayerNames, ReadyStates,bIsHost, bCanStart, StartCountdownTime);
 }

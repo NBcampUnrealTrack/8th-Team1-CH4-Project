@@ -1,4 +1,4 @@
-#include "SpartaHUDWidget.h"
+﻿#include "SpartaHUDWidget.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
@@ -115,15 +115,6 @@ void USpartaHUDWidget::UpdateGameStateTimer()
 
     // 3. HUD 텍스트 컴포넌트 갱신
     UpdateGameStateInfo(AliveCount, MatchSeconds);
-
-    // 4. 최후의 1인 우승(Victory) 결과창 연동 트리거
-    if (AliveCount == 1 && IsValid(SpartaPlayerState) && SpartaPlayerState->GetCurrentState() != EBomberPlayerState::Eliminated)
-    {
-        if (ASpartaArcadeCharacter* LocalChar = Cast<ASpartaArcadeCharacter>(GetOwningPlayerPawn()))
-        {
-            LocalChar->ShowMatchResultUI(EMatchResult::Victory);
-        }
-    }
 }
 
 void USpartaHUDWidget::UpdateHearts(int32 CurrentHearts, int32 MaxHearts)

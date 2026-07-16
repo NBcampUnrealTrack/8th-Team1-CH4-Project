@@ -7,7 +7,7 @@
 #include "LobbyPlayerController.generated.h"
 
 enum class ESpartaArcadeCharacterType : uint8;
-
+class USpartaMenuFlowWidget;
 UCLASS()
 class SPARTAARCADE_API ALobbyPlayerController : public APlayerController
 {
@@ -31,8 +31,8 @@ public:
 
 private:
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
-    TSubclassOf<UUserWidget> LobbyUIWidgetClass;
+    TSubclassOf<USpartaMenuFlowWidget> MainMenuWidgetClass;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
-    TObjectPtr<UUserWidget> LobbyUIWidgetInstance;
+    TObjectPtr<USpartaMenuFlowWidget> MainMenuWidgetInstance;
 };

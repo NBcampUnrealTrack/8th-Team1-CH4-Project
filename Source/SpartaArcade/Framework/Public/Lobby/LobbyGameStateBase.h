@@ -6,6 +6,9 @@
 #include "GameFramework/GameStateBase.h"
 #include "LobbyGameStateBase.generated.h"
 
+DECLARE_MULTICAST_DELEGATE_FiveParams(FOnLobbyInfoChanged, const TArray<FString>&, const TArray<bool>&, bool, bool, int32);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnCountdownChanged, int32);
+
 class USpartaLobbyWidget;
 enum class EGameModeType : uint8;
 
@@ -19,19 +22,13 @@ public:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	void RefreshLobbyUI();
-
-	void SetLobbyUIWidget(USpartaLobbyWidget* NewLobbyUIWidget);
+	void NotifyLobbyUI();
 	
 	UFUNCTION()
 	void OnRep_RoomInfoChanged();
 
 	UFUNCTION()
 	void OnRep_StartCountdownTime();
-
-protected:
-	UPROPERTY()
-	USpartaLobbyWidget* LobbyUIWidget;
 
 public:
 	UPROPERTY(ReplicatedUsing = OnRep_RoomInfoChanged)
@@ -54,4 +51,14 @@ public:
 
 	UPROPERTY(ReplicatedUsing = OnRep_RoomInfoChanged)
 	TArray<APlayerState*> PlayerStates;
+
+	UPROPERTY(ReplicatedUsing = OnRep_RoomInfoChanged)
+	bool bAutoBalanceTeam;
+
+	UPROPERTY(ReplicatedUsing = OnRep_RoomInfoChanged)
+	int32 TeamCount;
+
+public:
+	FOnLobbyInfoChanged OnLobbyInfoChanged;
+	FOnCountdownChanged OnCountdownChanged;
 };

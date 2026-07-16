@@ -9,6 +9,7 @@
 #include "SessionService.h"
 #include "SpartaUIDefs.h"
 #include "GameFlow/TravelGameInstanceSubsystem.h"
+#include "Algo/RandomShuffle.h"
 
 ALobbyGameModeBase::ALobbyGameModeBase()
 {
@@ -96,15 +97,6 @@ void ALobbyGameModeBase::InitializeLobbyGameState()
 	}
 }
 
-void ALobbyGameModeBase::OnPlayerReadyStateChanged()
-{
-	ALobbyGameStateBase* LobbyGameState = GetGameState<ALobbyGameStateBase>();
-	if (IsValid(LobbyGameState))
-	{
-		LobbyGameState->RefreshLobbyUI();
-	}
-}
-
 bool ALobbyGameModeBase::IsCanStartMatch() const
 {
 	ALobbyGameStateBase* LobbyGameState = GetGameState<ALobbyGameStateBase>();
@@ -123,7 +115,7 @@ bool ALobbyGameModeBase::IsCanStartMatch() const
 			}
 			if (ALobbyPlayerState* LobbyPlayerState = Cast<ALobbyPlayerState>(PlayerState))
 			{
-				if (!LobbyPlayerState->bIsReady)
+				if (!LobbyPlayerState->GetIsReady())
 				{
 					return false;
 				}
@@ -165,8 +157,41 @@ void ALobbyGameModeBase::UpdateMatchStartCountdown()
 		if (LobbyGameState->StartCountdownTime <= 0)
 		{
 			GetWorldTimerManager().ClearTimer(StartCountdownTimerHandle);
-
+			AutoAssignTeams(LobbyGameState->TeamCount);
 			GetGameInstance()->GetSubsystem<UTravelGameInstanceSubsystem>()->TravelToInGameMap();
+		}
+	}
+}
+
+void ALobbyGameModeBase::AutoAssignTeams(int32 TeamCount)
+{
+	ALobbyGameStateBase* LobbyGameState = GetGameState<ALobbyGameStateBase>();
+	if (IsValid(LobbyGameState))
+	{
+		if (LobbyGameState->GameModeType == EGameModeType::Solo || !LobbyGameState->bAutoBalanceTeam)
+		{
+			return;
+		}
+
+		if(TeamCount <= 0)
+		{
+			TeamCount = 2;
+		}
+
+		TArray<ALobbyPlayerState*> Players;
+		for (APlayerState* PlayerState : LobbyGameState->PlayerArray)
+		{
+			if (ALobbyPlayerState* LobbyPlayerState = Cast<ALobbyPlayerState>(PlayerState))
+			{
+				Players.Add(LobbyPlayerState);
+			}
+		}
+		Algo::RandomShuffle(Players);
+
+		for (int32 i = 0; i < Players.Num(); ++i)
+		{
+			int32 TeamID = (i % TeamCount) + 1;
+			Players[i]->SetTeamID(TeamID);
 		}
 	}
 }

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
@@ -76,8 +76,6 @@ public:
     UFUNCTION(BlueprintCallable, Category = "UI | Flow")
     void ShowPauseMenu();
 
-    
-    
     // UFUNCTION(BlueprintCallable, Category = "UI | Flow")
     // void ShowStartCountdown(int32 RemainingSeconds);
 
