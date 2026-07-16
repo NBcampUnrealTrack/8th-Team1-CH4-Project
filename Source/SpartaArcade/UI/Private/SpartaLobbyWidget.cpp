@@ -1,4 +1,4 @@
-﻿#include "SpartaLobbyWidget.h"
+#include "SpartaLobbyWidget.h"
 #include "SpartaButton.h"
 #include "Components/ScrollBox.h"
 #include "Components/Button.h"
@@ -9,6 +9,7 @@
 #include "Lobby/LobbyPlayerController.h"
 #include "Lobby/LobbyGameStateBase.h"
 #include "Lobby/LobbyPlayerState.h"
+#include "UI/Public/SpartaUIDefs.h"
 
 void USpartaLobbyWidget::NativeConstruct()
 {
@@ -101,6 +102,13 @@ void USpartaLobbyWidget::UpdatePlayerList(const TArray<FString>& PlayerNames, co
 
     PlayerListScrollBox->ClearChildren();
 
+    // 로비 게임스테이트에서 개인전 여부를 판별
+    bool bIsSoloMode = false;
+    if (ALobbyGameStateBase* LobbyGameState = GetWorld()->GetGameState<ALobbyGameStateBase>())
+    {
+        bIsSoloMode = (LobbyGameState->GameModeType == EGameModeType::Solo);
+    }
+
     // 각 플레이어별 로비 리스트 한 줄을 동적 생성하여 리스트에 부착
     for (int32 i = 0; i < PlayerNames.Num(); ++i)
     {
@@ -115,8 +123,8 @@ void USpartaLobbyWidget::UpdatePlayerList(const TArray<FString>& PlayerNames, co
                 if (NameText)
                 {
                     FString DisplayName = PlayerNames[i];
-                    // 각 플레이어의 팀 정보를 텍스트에 추가 표시
-                    if (TeamIDs.IsValidIndex(i))
+                    // 개인전이 아닐 때만 각 플레이어의 팀 정보를 텍스트에 추가 표시
+                    if (!bIsSoloMode && TeamIDs.IsValidIndex(i))
                     {
                         if (TeamIDs[i] == 1)
                         {
@@ -125,10 +133,6 @@ void USpartaLobbyWidget::UpdatePlayerList(const TArray<FString>& PlayerNames, co
                         else if (TeamIDs[i] == 2)
                         {
                             DisplayName += TEXT(" [BLUE]");
-                        }
-                        else
-                        {
-                            DisplayName += TEXT("");
                         }
                     }
                     NameText->SetText(FText::FromString(DisplayName));
@@ -351,19 +355,31 @@ void USpartaLobbyWidget::RefreshLobbyUI(const TArray<FString>& PlayerNames, cons
         }
     }
 
-    // Red/Blue 버튼 비주얼 선택 상태 갱신 (선택된 경우 밝게 활성화, 선택되지 않은 경우 어둡게)
+    // 개인전(Solo) 모드 여부를 판단하여 팀 관련 UI를 가림
+    bool bIsSoloMode = false;
+    if (ALobbyGameStateBase* LobbyGameState = GetWorld()->GetGameState<ALobbyGameStateBase>())
+    {
+        bIsSoloMode = (LobbyGameState->GameModeType == EGameModeType::Solo);
+    }
+    
+    ESlateVisibility TeamUIVisibility = bIsSoloMode ? ESlateVisibility::Collapsed : ESlateVisibility::Visible;
+
+    // Red/Blue 버튼 비주얼 선택 상태 및 가시성 갱신
     if (RedTeamButton)
     {
+        RedTeamButton->SetVisibility(TeamUIVisibility);
         RedTeamButton->SetButtonColor(LocalTeamID == 1 ? FLinearColor(1.0f, 0.15f, 0.15f) : FLinearColor(0.25f, 0.05f, 0.05f));
     }
     if (BlueTeamButton)
     {
+        BlueTeamButton->SetVisibility(TeamUIVisibility);
         BlueTeamButton->SetButtonColor(LocalTeamID == 2 ? FLinearColor(0.15f, 0.15f, 1.0f) : FLinearColor(0.05f, 0.05f, 0.25f));
     }
 
-    // 팀 자동 분배 토글 버튼 갱신 (ON/OFF 상태 및 방장 여부에 따른 활성/비활성 제어)
+    // 팀 자동 분배 토글 버튼 갱신 및 가시성 적용 (개인전일 때는 숨김)
     if (AutoBalanceToggleButton)
     {
+        AutoBalanceToggleButton->SetVisibility(TeamUIVisibility);
         FString ToggleStr = bAutoBalance ? TEXT("팀 자동 배분 : ON") : TEXT("팀 자동 배분 : OFF");
         AutoBalanceToggleButton->SetButtonText(FText::FromString(ToggleStr));
         AutoBalanceToggleButton->SetIsEnabled(bIsHost);

@@ -7,6 +7,8 @@
 #include "TimerManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h" 
+#include "Particles/ParticleSystemComponent.h"
 #include "SpartaArcadeCharacter.h"
 #include "BreakableBox.h"
 #include "Damageable.h"
@@ -387,11 +389,11 @@ void ASpartaArcadeBomb::Multicast_PlayExplosionEffects_Implementation(const TArr
 	{
 		if (ExplosionVFX)
 		{
-			UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), ExplosionVFX, Location);
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), ExplosionVFX, Location, FRotator::ZeroRotator, FVector(1.f), true, true);
 		}
 		if (ExplosionCascadeVFX)
 		{
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ExplosionCascadeVFX, Location);
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ExplosionCascadeVFX, Location, FRotator::ZeroRotator, FVector(1.f), true);
 		}
 	}
 }

@@ -225,10 +225,19 @@ void ASpartaArcadeMapBuilder::GenerateGridData()
     // 서버 권위 하에 최종 랜덤 시드를 설정하고 클라이언트로 동기화합니다.
     if (HasAuthority())
     {
-        UsedSeed = (Seed != 0) ? Seed : FMath::Rand();
+        // 에디터의 고정 시드 설정을 무시하고 매판 항상 새로운 맵이 생성되도록 완전 무작위 시드 적용
+        if (GetWorld() && GetWorld()->IsGameWorld())
+        {
+            UsedSeed = FMath::RandRange(1, 999999);
+        }
+        else
+        {
+            UsedSeed = (Seed != 0) ? Seed : FMath::Rand();
+        }
     }
 
-    if (Seed == 0)
+    // 런타임이든 에디터든 0 시드(또는 동적 결정) 상태인 경우 로그 표시
+    if (Seed == 0 || (GetWorld() && GetWorld()->IsGameWorld()))
     {
         UE_LOG(LogTemp, Display, TEXT("[MapBuilder] Random seed this match: %d"), UsedSeed);
     }
