@@ -95,11 +95,6 @@ void USpartaLobbyWidget::UpdatePlayerList(const TArray<FString>& PlayerNames, co
             UUserWidget* EntryWidget = CreateWidget<UUserWidget>(GetWorld(), PlayerEntryWidgetClass);
             if (EntryWidget)
             {
-                // 실제 위젯 트리(WBP_PlayerEntry)의 이름과 불일치하여 주석 처리 (PlayerNameTextBlock -> PlayerNameText, ReadyStatusTextBlock -> ReadyStateText)
-                // UTextBlock* NameText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("PlayerNameTextBlock")));
-                // UTextBlock* ReadyText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("ReadyStatusTextBlock")));
-
-                //WBP_PlayerEntry 위젯 트리에 존재하는 PlayerNameText와 ReadyStateText 명칭으로 가져오도록 연동 수정
                 UTextBlock* NameText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("PlayerNameText")));
                 UTextBlock* ReadyText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("ReadyStateText")));
 

@@ -25,13 +25,13 @@ void UAuthService::Login(const FString& AuthToken)
 		return;
 	}
 
-#if WITH_EDITOR || UE_BUILD_DEVELOPMENT || UE_BUILD_DEBUG
+#if WITH_EDITOR || UE_BUILD_DEBUG
 	FOnlineAccountCredentials Credentials;
 	Credentials.Type = TEXT("developer");
 	Credentials.Id = TEXT("localhost:6300");
 	Credentials.Token = AuthToken;
+
 	Identity->Login(0, Credentials);
-	return;
 #else
 	Identity->AutoLogin(0);
 #endif

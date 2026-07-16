@@ -9,17 +9,15 @@
 void UEOSGameInstanceSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+
 	AuthService = NewObject<UAuthService>(this);
 	SessionService = NewObject<USessionService>(this);
 	OnlineSubsystem = IOnlineSubsystem::Get();
 
-	if(!OnlineSubsystem)
-	{
-		return;
-	}
-
 	AuthService->Initialize(OnlineSubsystem);
 	SessionService->Initialize(OnlineSubsystem);
+
+	AuthService->Login("");
 }
 
 void UEOSGameInstanceSubsystem::Deinitialize()

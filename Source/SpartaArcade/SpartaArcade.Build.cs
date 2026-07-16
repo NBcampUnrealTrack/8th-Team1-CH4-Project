@@ -1,4 +1,4 @@
-using UnrealBuildTool;
+﻿using UnrealBuildTool;
 using System.IO;
 
 public class SpartaArcade : ModuleRules
@@ -14,9 +14,9 @@ public class SpartaArcade : ModuleRules
 			"OnlineSubsystem", "OnlineSubsystemEOS", "OnlineSubsystemUtils",
             "GameplayAbilities", "GameplayTags", "GameplayTasks"
         });
-        
 
-        
+        DynamicallyLoadedModuleNames.Add("OnlineSubsystemSteam");
+
         PublicIncludePaths.AddRange(new string[]
         {
 	        ModuleDirectory,
