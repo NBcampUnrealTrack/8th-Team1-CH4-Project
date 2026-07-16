@@ -63,8 +63,12 @@ void ASpartaArcadeBomb::BeginPlay()
 	if (HasAuthority())
 	{
 		GetWorld()->GetTimerManager().SetTimer(ExplosionTimerHandle, this, &ASpartaArcadeBomb::Explode, ExplosionDelay, false);
+
+		// 폭발 몇 초 전, 모든 클라이언트에서 도화선 이펙트가 재생되도록 예약
+		const float FuseDelay = FMath::Max(0.f, ExplosionDelay - FuseLeadTime);
+		GetWorld()->GetTimerManager().SetTimer(FuseTimerHandle, this, &ASpartaArcadeBomb::Multicast_PlayFuseEffect, FuseDelay, false);
 	}
-	
+
 
 	// 스폰 시점에 이 폭탄의 2D 평면 영역(반경 80유닛 이내)에 겹쳐 있는 캐릭터들을 완벽히 감지하여 충돌 무시 설정
 	TArray<AActor*> FoundCharacters;
@@ -233,6 +237,7 @@ void ASpartaArcadeBomb::Explode()
 	bIsExploded = true;
 	// 유폭 연쇄 호출 시 타이머 중복 트리거 방지를 위해 선제 소멸 처리
 	GetWorld()->GetTimerManager().ClearTimer(ExplosionTimerHandle);
+	GetWorld()->GetTimerManager().ClearTimer(FuseTimerHandle);
 
 	FVector StartLoc = GetActorLocation();
 	ExplosionLocations.Add(StartLoc);
@@ -358,6 +363,16 @@ void ASpartaArcadeBomb::Kick(const FVector& Direction)
 	RollDirection = Direction;
 	RollDirection.Z = 0.f;
 	RollDirection.Normalize();
+}
+
+void ASpartaArcadeBomb::Multicast_PlayFuseEffect_Implementation()
+{
+	if (FuseVFX && MeshComponent)
+	{
+		// 폭탄이 발에 차여 굴러가는 중이어도 같이 움직이도록 메시에 붙여서 재생
+		UNiagaraFunctionLibrary::SpawnSystemAttached(FuseVFX, MeshComponent, NAME_None,
+			FVector::ZeroVector, FRotator::ZeroRotator, EAttachLocation::KeepRelativeOffset, true);
+	}
 }
 
 void ASpartaArcadeBomb::Multicast_PlayExplosionEffects_Implementation(const TArray<FVector>& Locations)

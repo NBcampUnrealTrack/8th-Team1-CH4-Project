@@ -10,6 +10,7 @@ class UNiagaraSystem;
 class UInputMappingContext;
 class UInputAction;
 class USpartaMenuFlowWidget;
+class ASpartaArcadeCharacter;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -47,6 +48,23 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* UseShieldAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta=(AllowPrivateAccess = "true"))
+	UInputAction* SpectateNextAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta=(AllowPrivateAccess = "true"))
+	UInputAction* SpectatePrevAction;
+
+	// 관전 모드 진입여부
+	UPROPERTY(Transient)
+	bool bIsSpectating = false;
+
+	// 관전 가능 캐릭터
+	TArray<class ASpartaArcadeCharacter*> SpectateTargets;
+
+	// 현재 관전 중인 대상의 인덱스
+	UPROPERTY(Transient)
+	int32 CurrentSpectateIndex = -1;
+
 
 	// 테스트를 위한 HUD UI 위젯 클래스 및 인스턴스
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
@@ -70,6 +88,16 @@ public:
 	// HandleDestroySessionComplete
 	void HandleDestroySessionComplete(FName SessionName, bool bWasSuccessful);
 
+	// 관전모드 진입
+	void StartSpectating();
+	
+	UFUNCTION(Client, Reliable)
+	void ClientSpectating();
+
+	// 다음 / 이전 대상으로 전환
+	void SpectateNext();
+	void SpectatePrev();
+
 	UFUNCTION(Client, Reliable)
 	void ClientShowMatchResult(EMatchResult Result, int32 MyRank, const TArray<FMatchPlayerResult>& PlayerResults);
 
@@ -77,6 +105,11 @@ protected:
 
 	virtual void SetupInputComponent() override;
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
+
+	// Pawn을 잃으면 엔진이 이 함수 안에서 자동으로 SetViewTarget(this)를 호출해
+	// 카메라를 컨트롤러 자신으로 되돌리므로, 관전 중이라면 그 직후 다시 관전 대상으로 되돌린다
+	virtual void BeginInactiveState() override;
 	
 	//  WASD 이동 입력 처리 함수
 	void OnMoveTriggered(const struct FInputActionValue& Value);
@@ -86,7 +119,9 @@ protected:
 	void OnKickBombTriggered();
 	void OnUseFirstAidKitTriggered();
 	void OnUseShieldTriggered();
-	
+	void OnSpectateNextTriggered();
+	void OnSpectatePrevTriggered();
+
 	// 서버 연산 주도를 위한 Server RPC 선언
 	UFUNCTION(Server, Reliable)
 	void ServerPlaceBomb();
