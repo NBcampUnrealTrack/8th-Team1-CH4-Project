@@ -171,9 +171,9 @@ void ASpartaGameMode::HandlePlayerEliminated(ASpartaPlayerState* DeadPlayer)
 			DecreaseAliveTeam();
 		}
 
-		// 사망한 본인에게만 개인 결과 화면(순위 + 관전/로비 선택)을 띄움.
+		// 개인 결과 화면(순위 + 관전/로비 선택)은 사망 모션이 끝나는 시점에
+		// ASpartaArcadeCharacter::EliminateDestroy()에서 띄운다 (즉시 띄우지 않음).
 		// 최종 승패 결과는 매치가 끝날 때 ShowGameResultToAllPlayers()에서 한 번에 브로드캐스트됨
-		ShowGameResultToEliminatedPlayer(DeadPlayer);
 	}
 
 	CheckGameEnd();

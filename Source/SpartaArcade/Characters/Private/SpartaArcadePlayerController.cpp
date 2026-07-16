@@ -360,7 +360,7 @@ void ASpartaArcadePlayerController::SpectatePrev()
 {
 	if (!bIsSpectating || SpectateTargets.Num() == 0) return;
 
-	CurrentSpectateIndex = (CurrentSpectateIndex - 1) % SpectateTargets.Num();
+	CurrentSpectateIndex = (CurrentSpectateIndex - 1 + SpectateTargets.Num()) % SpectateTargets.Num();
 	SetViewTarget(SpectateTargets[CurrentSpectateIndex]);
 }
 
