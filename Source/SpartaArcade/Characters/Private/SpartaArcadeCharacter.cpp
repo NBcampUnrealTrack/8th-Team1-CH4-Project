@@ -621,18 +621,26 @@ void ASpartaArcadeCharacter::HandleOnEliminated()
 		}
 	}
 
-	// 즉시 결과 UI를 띄우던 기존 코드를 주석 처리(보존)하고, 사망 연출을 먼저 본 후 결과 UI가 뜨도록 타이머 설정 지연 호출로 변경
-	// ShowMatchResultUI(EMatchResult::Defeat); // Removed: "사망 몽타쥬를 재생한 후 결과 UI가 나오도록" 변경을 위해 주석 처리됨
-	
-	FTimerHandle ResultUITimerHandle;
-	if (GetWorld())
+	// 사망 연출(몽타주)을 본 후, 결과 UI 대신 관전 모드로 진입
+	// HandleOnEliminated는 서버(Authority)에서만 실행되므로, 실제 관전 처리는
+	// Client RPC(ClientSpectating)로 소유 클라이언트에 위임한다
 	{
-		GetWorld()->GetTimerManager().SetTimer(
-			ResultUITimerHandle,
-			FTimerDelegate::CreateUObject(this, &ASpartaArcadeCharacter::ShowMatchResultUI, EMatchResult::Defeat),
-			PlayDuration,
-			false
-		);
+		FTimerHandle SpectateTimerHandle;
+		if (GetWorld())
+		{
+			GetWorld()->GetTimerManager().SetTimer(
+				SpectateTimerHandle,
+				FTimerDelegate::CreateLambda([this]()
+				{
+					if (ASpartaArcadePlayerController* PC = Cast<ASpartaArcadePlayerController>(GetController()))
+					{
+						PC->ClientSpectating();
+					}
+				}),
+				PlayDuration,
+				false
+			);
+		}
 	}
 
 	// 사망 위치에 아이템 드롭 (서버 전용 컴포넌트 내부에서 Authority 체크)

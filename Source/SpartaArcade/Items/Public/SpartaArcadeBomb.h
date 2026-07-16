@@ -59,6 +59,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Visuals")
 	UNiagaraSystem* ExplosionVFX;
 
+	// 폭발 직전 치직거리는(도화선) 나이아가라 이펙트 에셋
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Visuals")
+	UNiagaraSystem* FuseVFX;
+
+	// 폭발 몇 초 전에 도화선 이펙트를 재생할지
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Visuals")
+	float FuseLeadTime = 0.5f;
+
 	// 구형 케스케이드 파티클 시스템 멤버 속성
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Visuals")
 	UParticleSystem* ExplosionCascadeVFX;
@@ -75,6 +83,13 @@ protected:
 	TArray<class ASpartaArcadeCharacter*> IgnoredCharacters;
 
 	FTimerHandle ExplosionTimerHandle;
+
+	// 도화선 이펙트 재생 타이머
+	FTimerHandle FuseTimerHandle;
+
+	// 도화선(치직) 이펙트 재생 멀티캐스트 RPC
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayFuseEffect();
 
 	// 폭탄을 배치한 주동자 캐릭터
 	UPROPERTY()

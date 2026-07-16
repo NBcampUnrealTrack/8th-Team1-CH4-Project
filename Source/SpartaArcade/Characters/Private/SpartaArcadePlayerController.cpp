@@ -1,9 +1,12 @@
 ﻿#include "SpartaArcadePlayerController.h"
+
+#include "BomberTypes.h"
 #include "GameFramework/Pawn.h"
 #include "Blueprint/AIBlueprintHelperLibrary.h"
 #include "NiagaraSystem.h"
 #include "NiagaraFunctionLibrary.h"
 #include "SpartaArcadeCharacter.h"
+#include "EngineUtils.h"
 #include "Engine/World.h"
 #include "EnhancedInputComponent.h"
 #include "InputActionValue.h"
@@ -117,6 +120,16 @@ void ASpartaArcadePlayerController::SetupInputComponent()
 		{
 			EnhancedInputComponent->BindAction(UseShieldAction, ETriggerEvent::Started, this, &ASpartaArcadePlayerController::OnUseShieldTriggered);
 		}
+
+		if (SpectateNextAction)
+		{
+			EnhancedInputComponent->BindAction(SpectateNextAction, ETriggerEvent::Started, this, &ASpartaArcadePlayerController::OnSpectateNextTriggered);
+		}
+
+		if (SpectatePrevAction)
+		{
+			EnhancedInputComponent->BindAction(SpectatePrevAction, ETriggerEvent::Started, this, &ASpartaArcadePlayerController::OnSpectatePrevTriggered);
+		}
 	}
 	else
 	{
@@ -164,6 +177,16 @@ void ASpartaArcadePlayerController::OnUseFirstAidKitTriggered()
 void ASpartaArcadePlayerController::OnUseShieldTriggered()
 {
 	ServerUseShield();
+}
+
+void ASpartaArcadePlayerController::OnSpectateNextTriggered()
+{
+	SpectateNext();
+}
+
+void ASpartaArcadePlayerController::OnSpectatePrevTriggered()
+{
+	SpectatePrev();
 }
 
 void ASpartaArcadePlayerController::ServerUseShield_Implementation()
@@ -249,7 +272,6 @@ void ASpartaArcadePlayerController::LeaveGame()
 	}
 }
 
-// 세션 파괴 완료 후 타이틀 맵으로 복귀하는 콜백 구현
 void ASpartaArcadePlayerController::HandleDestroySessionComplete(FName SessionName, bool bWasSuccessful)
 {
 	if (bWasSuccessful)
@@ -260,5 +282,85 @@ void ASpartaArcadePlayerController::HandleDestroySessionComplete(FName SessionNa
 			TravelSubsystem->TravelToTitleMap();
 		}
 	}
+}
+
+void ASpartaArcadePlayerController::StartSpectating()
+{
+	bIsSpectating = true;
+	SpectateTargets.Empty();
+
+	ASpartaArcadeCharacter* MyPawn = Cast<ASpartaArcadeCharacter>(GetPawn());
+
+	for (TActorIterator<ASpartaArcadeCharacter> It(GetWorld()); It; ++It)
+	{
+		ASpartaArcadeCharacter* character = *It;
+		// 자기 자신은 관전 목록에서 제외함
+		if (!IsValid(character) || character == MyPawn) continue;
+
+		if (ASpartaPlayerState* PS = character->GetPlayerState<ASpartaPlayerState>())
+		{
+			if (PS->GetCurrentState() == EBomberPlayerState::Alive)
+			{
+				SpectateTargets.Add(character);
+			}
+		}
+	}
+
+	if (SpectateTargets.Num() > 0)
+	{
+		CurrentSpectateIndex = 0;
+
+		// 카메라 옮기기
+		SetViewTarget(SpectateTargets[0]);
+	}
+}
+
+void ASpartaArcadePlayerController::BeginInactiveState()
+{
+	Super::BeginInactiveState();
+
+	// Super가 내부적으로 SetViewTarget(this)를 호출해 카메라를 되돌리므로,
+	// 관전 중이라면 그 직후 다시 관전 대상으로 되돌린다
+	if (bIsSpectating && SpectateTargets.IsValidIndex(CurrentSpectateIndex))
+	{
+		SetViewTarget(SpectateTargets[CurrentSpectateIndex]);
+	}
+}
+
+void ASpartaArcadePlayerController::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	// 엔진이 여러 경로(BeginInactiveState 외에도)에서 ViewTarget을 컨트롤러 자신으로
+	// 되돌리는 경우가 있어, 관전 중에는 매 틱마다 관전 대상으로 강제 유지한다
+	if (bIsSpectating && SpectateTargets.IsValidIndex(CurrentSpectateIndex))
+	{
+		ASpartaArcadeCharacter* Target = SpectateTargets[CurrentSpectateIndex];
+		if (IsValid(Target) && GetViewTarget() != Target)
+		{
+			SetViewTarget(Target);
+		}
+	}
+}
+
+void ASpartaArcadePlayerController::ClientSpectating_Implementation()
+{
+	StartSpectating();
+}
+
+void ASpartaArcadePlayerController::SpectateNext()
+{
+	if (!bIsSpectating || SpectateTargets.Num() == 0) return;
+
+	CurrentSpectateIndex = (CurrentSpectateIndex + 1) % SpectateTargets.Num();
+	SetViewTarget(SpectateTargets[CurrentSpectateIndex]);
+}
+
+void ASpartaArcadePlayerController::SpectatePrev()
+{
+	if (!bIsSpectating || SpectateTargets.Num() == 0) return;
+
+	CurrentSpectateIndex = (CurrentSpectateIndex - 1) % SpectateTargets.Num();
+	SetViewTarget(SpectateTargets[CurrentSpectateIndex]);
 }
 

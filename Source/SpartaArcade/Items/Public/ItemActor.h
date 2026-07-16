@@ -8,6 +8,7 @@
 class USphereComponent;
 class UStaticMeshComponent;
 class UGameplayEffect;
+class UNiagaraSystem;
 
 // EBomberItemType별 비주얼 설정(메시, 머티리얼, 스케일 등)을 일괄 정의하기 위한 구조체 정의
 USTRUCT(BlueprintType)
@@ -44,6 +45,10 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Audio")
 	class USoundBase* PickupSound;
+
+	// 아이템 획득 시 재생할 나이아가라 이펙트
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Visuals")
+	UNiagaraSystem* PickupVFX;
 	
 protected:
 	virtual void BeginPlay() override;
@@ -73,7 +78,7 @@ protected:
 	FVector StartLocation;
 	
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_PlayPickupSound(FVector Location);
+	void Multicast_PlayPickupEffects(FVector Location);
 
 private:
 	// ReplicatedUsing을 적용하여 클라이언트에서도 아이템 데이터 복제 시 비주얼이 동적 갱신되도록 처리

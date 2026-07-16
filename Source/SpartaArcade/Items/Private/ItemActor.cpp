@@ -6,6 +6,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "SpartaArcadeCharacter.h"
+#include "NiagaraFunctionLibrary.h"
 
 AItemActor::AItemActor()
 {
@@ -144,16 +145,21 @@ void AItemActor::NotifyActorBeginOverlap(AActor* OtherActor)
     //         FString::Printf(TEXT("%s 아이템 획득! (%s)"), *ItemTypeName, *OtherActor->GetName()));
     // }
 
-    Multicast_PlayPickupSound(GetActorLocation());
-    
+    Multicast_PlayPickupEffects(GetActorLocation());
+
     Destroy();
 }
 
-void AItemActor::Multicast_PlayPickupSound_Implementation(FVector Location)
+void AItemActor::Multicast_PlayPickupEffects_Implementation(FVector Location)
 {
     if (PickupSound)
     {
         UGameplayStatics::PlaySoundAtLocation(this, PickupSound, Location);
+    }
+
+    if (PickupVFX)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), PickupVFX, Location);
     }
 }
 
