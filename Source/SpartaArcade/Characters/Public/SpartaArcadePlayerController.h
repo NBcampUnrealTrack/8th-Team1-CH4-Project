@@ -8,6 +8,7 @@
 class UNiagaraSystem;
 class UInputMappingContext;
 class UInputAction;
+class ASpartaArcadeCharacter;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -44,8 +45,25 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* UseShieldAction;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta=(AllowPrivateAccess = "true"))
+	UInputAction* SpectateNextAction;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta=(AllowPrivateAccess = "true"))
+	UInputAction* SpectatePrevAction;
 
-
+	//관전 모드 진입여부
+	UPROPERTY(Transient)
+	bool bIsSpectating = false;
+	
+	//관전 가능 캐릭터
+	TArray<class ASpartaArcadeCharacter*> SpectateTargets;
+	
+	//현재 관전 중인 대상의 인덱스
+	UPROPERTY(Transient)
+	int32 CurrentSpectateIndex = -1;
+	
+	
 	// 테스트를 위한 HUD UI 위젯 클래스 및 인스턴스
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
 	TSubclassOf<UUserWidget> HUDUIWidgetClass;
@@ -59,6 +77,13 @@ public:
 
 	// HandleDestroySessionComplete
 	void HandleDestroySessionComplete(FName SessionName, bool bWasSuccessful);
+	
+	//관전모드 진입
+	void StartSpectating();
+	
+	//다음 / 이전 대상으로 전환
+	void SpectateNext();
+	void SpectatePrev();
 
 	// 클라이언트가 로비 등에서 직접 팀(1 또는 2)을 선택해 서버로 변경을 요청하는 RPC 함수
 	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "SpartaArcade|Team")
@@ -77,6 +102,8 @@ protected:
 	void OnKickBombTriggered();
 	void OnUseFirstAidKitTriggered();
 	void OnUseShieldTriggered();
+	void OnSpectateNextTriggered();
+	void OnSpectatePrevTriggered();
 	
 	// 서버 연산 주도를 위한 Server RPC 선언
 	UFUNCTION(Server, Reliable)

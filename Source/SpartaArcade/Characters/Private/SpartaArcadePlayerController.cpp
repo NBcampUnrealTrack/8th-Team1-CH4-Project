@@ -1,4 +1,6 @@
 #include "SpartaArcadePlayerController.h"
+
+#include "BomberTypes.h"
 #include "GameFramework/Pawn.h"
 #include "Blueprint/AIBlueprintHelperLibrary.h"
 #include "NiagaraSystem.h"
@@ -14,6 +16,8 @@
 #include "EOSGameInstanceSubsystem.h"
 #include "SessionService.h"
 #include "SpartaArcadeGameMode.h"
+#include "SpartaArcadeCharacter.h"
+#include "EngineUtils.h"
 #include "GameFlow/TravelGameInstanceSubsystem.h"
 #include "Framework/Public/InGame/SpartaPlayerState.h"
 
@@ -105,6 +109,16 @@ void ASpartaArcadePlayerController::SetupInputComponent()
 		{
 			EnhancedInputComponent->BindAction(UseShieldAction, ETriggerEvent::Started, this, &ASpartaArcadePlayerController::OnUseShieldTriggered);
 		}
+		
+		if (SpectateNextAction)
+		{
+			EnhancedInputComponent->BindAction(SpectateNextAction, ETriggerEvent::Started, this, &ASpartaArcadePlayerController::OnSpectateNextTriggered);
+		}
+		
+		if (SpectatePrevAction)
+		{
+			EnhancedInputComponent->BindAction(SpectatePrevAction, ETriggerEvent::Started, this, &ASpartaArcadePlayerController::OnSpectatePrevTriggered);
+		}
 	}
 	else
 	{
@@ -152,6 +166,16 @@ void ASpartaArcadePlayerController::OnUseFirstAidKitTriggered()
 void ASpartaArcadePlayerController::OnUseShieldTriggered()
 {
 	ServerUseShield();
+}
+
+void ASpartaArcadePlayerController::OnSpectateNextTriggered()
+{
+	SpectateNext();
+}
+
+void ASpartaArcadePlayerController::OnSpectatePrevTriggered()
+{
+	SpectatePrev();
 }
 
 void ASpartaArcadePlayerController::ServerUseShield_Implementation()
@@ -230,6 +254,52 @@ void ASpartaArcadePlayerController::HandleDestroySessionComplete(FName SessionNa
 			TravelSubsystem->TravelToTitleMap();
 		}
 	}
+}
+
+void ASpartaArcadePlayerController::StartSpectating()
+{
+	bIsSpectating = true;
+	SpectateTargets.Empty();
+	
+	ASpartaArcadeCharacter* MyPawn = Cast<ASpartaArcadeCharacter>(GetPawn());
+	
+	for (TActorIterator<ASpartaArcadeCharacter> It(GetWorld()); It; ++It)
+	{
+		ASpartaArcadeCharacter* character = *It;
+		//자기 자신은 관전 목록에서 제외함
+		if (!IsValid(character) || character == MyPawn) continue;
+		
+		if (ASpartaPlayerState* PS = character->GetPlayerState<ASpartaPlayerState>())
+		{
+			if (PS->GetCurrentState() == EBomberPlayerState::Alive)
+			{
+				SpectateTargets.Add(character);
+			}
+		}
+	}
+	if (SpectateTargets.Num() > 0)
+	{
+		CurrentSpectateIndex = 0;
+		
+		// 카메라 옮기기
+		SetViewTarget(SpectateTargets[0]);
+	}
+}
+
+void ASpartaArcadePlayerController::SpectateNext()
+{
+	if (!bIsSpectating || SpectateTargets.Num() == 0) return;
+	
+	CurrentSpectateIndex = (CurrentSpectateIndex + 1) % SpectateTargets.Num();
+	SetViewTarget(SpectateTargets[CurrentSpectateIndex]);
+}
+
+void ASpartaArcadePlayerController::SpectatePrev()
+{
+	if (!bIsSpectating || SpectateTargets.Num() == 0) return;
+	
+	CurrentSpectateIndex = (CurrentSpectateIndex - 1) % SpectateTargets.Num();
+	SetViewTarget(SpectateTargets[CurrentSpectateIndex]);
 }
 
 // 클라이언트가 로비 등에서 직접 팀(1 또는 2)을 선택해 서버로 변경을 요청하는 RPC 구현
