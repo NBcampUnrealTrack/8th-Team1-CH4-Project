@@ -602,6 +602,31 @@ namespace
                     return true;
                 };
 
+            // 고정벽(FixedWall) 또는 맵 외부(Void)와 인접한지 검사하는 헬퍼 람다
+            auto HasWallNeighbor = [&](int32 x, int32 y) -> bool
+            {
+                static const int32 DX[] = { 1, -1, 0, 0 };
+                static const int32 DY[] = { 0, 0, 1, -1 };
+                for (int32 d = 0; d < 4; ++d)
+                {
+                    int32 nx = x + DX[d];
+                    int32 ny = y + DY[d];
+                    if (Grid.IsInside(nx, ny))
+                    {
+                        ESpartaArcadeTileType T = Grid.GetTile(nx, ny);
+                        if (T == ESpartaArcadeTileType::FixedWall || T == ESpartaArcadeTileType::Void)
+                        {
+                            return true;
+                        }
+                    }
+                    else
+                    {
+                        return true; // 맵 밖도 경계벽 취급
+                    }
+                }
+                return false;
+            };
+
             int32 Total = 0;
             for (int32 y = 0; y < H; ++y)
                 for (int32 x = 0; x < W; ++x)
@@ -630,7 +655,14 @@ namespace
                 ++Guard;
                 int32 SX, SY;
                 if (!FindSeed(SX, SY)) break;
-                const ESpartaArcadeTileType VT = Types[Rng.RandRange(0, 2)];
+
+                // Seed 단계에서 Bush가 벽 옆에 배치되려 하면 Ice 또는 Mud로 선회
+                ESpartaArcadeTileType VT = Types[Rng.RandRange(0, 2)];
+                if (VT == ESpartaArcadeTileType::Bush && HasWallNeighbor(SX, SY))
+                {
+                    VT = (Rng.RandRange(0, 1) == 0) ? ESpartaArcadeTileType::Ice : ESpartaArcadeTileType::MudWater;
+                }
+
                 const int32 Size = Rng.RandRange(4, 11);
                 Grid.SetTile(SX, SY, VT); ++Placed;
                 Frontier.Reset(); Frontier.Add(FIntPoint(SX, SY));
@@ -645,6 +677,11 @@ namespace
                         const int32 nx = C.X + NB[d][0], ny = C.Y + NB[d][1];
                         if (Grid.IsInside(nx, ny) && Eligible(nx, ny))
                         {
+                            // 부시(Bush) 확장 시 고정벽/경계와 닿아 겹치는 문제가 없도록 해당 방향 확장을 건너뜀
+                            if (VT == ESpartaArcadeTileType::Bush && HasWallNeighbor(nx, ny))
+                            {
+                                continue;
+                            }
                             Grid.SetTile(nx, ny, VT); Frontier.Add(FIntPoint(nx, ny));
                             ++Count; ++Placed;
                             if (Count >= Size) break;

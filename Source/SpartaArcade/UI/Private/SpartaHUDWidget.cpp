@@ -60,12 +60,16 @@ void USpartaHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime
     // 2. 기절 탈출 게이지 실시간 갱신
     if (CombatComponent)
     {
-        float Progress = CombatComponent->GetStunProgressPercent();
-        UpdateStunProgress(Progress);
+        const float Progress = CombatComponent->GetStunProgressPercent();
+        if (!FMath::IsNearlyEqual(Progress, CachedStunProgress, 0.001f))
+        {
+            CachedStunProgress = Progress;
+            UpdateStunProgress(Progress);
+        }
     }
 }
 
-// 1초 주기로 안전하게 경기 시간 및 생존자 수를 업데이트하는 함수 구현
+// 1초 주기로 경기 시간 및 생존자 수를 업데이트
 void USpartaHUDWidget::UpdateGameStateTimer()
 {
     UWorld* World = GetWorld();
@@ -113,12 +117,25 @@ void USpartaHUDWidget::UpdateGameStateTimer()
         }
     }
 
-    // 3. HUD 텍스트 컴포넌트 갱신
-    UpdateGameStateInfo(AliveCount, MatchSeconds);
+    const bool bAliveChanged   = (AliveCount != CachedAliveCount);
+    const bool bTimeChanged    = (MatchSeconds != CachedMatchSeconds);
+    if (bAliveChanged || bTimeChanged)
+    {
+        CachedAliveCount   = AliveCount;
+        CachedMatchSeconds = MatchSeconds;
+        UpdateGameStateInfo(AliveCount, MatchSeconds);
+    }
 }
 
 void USpartaHUDWidget::UpdateHearts(int32 CurrentHearts, int32 MaxHearts)
 {
+    if (CurrentHearts == CachedCurrentHearts && MaxHearts == CachedMaxHearts)
+    {
+        return;
+    }
+    CachedCurrentHearts = CurrentHearts;
+    CachedMaxHearts     = MaxHearts;
+
     // 하트 개수만큼 UI 슬롯에 하트 유닛 스폰 및 리스트업
     if (HeartHorizontalBox && HeartUnitWidgetClass)
     {
@@ -250,12 +267,6 @@ void USpartaHUDWidget::UpdateStats(int32 BombCount, float ExplosionRange, float 
     {
         MaxBombCountText->SetText(FText::AsNumber(BombCount));
     }
-
-    // C++ 스탯 바 인스턴스가 위젯에 얹어져 있다면 실시간으로 칸 개수 연산 동기화
-    if (BombCountBar)
-    {
-        BombCountBar->UpdateStatBar(BombCount);
-    }
     if (RangeBar)
     {
         RangeBar->UpdateStatBar(FMath::RoundToInt(ExplosionRange));
@@ -282,7 +293,6 @@ void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UBomberAtt
     // 스탯 바 위젯 초기화 (최대치 개수로 칸 동적 생성)
     if (StatSlotWidgetClass)
     {
-        if (BombCountBar) BombCountBar->InitializeBar(8, StatSlotWidgetClass); // 최대 8칸
         if (RangeBar) RangeBar->InitializeBar(5, StatSlotWidgetClass);       // 최대 5칸
         if (SpeedBar) SpeedBar->InitializeBar(5, StatSlotWidgetClass);       // 최대 5칸
     }
@@ -334,6 +344,7 @@ void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UBomberAtt
         CombatComp->OnHit.AddDynamic(this, &USpartaHUDWidget::HandleOnHit);
 		// 쉴드 활성 여부 델리게이트 구독 연동
 		CombatComp->OnbHasShieldChanged.AddDynamic(this, &USpartaHUDWidget::UpdateShieldStatus);
+        CombatComp->OnEliminated.AddDynamic(this, &USpartaHUDWidget::HandleOnEliminated);
 
 		// 초기 가시성 상태 세팅
 		UpdateShieldStatus(CombatComp->IsShielded());
@@ -379,4 +390,33 @@ void USpartaHUDWidget::UpdateKickStatus(bool bCanKick)
 void USpartaHUDWidget::HandleOnKickUnlockedChanged(bool bIsUnlocked)
 {
 	UpdateKickStatus(bIsUnlocked);
+}
+
+void USpartaHUDWidget::HandleOnEliminated()
+{
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    // PlayerArray를 즉시 순회하여 생존자 수 재산출
+    int32 AliveCount = 0;
+    if (AGameStateBase* GS = World->GetGameState())
+    {
+        for (APlayerState* PS : GS->PlayerArray)
+        {
+            if (ASpartaPlayerState* SPS = Cast<ASpartaPlayerState>(PS))
+            {
+                if (SPS->GetCurrentState() != EBomberPlayerState::Eliminated)
+                {
+                    AliveCount++;
+                }
+            }
+        }
+    }
+
+    // 캐시 갱신 후 HUD 즉시 반영
+    if (AliveCount != CachedAliveCount)
+    {
+        CachedAliveCount = AliveCount;
+        UpdateGameStateInfo(AliveCount, CachedMatchSeconds >= 0 ? CachedMatchSeconds : 0);
+    }
 }

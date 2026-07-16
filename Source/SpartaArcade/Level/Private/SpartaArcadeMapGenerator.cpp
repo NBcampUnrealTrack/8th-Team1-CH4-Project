@@ -159,8 +159,7 @@ void ASpartaArcadeMapGenerator::RepositionPlayerStarts()
 
 	for (int32 i = 0; i < 4; ++i)
 	{
-		// Z축은 10.f 정도로 더 낮춰서 지면 완착 유도
-		FVector Loc = StartLoc + FVector(Corners[i].X * TileSize, Corners[i].Y * TileSize, 10.f);
+		FVector Loc = StartLoc + FVector(Corners[i].X * TileSize, Corners[i].Y * TileSize, 96.f);
 		Loc += CornerOffsets[i];
 		CornerLocations.Add(Loc);
 	}

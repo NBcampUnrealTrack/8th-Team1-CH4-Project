@@ -1,4 +1,4 @@
-﻿#include "SpartaArcadeMapBuilder.h"
+#include "SpartaArcadeMapBuilder.h"
 #include "SpartaArcadeRoomGenerator.h"
 #include "SpartaArcadeMovingObstacle.h"
 #include "SpartaArcadeZoneManager.h"
@@ -295,8 +295,7 @@ void ASpartaArcadeMapBuilder::GenerateGridData()
         }
 
         FVector WorldLoc = TileToWorld(CenterX, CenterY);
-        // Z축 높이를 지상에 가깝게 낮춤
-        WorldLoc.Z = GetActorLocation().Z + 10.f;
+        WorldLoc.Z = GetActorLocation().Z + 96.f;
 
         SpawnWorldLocations.Add(WorldLoc);
     }
@@ -628,6 +627,8 @@ void ASpartaArcadeMapBuilder::BuildVisuals()
                     break;
                 }
 
+                FloorXfs.Emplace(FRotator::ZeroRotator, Pos + EmptyVis.Value, EmptyVis.Key);
+
                 if (CountFixedNeighbors(X, Y) <= 1)
                 {
                     PillarXfs.Emplace(FRotator::ZeroRotator, Pos + PillarVis.Value, PillarVis.Key);
@@ -645,6 +646,8 @@ void ASpartaArcadeMapBuilder::BuildVisuals()
                     FloorXfs.Emplace(FRotator::ZeroRotator, Pos + EmptyVis.Value, EmptyVis.Key);
                     break;
                 }
+                // 상자 아래에도 바닥(Floor)을 배치하여 상자 파괴 시 바닥이 뚫려 다른 색상이 비치는 현상 방지
+                FloorXfs.Emplace(FRotator::ZeroRotator, Pos + EmptyVis.Value, EmptyVis.Key);
                 if (bShouldDrawBoxISM)
                 {
                     BoxXfs.Emplace(FRotator::ZeroRotator, Pos + BoxVis.Value, BoxVis.Key);
@@ -658,6 +661,8 @@ void ASpartaArcadeMapBuilder::BuildVisuals()
                 MudXfs.Emplace(FRotator::ZeroRotator, Pos + MudVis.Value, MudVis.Key);
                 break;
             case ESpartaArcadeTileType::Bush:
+                // 부시 아래에도 바닥(Floor)을 배치하여 지면이 정상적으로 덮이도록 처리
+                FloorXfs.Emplace(FRotator::ZeroRotator, Pos + EmptyVis.Value, EmptyVis.Key);
                 BushXfs.Emplace(FRotator::ZeroRotator, Pos + BushVis.Value, BushVis.Key);
                 break;
             default:

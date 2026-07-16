@@ -1,4 +1,4 @@
-﻿#include "SpartaArcadeCharacter.h"
+#include "SpartaArcadeCharacter.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -15,6 +15,7 @@
 #include "TimerManager.h"
 #include "Net/UnrealNetwork.h"
 #include "CombatComponent.h"
+#include "DeathDropComponent.h"
 #include "Engine/DataTable.h"
 #include "Framework/Public/InGame/SpartaPlayerState.h"
 #include "SpartaArcadePlayerController.h"
@@ -71,6 +72,8 @@ ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 
 	// 컴포넌트 기반 아키텍처 적용
 	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
+	// 사망 시 아이템 드롭 컴포넌트 생성
+	DeathDropComponent = CreateDefaultSubobject<UDeathDropComponent>(TEXT("DeathDropComponent"));
 
 	MaxInitializedComponentsCount = 100;
 	InitializedComponentsCount = 0;
@@ -608,6 +611,12 @@ void ASpartaArcadeCharacter::HandleOnEliminated()
 	// 팀원의 패배 UI 호출 보존
 	ShowMatchResultUI(EMatchResult::Defeat);
 
+	// 사망 위치에 아이템 드롭 (서버 전용 컴포넌트 내부에서 Authority 체크)
+	if (IsValid(DeathDropComponent))
+	{
+		DeathDropComponent->DropDeathItems(GetActorLocation());
+	}
+
 	// 이동 및 충돌을 완전히 무력화하여 사망 중 조작/충돌 이상을 방지
 	if (GetCapsuleComponent())
 	{
@@ -768,7 +777,9 @@ void ASpartaArcadeCharacter::ShowMatchResultUI(EMatchResult Result)
 				}
 			}
 
-			int32 FinalRank = (Result == EMatchResult::Defeat) ? FMath::Max(1, AliveCount) : 1;
+			// 사망 당시 살아있던 플레이어 수 기준 순위 오류 수정
+			// 패배 시 본인 사망 후 생존한 플레이어 수(AliveCount)에 1을 더하여 정확한 순위 계산 (나를 포함해 2명 생존 시 2등)
+			int32 FinalRank = (Result == EMatchResult::Defeat) ? (AliveCount + 1) : 1;
 			It->ShowMatchResult(Result, FinalRank, MatchResults);
 
 			if (APlayerController* PC = Cast<APlayerController>(GetController()))

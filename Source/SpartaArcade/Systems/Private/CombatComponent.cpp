@@ -48,7 +48,6 @@ void UCombatComponent::InitializeFromDataTable(UDataTable* InCombatStatTable)
     CombatStatTable = InCombatStatTable;
 
     FCombatStatRow FallbackRow;
-    // Modified: Define hardcoded default combat stats as fallback
     FallbackRow.StartHearts = 3;
     FallbackRow.StunDuration = 3.f;
     FallbackRow.InvincibleDuration = 1.f;
@@ -303,6 +302,12 @@ void UCombatComponent::InstantEliminate()
     if (IsValid(CachedASC))
     {
         CachedASC->AddLooseGameplayTag(BomberGameplayTags::State_Eliminated);
+    }
+
+    // 즉사 판정(자기장 압사 등) 시에도 GameMode가 탈락 및 매치 종료 처리를 연동할 수 있도록 이벤트 브로드캐스트 추가
+    if (IsValid(SpartaPlayerState))
+    {
+        OnEliminatedEvent.Broadcast(SpartaPlayerState);
     }
 
     OnEliminated.Broadcast();
