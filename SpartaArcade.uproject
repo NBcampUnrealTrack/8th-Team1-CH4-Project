@@ -30,11 +30,11 @@
 			"Enabled": true
 		},
 		{
-			"Name": "OnlineSubsystemEOS",
+			"Name": "OnlineSubsystemSteam",
 			"Enabled": true
 		},
 		{
-			"Name": "OnlineSubsystemSteam",
+			"Name": "OnlineSubsystemEOS",
 			"Enabled": true
 		}
 	]
