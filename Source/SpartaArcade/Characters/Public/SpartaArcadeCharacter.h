@@ -55,6 +55,10 @@ protected:
 	virtual void BeginPlay() override;
 	
 	virtual void PossessedBy(AController* NewController) override;
+
+	// 피격 시 블루프린트에서 깜빡임 등 시각 연출을 처리할 수 있도록 선언한 이벤트
+	UFUNCTION(BlueprintImplementableEvent, Category = "Sparta|Effects")
+	void OnHitFlash();
 	
 	void InitializeCharacterComponents();
 	
