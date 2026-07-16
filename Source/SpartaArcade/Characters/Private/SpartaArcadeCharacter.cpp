@@ -163,8 +163,6 @@ void ASpartaArcadeCharacter::OnRep_PlayerState()
 // 하트 체력 감소, 실드 차단 및 체력 0 도달 시 기절 상태 진입 로직 구현
 float ASpartaArcadeCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser)
 {
-	// [디버그 로그 추가] - 데미지 수신이 되는지 확인!
-	// 과도한 Warning 로그 방지를 위해 Verbose 레벨로 변경
 	UE_LOG(LogTemp, Verbose, TEXT("ASpartaArcadeCharacter::TakeDamage 호출됨! 피해량: %f, 원인 제공자: %s"), DamageAmount, DamageCauser ? *DamageCauser->GetName() : TEXT("None"));
 	// CombatComponent에 데미지 처리 위임
 	if (CombatComponent)
@@ -172,6 +170,9 @@ float ASpartaArcadeCharacter::TakeDamage(float DamageAmount, struct FDamageEvent
 		if (CombatComponent->CanTakeDamage())
 		{
 			CombatComponent->ApplyDamage();
+
+			// 블루프린트에 구현된 피격 시각 연출(깜빡임 등)을 실행합니다.
+			OnHitFlash();
 
 			if (GetCapsuleComponent())
 			{
