@@ -622,10 +622,12 @@ void ASpartaArcadeCharacter::HandleOnEliminated()
 {
 	UE_LOG(LogTemp, Log, TEXT("%s 게임에서 탈락(소멸)되었습니다. 사망 연출을 시작합니다."), *GetName());
 
-	// 사망 몽타주(DeathMontage)가 지정된 경우 재생
+	// 사망 몽타주가 지정된 경우 재생
+	float WaitDuration = DestroyDelay;
 	if (DeathMontage)
 	{
-		PlayAnimMontage(DeathMontage, 1.0f);
+		float MontageLength = PlayAnimMontage(DeathMontage, 1.0f);
+		WaitDuration = FMath::Max(DestroyDelay, MontageLength);
 	}
 
 	// 사망 위치에 아이템 드롭 (서버 전용 컴포넌트 내부에서 Authority 체크)
@@ -644,12 +646,12 @@ void ASpartaArcadeCharacter::HandleOnEliminated()
 		GetCharacterMovement()->DisableMovement();
 	}
 
-	// 애니메이션이 출력될 동안 대기 후 소멸 타이머 등록
+	// 사망 모션이 끝나고 UI
 	GetWorld()->GetTimerManager().SetTimer(
 		DestroyTimerHandle,
 		this,
 		&ASpartaArcadeCharacter::EliminateDestroy,
-		DestroyDelay,
+		WaitDuration,
 		false
 	);
 }
@@ -657,6 +659,12 @@ void ASpartaArcadeCharacter::HandleOnEliminated()
 void ASpartaArcadeCharacter::EliminateDestroy()
 {
 	UE_LOG(LogTemp, Log, TEXT("%s 캐릭터 액터가 월드에서 완전히 제거(소멸)됩니다."), *GetName());
+
+	if (ASpartaGameMode* GameMode = GetWorld()->GetAuthGameMode<ASpartaGameMode>())
+	{
+		GameMode->ShowGameResultToEliminatedPlayer(SpartaPlayerState);
+	}
+
 	Destroy();
 }
 
