@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
@@ -135,6 +135,7 @@ private:
 
     float StunDuration = 3.f;
     float InvincibleDuration = 1.f;
+    float ShieldInvincibleDuration = 3.f;
     
     FTimerHandle StunTimerHandle;
     FTimerHandle InvincibleTimerHandle;

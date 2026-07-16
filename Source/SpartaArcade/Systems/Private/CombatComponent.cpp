@@ -1,4 +1,4 @@
-﻿#include "CombatComponent.h"
+#include "CombatComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Framework/Public/InGame/SpartaPlayerState.h"
 #include "Framework/Public/InGame/SpartaGameState.h"
@@ -140,6 +140,16 @@ void UCombatComponent::ApplyDamage()
     }
     OnHit.Broadcast();
 
+    // 폭탄·장애물 피격 후 1초 무적 시간 부여 (연속 피격 방지)
+    bInvincible = true;
+    GetWorld()->GetTimerManager().SetTimer(
+        InvincibleTimerHandle,
+        this,
+        &UCombatComponent::EndInvincible,
+        InvincibleDuration,
+        false
+    );
+
     if (IsValid(AttrSet) && AttrSet->GetHealth() <= 0.f)
     {
         EnterStun();
@@ -157,6 +167,16 @@ void UCombatComponent::GrantShield()
 {
     bHasShield = true;
     OnRep_HasShield();
+
+    // 사용 즉시 3초 무적 부여
+    bInvincible = true;
+    GetWorld()->GetTimerManager().SetTimer(
+        InvincibleTimerHandle,
+        this,
+        &UCombatComponent::EndInvincible,
+        ShieldInvincibleDuration,
+        false
+    );
 
     // 추가 — GE_Shield 적용 (Infinite 정책)
     if (IsValid(CachedASC) && IsValid(ShieldEffectClass))
