@@ -344,7 +344,6 @@ void ASpartaArcadeCharacter::AddFirstAidKit()
 
 void ASpartaArcadeCharacter::AddShield()
 {
-	// CombatComponent에 방어막 획득 위임
 	if (SpartaPlayerState && SpartaPlayerState->GetShields() < 1)                                                                                                                                                               
 	{                                                                                                                                                                                                                           
 		SpartaPlayerState->SetShields(SpartaPlayerState->GetShields() + 1);                                                                                                                                                 
@@ -391,10 +390,19 @@ void ASpartaArcadeCharacter::UseFirstAidKit()
 
 void ASpartaArcadeCharacter::UseShield()
 {
-	if (IsValid(AbilitySystemComponent) && IsValid(UseShieldAbilityClass))                                                                                                                                                      
-	{                                                                                                                                                                                                                           
-		AbilitySystemComponent->TryActivateAbilityByClass(UseShieldAbilityClass);                                                                                                                                           
-	}  
+	bool bActivated = false;
+	if (IsValid(AbilitySystemComponent) && IsValid(UseShieldAbilityClass))
+	{
+		bActivated = AbilitySystemComponent->TryActivateAbilityByClass(UseShieldAbilityClass);
+		UE_LOG(LogTemp, Warning, TEXT("[Shield] TryActivateAbilityByClass 결과: %d"), bActivated);
+	}
+
+	// 어빌리티 클래스가 에디터에 미할당되었거나 활성화에 실패한 경우, 서버 권한으로 PerformUseShield()를 직접 실행하여 확실한 사용을 보장합니다.
+	if (!bActivated && HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Shield] GAS 어빌리티 미작동 -> PerformUseShield() 직접 호출 집행"));
+		PerformUseShield();
+	}
 }
 
 // 구급 상자를 소모하여 일반 상태에선 자가 치료(하트 회복), 기절 상태에선 자력 부활 처리

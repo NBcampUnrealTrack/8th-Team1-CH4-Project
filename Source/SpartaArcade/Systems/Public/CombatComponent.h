@@ -60,7 +60,7 @@ public:
     EBomberPlayerState GetPlayerState() const;
 
     UFUNCTION(BlueprintPure)
-    bool IsShielded() const { return bHasShield; }
+    bool IsShielded() const;
 
     // 기절 진행률 게이지 처리를 위한 퍼센트 반환 함수 추가
     UFUNCTION(BlueprintPure, Category = "Combat")
@@ -103,13 +103,6 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category="Data")
     TObjectPtr<UDataTable> CombatStatTable;
 
-    // 상태 변수 
-    UPROPERTY(Replicated)
-    bool bInvincible = false;
-    
-    UPROPERTY(ReplicatedUsing=OnRep_HasShield)
-    bool bHasShield = false;
-
     UPROPERTY(BlueprintReadOnly, Category = "PlayerState")
     EBomberPlayerState CurrentState = EBomberPlayerState::Alive;
 
@@ -128,18 +121,19 @@ private:
     bool bDamageThisFrame = false;
     void ResetDamageFlag();
 
-    UFUNCTION()
-	void OnRep_HasShield();
+    void OnRep_HasShield();
     
     void OnAnyGameplayEffectRemoved(const FGameplayEffectRemovalInfo& RemovalInfo);
+    // GE_Shield 미설정 시 수동 태그 제거 함수
+    void ClearShieldTags();
 
     float StunDuration = 3.f;
     float InvincibleDuration = 1.f;
-    float ShieldInvincibleDuration = 3.f;
-    
+
     FTimerHandle StunTimerHandle;
+    FTimerHandle ShieldTagClearTimerHandle;
     FTimerHandle InvincibleTimerHandle;
-    
+
     UPROPERTY()
     TObjectPtr<UAbilitySystemComponent> CachedASC;
 
@@ -152,5 +146,10 @@ private:
     TSubclassOf<UGameplayEffect> ShieldEffectClass;
 
     FActiveGameplayEffectHandle ActiveShieldEffectHandle;
+
+    UPROPERTY(EditDefaultsOnly, Category="GAS")
+    TSubclassOf<UGameplayEffect> InvincibleEffectClass;
+
+    FActiveGameplayEffectHandle ActiveInvincibleEffectHandle;
 
 };
