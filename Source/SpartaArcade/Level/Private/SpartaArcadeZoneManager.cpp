@@ -12,6 +12,8 @@
 #include "GameFramework/Pawn.h"
 #include "EngineUtils.h"
 #include "Engine/World.h"
+#include "Characters/Public/SpartaArcadeCharacter.h"
+#include "Systems/Public/CombatComponent.h"
 
 ASpartaArcadeZoneManager::ASpartaArcadeZoneManager()
 {
@@ -227,13 +229,29 @@ void ASpartaArcadeZoneManager::ProcessCrushKills()
         };
 
     // 플레이어(폰): 트리거 브로드캐스트 및 실질적 즉사(소멸) 처리 추가 (끼임 방지 및 즉사 메커니즘 확보)
+    // 직접 Destroy() 호출 대신 CombatComponent->InstantEliminate()를 호출하여 사망 처리 정상화 및 HUD 갱신 연동
     for (TActorIterator<APawn> It(GetWorld()); It; ++It)
     {
         if (CellCrushed(*It))
         {
             APawn* CrushedPawn = *It;
             OnActorCrushed.Broadcast(CrushedPawn);
-            CrushedPawn->Destroy();
+            
+            if (ASpartaArcadeCharacter* Character = Cast<ASpartaArcadeCharacter>(CrushedPawn))
+            {
+                if (UCombatComponent* CombatComp = Character->FindComponentByClass<UCombatComponent>())
+                {
+                    CombatComp->InstantEliminate();
+                }
+                else
+                {
+                    CrushedPawn->Destroy();
+                }
+            }
+            else
+            {
+                CrushedPawn->Destroy();
+            }
         }
     }
 
