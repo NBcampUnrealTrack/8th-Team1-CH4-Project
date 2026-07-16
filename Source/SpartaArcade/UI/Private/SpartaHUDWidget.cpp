@@ -69,7 +69,7 @@ void USpartaHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime
     }
 }
 
-// 1초 주기로 안전하게 경기 시간 및 생존자 수를 업데이트하는 함수 구현
+// 1초 주기로 경기 시간 및 생존자 수를 업데이트
 void USpartaHUDWidget::UpdateGameStateTimer()
 {
     UWorld* World = GetWorld();
@@ -124,15 +124,6 @@ void USpartaHUDWidget::UpdateGameStateTimer()
         CachedAliveCount   = AliveCount;
         CachedMatchSeconds = MatchSeconds;
         UpdateGameStateInfo(AliveCount, MatchSeconds);
-    }
-
-    // 3. 최후의 1인 우승(Victory) 결과창 연동 트리거
-    if (AliveCount == 1 && IsValid(SpartaPlayerState) && SpartaPlayerState->GetCurrentState() != EBomberPlayerState::Eliminated)
-    {
-        if (ASpartaArcadeCharacter* LocalChar = Cast<ASpartaArcadeCharacter>(GetOwningPlayerPawn()))
-        {
-            LocalChar->ShowMatchResultUI(EMatchResult::Victory);
-        }
     }
 }
 

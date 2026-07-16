@@ -113,8 +113,7 @@ bool UDeathDropComponent::FindNearestWalkableTile(
             // 유효한 빈 타일 발견 → 요청자로 반환
             OutUsed.Add(Current);
             OutLocation = MapBuilder->TileToWorld(Current.X, Current.Y);
-            // 아이템은 바닥 위에 륬 우리 (Z점 나중에 조정해도 됨)
-            OutLocation.Z = Origin.Z;
+            OutLocation.Z = MapBuilder->GetActorLocation().Z + 50.f;
             return true;
         }
 

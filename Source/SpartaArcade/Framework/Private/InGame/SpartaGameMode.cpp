@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "InGame/SpartaGameMode.h"
@@ -249,7 +249,9 @@ FMatchPlayerResult ASpartaGameMode::CreateGameResult(const ASpartaPlayerState* P
 	FMatchPlayerResult MatchResult;
 	MatchResult.PlayerName = TEXT("Unknown");
 
-	if(!IsValid(PlayerState) || !IsValid(SpartaGameState))
+	// 유효성 검사 논리 오류로 인한 매치 결과 누락 버그 수정
+	// 두 객체가 모두 유효할 때 게임 결과 구조체를 채우도록 올바른 조건식 적용
+	if(IsValid(PlayerState) && IsValid(SpartaGameState))
 	{
 		int32 TeamID = SpartaGameState->GetGameModeType() == EGameModeType::Solo ?
 			PlayerState->GetPlayerId() : PlayerState->GetTeamID();

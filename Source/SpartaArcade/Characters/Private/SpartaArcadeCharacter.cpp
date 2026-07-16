@@ -1,4 +1,4 @@
-﻿#include "SpartaArcadeCharacter.h"
+#include "SpartaArcadeCharacter.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -777,7 +777,9 @@ void ASpartaArcadeCharacter::ShowMatchResultUI(EMatchResult Result)
 				}
 			}
 
-			int32 FinalRank = (Result == EMatchResult::Defeat) ? FMath::Max(1, AliveCount) : 1;
+			// 사망 당시 살아있던 플레이어 수 기준 순위 오류 수정
+			// 패배 시 본인 사망 후 생존한 플레이어 수(AliveCount)에 1을 더하여 정확한 순위 계산 (나를 포함해 2명 생존 시 2등)
+			int32 FinalRank = (Result == EMatchResult::Defeat) ? (AliveCount + 1) : 1;
 			It->ShowMatchResult(Result, FinalRank, MatchResults);
 
 			if (APlayerController* PC = Cast<APlayerController>(GetController()))
