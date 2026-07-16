@@ -130,6 +130,12 @@ void ASpartaArcadePlayerController::SetupInputComponent()
 		{
 			EnhancedInputComponent->BindAction(SpectatePrevAction, ETriggerEvent::Started, this, &ASpartaArcadePlayerController::OnSpectatePrevTriggered);
 		}
+
+		// ESC 메뉴 토글 액션
+		if (ToggleMenuAction)
+		{
+			EnhancedInputComponent->BindAction(ToggleMenuAction, ETriggerEvent::Started, this, &ASpartaArcadePlayerController::OnToggleMenuTriggered);
+		}
 	}
 	else
 	{
@@ -187,6 +193,32 @@ void ASpartaArcadePlayerController::OnSpectateNextTriggered()
 void ASpartaArcadePlayerController::OnSpectatePrevTriggered()
 {
 	SpectatePrev();
+}
+
+void ASpartaArcadePlayerController::OnToggleMenuTriggered()
+{
+	if (!IsLocalController() || !IsValid(MainMenuWidgetInstance))
+	{
+		return;
+	}
+
+	const bool bMenuVisible = MainMenuWidgetInstance->IsVisible();
+	if (bMenuVisible)
+	{
+		MainMenuWidgetInstance->SetVisibility(ESlateVisibility::Collapsed);
+		FInputModeGameOnly GameOnly;
+		SetInputMode(GameOnly);
+		bShowMouseCursor = false;
+		return;
+	}
+
+	MainMenuWidgetInstance->ShowPauseMenu();
+	MainMenuWidgetInstance->SetVisibility(ESlateVisibility::Visible);
+	FInputModeGameAndUI Mode;
+	Mode.SetWidgetToFocus(MainMenuWidgetInstance->GetCachedWidget());
+	Mode.SetHideCursorDuringCapture(false);
+	SetInputMode(Mode);
+	bShowMouseCursor = true;
 }
 
 void ASpartaArcadePlayerController::ServerUseShield_Implementation()
