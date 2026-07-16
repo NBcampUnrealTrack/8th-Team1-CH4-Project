@@ -69,10 +69,7 @@ protected:
     // 스탯 바 UI 슬롯 템플릿과 3가지 스탯 바 컴포넌트 변수 선언 (OptionalWidget을 주어 블루프린트 매핑 예외 방지)
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI | Stats")
     TSubclassOf<class USpartaArcadeStatSlot> StatSlotWidgetClass;
-
-    UPROPERTY(meta = (BindWidget, OptionalWidget = true))
-    class USpartaArcadeStatBar* BombCountBar;
-
+    
     UPROPERTY(meta = (BindWidget, OptionalWidget = true))
     class USpartaArcadeStatBar* RangeBar;
 
@@ -145,6 +142,9 @@ public:
     UFUNCTION()
     void HandleOnKickUnlockedChanged(bool bIsUnlocked);
 
+    UFUNCTION()
+    void HandleOnEliminated();
+
     // UI 업데이트 함수 추가
     UFUNCTION(BlueprintCallable, Category = "UI | Update")
     void UpdateCurrentBombs(int32 CurrentBombs);
@@ -180,4 +180,10 @@ private:
 
     UPROPERTY()
     TObjectPtr<UBombPlacerComponent> BombPlacerComponent;
+
+    int32 CachedAliveCount    = -1;
+    int32 CachedMatchSeconds  = -1;
+    float CachedStunProgress  = -1.0f;
+    int32 CachedCurrentHearts = -1;
+    int32 CachedMaxHearts     = -1;
 };
