@@ -1,4 +1,4 @@
-﻿#include "StatComponent.h"
+#include "StatComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -116,8 +116,8 @@ void UStatComponent::OnRep_MoveSpeed()
         OwnerCharacter->GetCharacterMovement();
     if (!IsValid(MoveComp)) return;
 
-    const float BaseSpeed = 200.f;
-    const float SpeedPerLevel = 100.f;
+    const float BaseSpeed = 250.f;
+    const float SpeedPerLevel = 50.f;
     MoveComp->MaxWalkSpeed = BaseSpeed + (MoveSpeed * SpeedPerLevel);
 
     OnStatChanged.Broadcast(EBomberStatType::MoveSpeed, MoveSpeed);

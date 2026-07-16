@@ -203,8 +203,9 @@ void UBomberAttributeSet::ApplyMoveSpeedToMovementComponent() const
 	{
 		if (UCharacterMovementComponent* MoveComp = OwnerCharacter->GetCharacterMovement())
 		{
-			const float BaseSpeed = 200.f;
-			const float SpeedPerLevel = 100.f;
+			// 단계별 증가 편차 완화 (기존 Base 200 / LevelPer 100 -> Base 250 / LevelPer 50)
+			const float BaseSpeed = 250.f;
+			const float SpeedPerLevel = 50.f;
 			MoveComp->MaxWalkSpeed = BaseSpeed + (MoveSpeed.GetCurrentValue() * SpeedPerLevel);
 		}
 	}
