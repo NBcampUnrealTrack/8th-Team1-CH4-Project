@@ -135,7 +135,7 @@ void USpartaLobbyWidget::UpdatePlayerList(const TArray<FString>& PlayerNames, co
                 }
                 if (ReadyText)
                 {
-                    FString ReadyStr = ReadyStates.IsValidIndex(i) && ReadyStates[i] ? TEXT("READY") : TEXT("WAITING");
+                    FString ReadyStr = ReadyStates.IsValidIndex(i) && ReadyStates[i] ? TEXT(" READY") : TEXT(" WAITING");
                     ReadyText->SetText(FText::FromString(ReadyStr));
                 }
 
