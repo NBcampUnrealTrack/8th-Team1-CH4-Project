@@ -12,6 +12,7 @@
 
 // 컴포넌트 의존 관계 설정을 위한 전방 선언
 class UCombatComponent;
+class UDeathDropComponent;
 class UDataTable;
 class ASpartaPlayerState;
 class UAbilitySystemComponent;   
@@ -127,6 +128,9 @@ protected:
 	// 중복 코드 및 의존 관계 정리를 위해 컴포넌트 추가
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UCombatComponent> CombatComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UDeathDropComponent> DeathDropComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UWidgetComponent> NicknameWidgetComponent;
