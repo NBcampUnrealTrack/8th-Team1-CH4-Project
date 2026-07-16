@@ -1,4 +1,4 @@
-#include "SpartaArcadeCharacter.h"
+﻿#include "SpartaArcadeCharacter.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -106,7 +106,6 @@ ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 void ASpartaArcadeCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	InitializeCharacterComponents();
 
 	// 블루프린트 덮어쓰기 설정을 방어하기 위해 런타임에 틱 강제 활성화
 	SetActorTickEnabled(true);
@@ -213,7 +212,7 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 		return;
 	}
 
-	if (!IsValid(GetPlayerState()) || !IsValid(CombatComponent))
+	if (!IsValid(GetPlayerState()) || !IsValid(CombatComponent) || !IsValid(Cast<ASpartaArcadePlayerController>(GetController())->HUDUIWidgetInstance))
 	{
 		if(InitializedComponentsCount >= MaxInitializedComponentsCount)
 		{
@@ -232,11 +231,6 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 	UMaterialInstance* TargetMaterial = nullptr;
 	SpartaPlayerState = GetPlayerState<ASpartaPlayerState>();
 	
-	// PlayerState가 아직 존재하지 않거나 캐스팅에 실패한 경우 조기 리턴 (OnRep_PlayerState 등에서 재수행 보장)
-	if (!IsValid(SpartaPlayerState))
-	{
-		return;
-	}
 
 	if (IsValid(SpartaPlayerState))
 	{
@@ -294,14 +288,19 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 	{
 		if (ASpartaArcadePlayerController* PC = Cast<ASpartaArcadePlayerController>(GetController()))
 		{
-			if (USpartaHUDWidget* HUDWidget = Cast<USpartaHUDWidget>(PC->HUDUIWidgetInstance))
+			if (PC->HUDUIWidgetInstance)
 			{
-				HUDWidget->InitializeHUD(SpartaPlayerState, AttributeSet, CombatComponent, nullptr);
-				SpartaPlayerState->BroadcastCurrentState();
-				CombatComponent->BroadcastCurrentState();
+				USpartaHUDWidget* HUDWidget = Cast<USpartaHUDWidget>(PC->HUDUIWidgetInstance);
+				if (HUDWidget)
+				{
+					HUDWidget->InitializeHUD(SpartaPlayerState, AttributeSet, CombatComponent, nullptr);
+					SpartaPlayerState->BroadcastCurrentState();
+					CombatComponent->BroadcastCurrentState();
+				}
 			}
 		}
 	}
+
 	UpdateNickname();
 
 	// 성공적으로 모든 초기화 및 HUD 바인딩 완료 시 플래그 설정
