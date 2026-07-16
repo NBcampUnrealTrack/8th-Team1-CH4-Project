@@ -15,6 +15,7 @@
 #include "TimerManager.h"
 #include "Net/UnrealNetwork.h"
 #include "CombatComponent.h"
+#include "DeathDropComponent.h"
 #include "Engine/DataTable.h"
 #include "Framework/Public/InGame/SpartaPlayerState.h"
 #include "SpartaArcadePlayerController.h"
@@ -23,6 +24,7 @@
 #include "AbilitySystemComponent.h"
 #include "BomberAttributeSet.h"
 #include "BomberGameplayTags.h"
+#include "InGame/SpartaGameMode.h"
 #include "UI/Public/SpartaMenuFlowWidget.h"
 #include "UObject/UObjectIterator.h"
 #include "GameFramework/GameStateBase.h"
@@ -30,7 +32,6 @@
 #include "Components/TextBlock.h"
 #include "Blueprint/WidgetTree.h"
 #include "Styling/SlateColor.h"
-
 
 ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 {
@@ -71,6 +72,8 @@ ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 
 	// 컴포넌트 기반 아키텍처 적용
 	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
+	// 사망 시 아이템 드롭 컴포넌트 생성
+	DeathDropComponent = CreateDefaultSubobject<UDeathDropComponent>(TEXT("DeathDropComponent"));
 
 	MaxInitializedComponentsCount = 100;
 	InitializedComponentsCount = 0;
@@ -167,8 +170,6 @@ void ASpartaArcadeCharacter::OnRep_PlayerState()
 // 하트 체력 감소, 실드 차단 및 체력 0 도달 시 기절 상태 진입 로직 구현
 float ASpartaArcadeCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser)
 {
-	// [디버그 로그 추가] - 데미지 수신이 되는지 확인!
-	// 과도한 Warning 로그 방지를 위해 Verbose 레벨로 변경
 	UE_LOG(LogTemp, Verbose, TEXT("ASpartaArcadeCharacter::TakeDamage 호출됨! 피해량: %f, 원인 제공자: %s"), DamageAmount, DamageCauser ? *DamageCauser->GetName() : TEXT("None"));
 	// CombatComponent에 데미지 처리 위임
 	if (CombatComponent)
@@ -176,6 +177,9 @@ float ASpartaArcadeCharacter::TakeDamage(float DamageAmount, struct FDamageEvent
 		if (CombatComponent->CanTakeDamage())
 		{
 			CombatComponent->ApplyDamage();
+
+			// 블루프린트에 구현된 피격 시각 연출(깜빡임 등)을 실행합니다.
+			OnHitFlash();
 
 			if (GetCapsuleComponent())
 			{
@@ -272,6 +276,15 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 		CombatComponent->OnRevived.AddDynamic(this, &ASpartaArcadeCharacter::HandleOnRevived);
 		CombatComponent->OnSelfRevive.AddDynamic(this, &ASpartaArcadeCharacter::HandleOnSelfRevive);
 		CombatComponent->OnEliminated.AddDynamic(this, &ASpartaArcadeCharacter::HandleOnEliminated);
+
+		if(HasAuthority())
+		{
+			ASpartaGameMode* SpartaGameMode = GetWorld()->GetAuthGameMode<ASpartaGameMode>();
+			if (IsValid(SpartaGameMode))
+			{
+				CombatComponent->OnEliminatedEvent.AddUObject(SpartaGameMode, &ASpartaGameMode::HandlePlayerEliminated);
+			}
+		}
 	}
 
 	if (IsLocallyControlled())
@@ -595,9 +608,38 @@ void ASpartaArcadeCharacter::HandleOnSelfRevive()
 void ASpartaArcadeCharacter::HandleOnEliminated()
 {
 	UE_LOG(LogTemp, Log, TEXT("%s 게임에서 탈락(소멸)되었습니다. 사망 연출을 시작합니다."), *GetName());
+
+	// 사망 몽타주(DeathMontage)가 지정된 경우 재생
+	float PlayDuration = 1.3f;
+	if (DeathMontage)
+	{
+		float MontageLength = PlayAnimMontage(DeathMontage, 1.0f);
+		if (MontageLength > 0.f)
+		{
+			// 소멸(Destroy) 처리되기 직전에 결과 UI를 출력할 수 있도록 안전 클램프 설정 (DestroyDelay - 0.1초)
+			PlayDuration = FMath::Min(MontageLength, DestroyDelay - 0.1f);
+		}
+	}
+
+	// 즉시 결과 UI를 띄우던 기존 코드를 주석 처리(보존)하고, 사망 연출을 먼저 본 후 결과 UI가 뜨도록 타이머 설정 지연 호출로 변경
+	// ShowMatchResultUI(EMatchResult::Defeat); // Removed: "사망 몽타쥬를 재생한 후 결과 UI가 나오도록" 변경을 위해 주석 처리됨
 	
-	// 팀원의 패배 UI 호출 보존
-	ShowMatchResultUI(EMatchResult::Defeat);
+	FTimerHandle ResultUITimerHandle;
+	if (GetWorld())
+	{
+		GetWorld()->GetTimerManager().SetTimer(
+			ResultUITimerHandle,
+			FTimerDelegate::CreateUObject(this, &ASpartaArcadeCharacter::ShowMatchResultUI, EMatchResult::Defeat),
+			PlayDuration,
+			false
+		);
+	}
+
+	// 사망 위치에 아이템 드롭 (서버 전용 컴포넌트 내부에서 Authority 체크)
+	if (IsValid(DeathDropComponent))
+	{
+		DeathDropComponent->DropDeathItems(GetActorLocation());
+	}
 
 	// 이동 및 충돌을 완전히 무력화하여 사망 중 조작/충돌 이상을 방지
 	if (GetCapsuleComponent())
@@ -759,7 +801,9 @@ void ASpartaArcadeCharacter::ShowMatchResultUI(EMatchResult Result)
 				}
 			}
 
-			int32 FinalRank = (Result == EMatchResult::Defeat) ? FMath::Max(1, AliveCount) : 1;
+			// 사망 당시 살아있던 플레이어 수 기준 순위 오류 수정
+			// 패배 시 본인 사망 후 생존한 플레이어 수(AliveCount)에 1을 더하여 정확한 순위 계산 (나를 포함해 2명 생존 시 2등)
+			int32 FinalRank = (Result == EMatchResult::Defeat) ? (AliveCount + 1) : 1;
 			It->ShowMatchResult(Result, FinalRank, MatchResults);
 
 			if (APlayerController* PC = Cast<APlayerController>(GetController()))
@@ -822,6 +866,15 @@ void ASpartaArcadeCharacter::ApplyTileEffectToMovement(float DeltaSeconds)
 		return;
 	}
 
+	// 드코딩된 Blueprint 기본값 대신 현재 AttributeSet의 MoveSpeed 속성에 비례하는 기준 속도를 동적 계산
+	float BaseWalkSpeed = DefaultMaxWalkSpeed;
+	if (IsValid(AttributeSet))
+	{
+		const float AttrBaseSpeed = 200.f;
+		const float AttrSpeedPerLevel = 100.f;
+		BaseWalkSpeed = AttrBaseSpeed + (AttributeSet->GetMoveSpeed() * AttrSpeedPerLevel);
+	}
+
 	// 현재 캐릭터가 서 있는 위치의 지형 타일 타입 조회
 	FVector CurrentLocation = GetActorLocation();
 	ESpartaArcadeTileType TileType = CachedMapBuilder->GetTileTypeAtWorldPosition(CurrentLocation);
@@ -832,21 +885,21 @@ void ASpartaArcadeCharacter::ApplyTileEffectToMovement(float DeltaSeconds)
 		// 얼음 타일: 마찰력을 대폭 줄이고 제동 감속도를 낮추어 미끄러지도록 설정
 		GetCharacterMovement()->GroundFriction = IceFriction;
 		GetCharacterMovement()->BrakingDecelerationWalking = IceBrakingDeceleration;
-		GetCharacterMovement()->MaxWalkSpeed = DefaultMaxWalkSpeed;
+		GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
 		break;
 
 	case ESpartaArcadeTileType::MudWater:
 		// 진흙 타일: 기본 속도를 절반(MudSpeedMultiplier)으로 감속
 		GetCharacterMovement()->GroundFriction = DefaultGroundFriction;
 		GetCharacterMovement()->BrakingDecelerationWalking = DefaultBrakingDeceleration;
-		GetCharacterMovement()->MaxWalkSpeed = DefaultMaxWalkSpeed * MudSpeedMultiplier;
+		GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed * MudSpeedMultiplier;
 		break;
 
 	case ESpartaArcadeTileType::Conveyor:
 		// 컨베이어 타일: 이동 속도와 마찰은 기본으로 유지하고, 컨베이어의 추진 방향으로 강제 입력 추가
 		GetCharacterMovement()->GroundFriction = DefaultGroundFriction;
 		GetCharacterMovement()->BrakingDecelerationWalking = DefaultBrakingDeceleration;
-		GetCharacterMovement()->MaxWalkSpeed = DefaultMaxWalkSpeed;
+		GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
 		
 		// [임시 방향 벡터]: 현재는 가로(Y축) 방향으로 캐릭터를 서서히 밀어내도록 임시 구현
 		// 실제 기획 또는 맵의 컨베이어 방향 데이터에 대응하여 방향 벡터를 조절할 수 있습니다.
@@ -860,7 +913,7 @@ void ASpartaArcadeCharacter::ApplyTileEffectToMovement(float DeltaSeconds)
 		// 일반 바닥 타일: 원래 백업해 두었던 기본 마찰력, 감속도, 이동 속도로 안전하게 복원
 		GetCharacterMovement()->GroundFriction = DefaultGroundFriction;
 		GetCharacterMovement()->BrakingDecelerationWalking = DefaultBrakingDeceleration;
-		GetCharacterMovement()->MaxWalkSpeed = DefaultMaxWalkSpeed;
+		GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
 		break;
 	}
 }

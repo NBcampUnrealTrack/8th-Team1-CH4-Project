@@ -20,16 +20,24 @@ protected:
 
 public:
 	ALobbyPlayerState();
+	ESpartaArcadeCharacterType GetSelectedCharacterType() const;
+	bool GetIsReady() const;
+	int32 GetTeamID() const;
+
+	void SetSelectedCharacterType(ESpartaArcadeCharacterType NewCharacterType);
+	void SetIsReady(bool bNewReady);
+	void SetTeamID(int32 NewTeamID);
+
+	UFUNCTION()
+	void OnRep_LobbyStateChanged();
+
+protected:
+	UPROPERTY(ReplicatedUsing = OnRep_LobbyStateChanged)
+	ESpartaArcadeCharacterType SelectedCharacterType;
 
 	UPROPERTY(ReplicatedUsing = OnRep_LobbyStateChanged)
 	bool bIsReady;
 
 	UPROPERTY(ReplicatedUsing = OnRep_LobbyStateChanged)
-	ESpartaArcadeCharacterType SelectedCharacterType;
-
-	UPROPERTY(ReplicatedUsing = OnRep_LobbyStateChanged)
 	int32 TeamID;
-
-	UFUNCTION()
-	void OnRep_LobbyStateChanged();
 };

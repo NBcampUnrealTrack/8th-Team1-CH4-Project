@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
@@ -69,10 +69,7 @@ protected:
     // 스탯 바 UI 슬롯 템플릿과 3가지 스탯 바 컴포넌트 변수 선언 (OptionalWidget을 주어 블루프린트 매핑 예외 방지)
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI | Stats")
     TSubclassOf<class USpartaArcadeStatSlot> StatSlotWidgetClass;
-
-    UPROPERTY(meta = (BindWidget, OptionalWidget = true))
-    class USpartaArcadeStatBar* BombCountBar;
-
+    
     UPROPERTY(meta = (BindWidget, OptionalWidget = true))
     class USpartaArcadeStatBar* RangeBar;
 
@@ -145,6 +142,9 @@ public:
     UFUNCTION()
     void HandleOnKickUnlockedChanged(bool bIsUnlocked);
 
+    UFUNCTION()
+    void HandleOnEliminated();
+
     // UI 업데이트 함수 추가
     UFUNCTION(BlueprintCallable, Category = "UI | Update")
     void UpdateCurrentBombs(int32 CurrentBombs);
@@ -161,6 +161,10 @@ private:
     // 매 틱마다 무거운 정보(생존 플레이어 루프, 자기장 탐색, 텍스트 리빌드)를 갱신하지 않도록 1초 주기 타이머 추가
     FTimerHandle GameStateTimerHandle;
     void UpdateGameStateTimer();
+
+    // 기절 UI를 0.1초마다 갱신하기 위한 타이머 핸들 및 함수 추가
+    FTimerHandle StunUpdateTimerHandle;
+    void UpdateStunProgressTimer();
 
     // 내부 헬퍼 함수
     FString FormatTime(int32 TotalSeconds) const;
@@ -180,4 +184,10 @@ private:
 
     UPROPERTY()
     TObjectPtr<UBombPlacerComponent> BombPlacerComponent;
+
+    int32 CachedAliveCount    = -1;
+    int32 CachedMatchSeconds  = -1;
+    float CachedStunProgress  = -1.0f;
+    int32 CachedCurrentHearts = -1;
+    int32 CachedMaxHearts     = -1;
 };

@@ -7,7 +7,7 @@
 #include "Interfaces/OnlineSessionInterface.h"
 #include "TitlePlayerController.generated.h"
 
-class UUserWidget;
+class USpartaMenuFlowWidget;
 
 UCLASS()
 class SPARTAARCADE_API ATitlePlayerController : public APlayerController
@@ -23,10 +23,15 @@ public:
 
 	void HandleJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result, const FString& Connect);
 
+#if WITH_EDITOR || UE_BUILD_DEVELOPMENT || UE_BUILD_DEBUG
+	UFUNCTION(Exec)
+	void DevLogin(const FString& InAuthToken);
+#endif
+
 private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
-	TSubclassOf<UUserWidget> UIWidgetClass;
+	TSubclassOf<USpartaMenuFlowWidget> UIWidgetClass;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
-	TObjectPtr<UUserWidget> UIWidgetInstance;
+	TObjectPtr<USpartaMenuFlowWidget> UIWidgetInstance;
 };

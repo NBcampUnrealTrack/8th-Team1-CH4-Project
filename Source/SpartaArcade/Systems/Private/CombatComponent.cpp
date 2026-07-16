@@ -1,6 +1,8 @@
-#include "CombatComponent.h"
+﻿#include "CombatComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Framework/Public/InGame/SpartaPlayerState.h"
+#include "Framework/Public/InGame/SpartaGameState.h"
+#include "UI/Public/SpartaUIDefs.h"
 #include "BomberGameplayTags.h"
 #include "BomberAttributeSet.h"
 
@@ -48,7 +50,6 @@ void UCombatComponent::InitializeFromDataTable(UDataTable* InCombatStatTable)
     CombatStatTable = InCombatStatTable;
 
     FCombatStatRow FallbackRow;
-    // Modified: Define hardcoded default combat stats as fallback
     FallbackRow.StartHearts = 3;
     FallbackRow.StunDuration = 3.f;
     FallbackRow.InvincibleDuration = 1.f;
@@ -175,6 +176,40 @@ void UCombatComponent::GrantShield()
 void UCombatComponent::EnterStun()
 {
     if (!IsValid(SpartaPlayerState)) return;
+
+    bool bHasAliveTeammate = false;
+    UWorld* World = GetWorld();
+    if (World)
+    {
+        ASpartaGameState* SpartaGS = World->GetGameState<ASpartaGameState>();
+        if (SpartaGS && SpartaGS->GetGameModeType() != EGameModeType::Solo)
+        {
+            int32 MyTeamID = SpartaPlayerState->GetTeamID();
+            for (APlayerState* PS : SpartaGS->PlayerArray)
+            {
+                ASpartaPlayerState* OtherPS = Cast<ASpartaPlayerState>(PS);
+                if (OtherPS && OtherPS != SpartaPlayerState)
+                {
+                    if (OtherPS->GetTeamID() == MyTeamID && OtherPS->GetCurrentState() == EBomberPlayerState::Alive)
+                    {
+                        bHasAliveTeammate = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    if (bHasAliveTeammate)
+    {
+        StunDuration = 10.f; // 아군이 생존해 있는 경우 기절(그로기) 대기 시간을 10초로 연장
+    }
+    else
+    {
+        Eliminate();
+        return;
+    }
+
     SpartaPlayerState->SetCurrentState(EBomberPlayerState::Stunned);
     OnStun.Broadcast();
 
@@ -190,6 +225,7 @@ void UCombatComponent::EnterStun()
 
         if (Spec.IsValid())
         {
+            Spec.Data->SetDuration(StunDuration, false);
             ActiveStunEffectHandle = CachedASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
 
             if (FOnActiveGameplayEffectRemoved_Info* RemovedDelegate =
@@ -216,10 +252,16 @@ void UCombatComponent::Eliminate()
         CachedASC->AddLooseGameplayTag(BomberGameplayTags::State_Eliminated);
     }
 
-    OnEliminated.Broadcast();
+    // GameMode에 Eliminate 이벤트 전달
+    if (GetOwner()->HasAuthority() && IsValid(SpartaPlayerState))
+    {
+        OnEliminatedEvent.Broadcast(SpartaPlayerState);
+    }
 
-    // GameMode에 CheckMatchEnd() 호출 연결 필요
+    OnEliminated.Broadcast();
+    
     // 처치 보상 드롭 요청 (시스템3 ItemDropComponent::DropKillReward)
+    
 }
 
 void UCombatComponent::Revive()
@@ -297,6 +339,12 @@ void UCombatComponent::InstantEliminate()
     if (IsValid(CachedASC))
     {
         CachedASC->AddLooseGameplayTag(BomberGameplayTags::State_Eliminated);
+    }
+
+    // 즉사 판정(자기장 압사 등) 시에도 GameMode가 탈락 및 매치 종료 처리를 연동할 수 있도록 이벤트 브로드캐스트 추가
+    if (IsValid(SpartaPlayerState))
+    {
+        OnEliminatedEvent.Broadcast(SpartaPlayerState);
     }
 
     OnEliminated.Broadcast();

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
@@ -41,6 +41,16 @@ protected:
     UPROPERTY(meta = (BindWidget))
     USpartaButton* QuitButton;
 
+    // 팀 선택(Red, Blue) 및 팀 자동 분배(AutoBalance) 제어용 위젯 추가
+    UPROPERTY(meta = (BindWidget))
+    USpartaButton* RedTeamButton;
+
+    UPROPERTY(meta = (BindWidget))
+    USpartaButton* BlueTeamButton;
+
+    UPROPERTY(meta = (BindWidget))
+    USpartaButton* AutoBalanceToggleButton;
+
     UPROPERTY(meta = (BindWidget))
     UTextBlock* CountdownTextBlock;
 
@@ -65,8 +75,9 @@ protected:
 
 public:
     // 외부 네트워크/로비 시스템으로부터의 수신 데이터 갱신
+    // TeamIDs 정보를 받아 처리할 수 있도록 파라미터 확장
     UFUNCTION(BlueprintCallable, Category = "UI | Lobby")
-    void UpdatePlayerList(const TArray<FString>& PlayerNames, const TArray<bool>& ReadyStates);
+    void UpdatePlayerList(const TArray<FString>& PlayerNames, const TArray<bool>& ReadyStates, const TArray<int32>& TeamIDs);
 
     UFUNCTION(BlueprintCallable, Category = "UI | Lobby")
     void UpdateCountdown(int32 RemainingSeconds);
@@ -76,6 +87,9 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "UI | Lobby")
     void UpdateCharacterPreview(ESpartaArcadeCharacterType CharacterType);
+
+    // TeamIDs 및 bAutoBalance 정보를 반영할 수 있도록 7개 파라미터 서명으로 수정
+	void RefreshLobbyUI(const TArray<FString>& PlayerNames, const TArray<bool>& ReadyStates, const TArray<int32>& TeamIDs, bool bIsHost, bool bCanStart, bool bAutoBalance, int32 RemainingSeconds);
 
 protected:
     // 네트워크/로비 파트로 요청 전달
@@ -96,6 +110,16 @@ protected:
 
     UFUNCTION()
 	void OnQuitClicked();
+
+    // 팀 선택 및 자동 분배 토글 클릭 이벤트 핸들러 추가
+    UFUNCTION()
+    void OnRedTeamClicked();
+
+    UFUNCTION()
+    void OnBlueTeamClicked();
+
+    UFUNCTION()
+    void OnAutoBalanceToggleClicked();
 
 private:
     // 로컬 선택 상태

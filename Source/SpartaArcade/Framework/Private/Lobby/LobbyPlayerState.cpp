@@ -9,7 +9,7 @@
 ALobbyPlayerState::ALobbyPlayerState() 
 	: bIsReady(false)
 	, SelectedCharacterType(ESpartaArcadeCharacterType::Explosive)
-	, TeamID(-1)
+	, TeamID(0)
 {
 	bReplicates = true;
 }
@@ -32,6 +32,48 @@ void ALobbyPlayerState::CopyProperties(APlayerState* PlayerState)
 	}
 }
 
+ESpartaArcadeCharacterType ALobbyPlayerState::GetSelectedCharacterType() const
+{
+	return SelectedCharacterType;
+}
+
+bool ALobbyPlayerState::GetIsReady() const
+{
+	return bIsReady;
+}
+
+int32 ALobbyPlayerState::GetTeamID() const
+{
+	return TeamID;
+}
+
+void ALobbyPlayerState::SetSelectedCharacterType(ESpartaArcadeCharacterType NewCharacterType)
+{
+	if (HasAuthority())
+	{
+		SelectedCharacterType = NewCharacterType;
+		OnRep_LobbyStateChanged();
+	}
+}
+
+void ALobbyPlayerState::SetIsReady(bool bNewReady)
+{
+	if (HasAuthority())
+	{
+		bIsReady = bNewReady;
+		OnRep_LobbyStateChanged();
+	}
+}
+
+void ALobbyPlayerState::SetTeamID(int32 NewTeamID)
+{
+	if (HasAuthority())
+	{
+		TeamID = NewTeamID;
+		OnRep_LobbyStateChanged();
+	}
+}
+
 void ALobbyPlayerState::OnRep_LobbyStateChanged()
 {
 	if (GetNetMode() == NM_DedicatedServer)
@@ -41,6 +83,6 @@ void ALobbyPlayerState::OnRep_LobbyStateChanged()
 
 	if (ALobbyGameStateBase* LobbyGameState = GetWorld()->GetGameState<ALobbyGameStateBase>())
 	{
-		LobbyGameState->RefreshLobbyUI();
+		LobbyGameState->NotifyLobbyUI();
 	}
 }

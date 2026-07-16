@@ -12,6 +12,7 @@
 
 // 컴포넌트 의존 관계 설정을 위한 전방 선언
 class UCombatComponent;
+class UDeathDropComponent;
 class UDataTable;
 class ASpartaPlayerState;
 class UAbilitySystemComponent;   
@@ -54,6 +55,10 @@ protected:
 	virtual void BeginPlay() override;
 	
 	virtual void PossessedBy(AController* NewController) override;
+
+	// 피격 시 블루프린트에서 깜빡임 등 시각 연출을 처리할 수 있도록 선언한 이벤트
+	UFUNCTION(BlueprintImplementableEvent, Category = "Sparta|Effects")
+	void OnHitFlash();
 	
 	void InitializeCharacterComponents();
 	
@@ -129,6 +134,9 @@ protected:
 	TObjectPtr<UCombatComponent> CombatComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UDeathDropComponent> DeathDropComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UWidgetComponent> NicknameWidgetComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PlayerState")
@@ -153,6 +161,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attributes|Animation")
 	TObjectPtr<UAnimMontage> KickBombMontage;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attributes|Animation")
+	TObjectPtr<UAnimMontage> DeathMontage;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;

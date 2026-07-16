@@ -1,4 +1,4 @@
-#include "SpartaLobbyWidget.h"
+﻿#include "SpartaLobbyWidget.h"
 #include "SpartaButton.h"
 #include "Components/ScrollBox.h"
 #include "Components/Button.h"
@@ -6,7 +6,9 @@
 #include "Components/Widget.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerController.h"
-#include "Framework/Public/Lobby/LobbyPlayerController.h"
+#include "Lobby/LobbyPlayerController.h"
+#include "Lobby/LobbyGameStateBase.h"
+#include "Lobby/LobbyPlayerState.h"
 
 void USpartaLobbyWidget::NativeConstruct()
 {
@@ -38,6 +40,20 @@ void USpartaLobbyWidget::NativeConstruct()
         QuitButton->OnClicked.AddDynamic(this, &USpartaLobbyWidget::OnQuitClicked);
     }
 
+    // 팀 선택 및 자동 분배 버튼 클릭 이벤트 바인딩 추가
+    if (RedTeamButton)
+    {
+        RedTeamButton->OnClicked.AddDynamic(this, &USpartaLobbyWidget::OnRedTeamClicked);
+    }
+    if (BlueTeamButton)
+    {
+        BlueTeamButton->OnClicked.AddDynamic(this, &USpartaLobbyWidget::OnBlueTeamClicked);
+    }
+    if (AutoBalanceToggleButton)
+    {
+        AutoBalanceToggleButton->OnClicked.AddDynamic(this, &USpartaLobbyWidget::OnAutoBalanceToggleClicked);
+    }
+
     // 기본 프리뷰 세팅
     UpdateCharacterPreview(ESpartaArcadeCharacterType::Explosive);
     
@@ -56,14 +72,27 @@ void USpartaLobbyWidget::NativeConstruct()
     {
         StartButton->SetVisibility(ESlateVisibility::Collapsed);
 	}
+
+    if (ALobbyGameStateBase* LobbyGameState = GetWorld()->GetGameState<ALobbyGameStateBase>())
+    {
+        LobbyGameState->OnLobbyInfoChanged.AddUObject(this, &USpartaLobbyWidget::RefreshLobbyUI);
+        LobbyGameState->OnCountdownChanged.AddUObject(this, &USpartaLobbyWidget::UpdateCountdown);
+		LobbyGameState->NotifyLobbyUI();
+    }
 }
 
 void USpartaLobbyWidget::NativeDestruct()
 {
+    if (ALobbyGameStateBase* LobbyGameState = GetWorld()->GetGameState<ALobbyGameStateBase>())
+    {
+        LobbyGameState->OnLobbyInfoChanged.RemoveAll(this);
+        LobbyGameState->OnCountdownChanged.RemoveAll(this);
+    }
     Super::NativeDestruct();
+
 }
 
-void USpartaLobbyWidget::UpdatePlayerList(const TArray<FString>& PlayerNames, const TArray<bool>& ReadyStates)
+void USpartaLobbyWidget::UpdatePlayerList(const TArray<FString>& PlayerNames, const TArray<bool>& ReadyStates, const TArray<int32>& TeamIDs)
 {
     if (!PlayerListScrollBox)
     {
@@ -80,17 +109,29 @@ void USpartaLobbyWidget::UpdatePlayerList(const TArray<FString>& PlayerNames, co
             UUserWidget* EntryWidget = CreateWidget<UUserWidget>(GetWorld(), PlayerEntryWidgetClass);
             if (EntryWidget)
             {
-                // 실제 위젯 트리(WBP_PlayerEntry)의 이름과 불일치하여 주석 처리 (PlayerNameTextBlock -> PlayerNameText, ReadyStatusTextBlock -> ReadyStateText)
-                // UTextBlock* NameText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("PlayerNameTextBlock")));
-                // UTextBlock* ReadyText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("ReadyStatusTextBlock")));
-
-                //WBP_PlayerEntry 위젯 트리에 존재하는 PlayerNameText와 ReadyStateText 명칭으로 가져오도록 연동 수정
                 UTextBlock* NameText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("PlayerNameText")));
                 UTextBlock* ReadyText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("ReadyStateText")));
 
                 if (NameText)
                 {
-                    NameText->SetText(FText::FromString(PlayerNames[i]));
+                    FString DisplayName = PlayerNames[i];
+                    // 각 플레이어의 팀 정보를 텍스트에 추가 표시
+                    if (TeamIDs.IsValidIndex(i))
+                    {
+                        if (TeamIDs[i] == 1)
+                        {
+                            DisplayName += TEXT(" [RED]");
+                        }
+                        else if (TeamIDs[i] == 2)
+                        {
+                            DisplayName += TEXT(" [BLUE]");
+                        }
+                        else
+                        {
+                            DisplayName += TEXT("");
+                        }
+                    }
+                    NameText->SetText(FText::FromString(DisplayName));
                 }
                 if (ReadyText)
                 {
@@ -282,6 +323,92 @@ void USpartaLobbyWidget::OnQuitClicked()
         if(IsValid(LobbyPC))
         {
 			LobbyPC->LeaveLobby();
+        }
+    }
+}
+
+void USpartaLobbyWidget::RefreshLobbyUI(const TArray<FString>& PlayerNames, const TArray<bool>& ReadyStates, const TArray<int32>& TeamIDs, bool bIsHost, bool bCanStart, bool bAutoBalance, int32 RemainingSeconds)
+{
+    if (bIsHost)
+    {
+        SetStartButtonVisibility(true, bCanStart);
+    }
+    else
+    {
+        SetStartButtonVisibility(false, false);
+    }
+
+    UpdatePlayerList(PlayerNames, ReadyStates, TeamIDs);
+
+    // 로컬 플레이어의 TeamID 확인하여 버튼 색상 갱신
+    int32 LocalTeamID = 0;
+    APlayerController* PC = GetOwningPlayer();
+    if (PC)
+    {
+        if (ALobbyPlayerState* LocalPS = PC->GetPlayerState<ALobbyPlayerState>())
+        {
+            LocalTeamID = LocalPS->GetTeamID();
+        }
+    }
+
+    // Red/Blue 버튼 비주얼 선택 상태 갱신 (선택된 경우 밝게 활성화, 선택되지 않은 경우 어둡게)
+    if (RedTeamButton)
+    {
+        RedTeamButton->SetButtonColor(LocalTeamID == 1 ? FLinearColor(1.0f, 0.15f, 0.15f) : FLinearColor(0.25f, 0.05f, 0.05f));
+    }
+    if (BlueTeamButton)
+    {
+        BlueTeamButton->SetButtonColor(LocalTeamID == 2 ? FLinearColor(0.15f, 0.15f, 1.0f) : FLinearColor(0.05f, 0.05f, 0.25f));
+    }
+
+    // 팀 자동 분배 토글 버튼 갱신 (ON/OFF 상태 및 방장 여부에 따른 활성/비활성 제어)
+    if (AutoBalanceToggleButton)
+    {
+        FString ToggleStr = bAutoBalance ? TEXT("팀 자동 배분 : ON") : TEXT("팀 자동 배분 : OFF");
+        AutoBalanceToggleButton->SetButtonText(FText::FromString(ToggleStr));
+        AutoBalanceToggleButton->SetIsEnabled(bIsHost);
+        AutoBalanceToggleButton->SetButtonColor(bAutoBalance ? FLinearColor(0.15f, 0.6f, 0.15f) : FLinearColor(0.3f, 0.3f, 0.3f));
+    }
+}
+
+// Red 팀 선택 요청 RPC 호출 연동
+void USpartaLobbyWidget::OnRedTeamClicked()
+{
+    APlayerController* PC = GetOwningPlayer();
+    if (PC)
+    {
+        if (ALobbyPlayerController* LobbyPC = Cast<ALobbyPlayerController>(PC))
+        {
+            LobbyPC->ServerSelectTeam(1);
+        }
+    }
+}
+
+// Blue 팀 선택 요청 RPC 호출 연동
+void USpartaLobbyWidget::OnBlueTeamClicked()
+{
+    APlayerController* PC = GetOwningPlayer();
+    if (PC)
+    {
+        if (ALobbyPlayerController* LobbyPC = Cast<ALobbyPlayerController>(PC))
+        {
+            LobbyPC->ServerSelectTeam(2);
+        }
+    }
+}
+
+// 방장의 팀 자동 분배 변경 요청 RPC 호출 연동
+void USpartaLobbyWidget::OnAutoBalanceToggleClicked()
+{
+    APlayerController* PC = GetOwningPlayer();
+    if (PC)
+    {
+        if (ALobbyPlayerController* LobbyPC = Cast<ALobbyPlayerController>(PC))
+        {
+            if (ALobbyGameStateBase* LobbyGameState = GetWorld()->GetGameState<ALobbyGameStateBase>())
+            {
+                LobbyPC->ServerSetAutoBalanceTeam(!LobbyGameState->bAutoBalanceTeam);
+            }
         }
     }
 }

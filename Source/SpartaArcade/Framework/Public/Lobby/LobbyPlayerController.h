@@ -7,7 +7,7 @@
 #include "LobbyPlayerController.generated.h"
 
 enum class ESpartaArcadeCharacterType : uint8;
-
+class USpartaMenuFlowWidget;
 UCLASS()
 class SPARTAARCADE_API ALobbyPlayerController : public APlayerController
 {
@@ -25,14 +25,22 @@ public:
     UFUNCTION(Server, Reliable, WithValidation)
     void ServerStartMatch();
 
+    // 팀 수동 선택 요청을 서버로 전달하는 RPC 추가
+    UFUNCTION(Server, Reliable, WithValidation)
+    void ServerSelectTeam(int32 NewTeamID);
+
+    // 방장의 팀 자동 배분 설정 변경 요청을 서버로 전달하는 RPC 추가
+    UFUNCTION(Server, Reliable, WithValidation)
+    void ServerSetAutoBalanceTeam(bool bEnabled);
+
 	void LeaveLobby();
 
     void HandleDestroySessionComplete(FName SessionName, bool bWasSuccessful);
 
 private:
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
-    TSubclassOf<UUserWidget> LobbyUIWidgetClass;
+    TSubclassOf<USpartaMenuFlowWidget> MainMenuWidgetClass;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
-    TObjectPtr<UUserWidget> LobbyUIWidgetInstance;
+    TObjectPtr<USpartaMenuFlowWidget> MainMenuWidgetInstance;
 };

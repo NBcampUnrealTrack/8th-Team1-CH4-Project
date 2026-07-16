@@ -22,6 +22,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "UI")
     void SetButtonText(const FText& InText);
 
+    // 버튼의 배경 색상을 설정할 수 있는 편의 함수 추가
+    UFUNCTION(BlueprintCallable, Category = "UI")
+    void SetButtonColor(const FLinearColor& InColor);
+
 protected:
     virtual void NativePreConstruct() override;
     virtual void NativeConstruct() override;
