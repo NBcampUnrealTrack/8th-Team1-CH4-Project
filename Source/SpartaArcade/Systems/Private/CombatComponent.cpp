@@ -1,4 +1,4 @@
-﻿#include "CombatComponent.h"
+#include "CombatComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Framework/Public/InGame/SpartaPlayerState.h"
 #include "Framework/Public/InGame/SpartaGameState.h"
@@ -16,9 +16,6 @@ void UCombatComponent::GetLifetimeReplicatedProps(
     TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-    DOREPLIFETIME(UCombatComponent, bInvincible);
-    DOREPLIFETIME(UCombatComponent, bHasShield);
 }
 
 void UCombatComponent::BeginPlay()
@@ -103,33 +100,22 @@ UBomberAttributeSet* UCombatComponent::GetMutableAttributeSet() const
 void UCombatComponent::ApplyDamage()
 {
     if (!IsValid(SpartaPlayerState)) return;
-
-    UE_LOG(LogTemp, Warning, TEXT("UCombatComponent::ApplyDamage 진입! 현재 Hearts: %d, 무적 여부: %s"), SpartaPlayerState->GetHearts(), bInvincible ? TEXT("True") : TEXT("False"));
+    if (!IsValid(CachedASC)) return;
 
     if (!GetOwner()->HasAuthority()) return;
 
-    if (bInvincible) return;
     if (bDamageThisFrame) return;
+    if (CachedASC->HasMatchingGameplayTag(BomberGameplayTags::State_Stunned)) return;
+    if (CachedASC->HasMatchingGameplayTag(BomberGameplayTags::State_Eliminated)) return;
 
-    if (bHasShield)
-    {
-        bHasShield = false;
-        OnShieldBlock.Broadcast();
-        OnRep_HasShield();
+    // GAS 복제 태그를 기반으로 무적 여부 판별
+    const bool bIsInvincible = CachedASC->HasMatchingGameplayTag(BomberGameplayTags::State_Invincible);
+    UE_LOG(LogTemp, Warning, TEXT("UCombatComponent::ApplyDamage 진입! 현재 Hearts: %d, 무적 여부: %s"),
+        SpartaPlayerState->GetHearts(), bIsInvincible ? TEXT("True") : TEXT("False"));
 
-        // 추가 — GE_Shield도 같이 제거
-        if (IsValid(CachedASC) && ActiveShieldEffectHandle.IsValid())
-        {
-            CachedASC->RemoveActiveGameplayEffect(ActiveShieldEffectHandle);
-        }
-        return;
-    }
-
-    if (IsValid(CachedASC) && CachedASC->HasMatchingGameplayTag(BomberGameplayTags::State_Stunned)) return;
-    if (IsValid(CachedASC) && CachedASC->HasMatchingGameplayTag(BomberGameplayTags::State_Eliminated)) return;
+    if (bIsInvincible) return;
 
     bDamageThisFrame = true;
-
     GetWorld()->GetTimerManager().SetTimerForNextTick(
         FTimerDelegate::CreateUObject(this, &UCombatComponent::ResetDamageFlag));
 
@@ -140,6 +126,33 @@ void UCombatComponent::ApplyDamage()
     }
     OnHit.Broadcast();
 
+    // 기존 피격 무적 GE가 있다면 먼저 제거
+    if (ActiveInvincibleEffectHandle.IsValid())
+    {
+        CachedASC->RemoveActiveGameplayEffect(ActiveInvincibleEffectHandle);
+        ActiveInvincibleEffectHandle.Invalidate();
+    }
+
+    // 피격 후 1초 무적 — InvincibleEffectClass GE 적용 및 해제 타이머
+    if (IsValid(InvincibleEffectClass))
+    {
+        FGameplayEffectContextHandle Context = CachedASC->MakeEffectContext();
+        FGameplayEffectSpecHandle Spec = CachedASC->MakeOutgoingSpec(InvincibleEffectClass, 1.f, Context);
+        if (Spec.IsValid())
+        {
+            Spec.Data->SetDuration(InvincibleDuration, false);
+            ActiveInvincibleEffectHandle = CachedASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+        }
+    }
+
+    GetWorld()->GetTimerManager().SetTimer(
+        InvincibleTimerHandle,
+        this,
+        &UCombatComponent::EndInvincible,
+        InvincibleDuration,
+        false
+    );
+
     if (IsValid(AttrSet) && AttrSet->GetHealth() <= 0.f)
     {
         EnterStun();
@@ -148,6 +161,9 @@ void UCombatComponent::ApplyDamage()
 
 bool UCombatComponent::CanTakeDamage() const
 {
+    // GAS 태그로 무적·쉴드 상태도 함께 판별
+    if (IsValid(CachedASC) && CachedASC->HasMatchingGameplayTag(BomberGameplayTags::State_Invincible)) return false;
+    if (IsValid(CachedASC) && CachedASC->HasMatchingGameplayTag(BomberGameplayTags::State_Shielded)) return false;
     if (!IsValid(SpartaPlayerState)) return true;
     if (SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Eliminated) return false;
     return !IsValid(CachedASC) || !CachedASC->HasMatchingGameplayTag(BomberGameplayTags::State_Eliminated);
@@ -155,20 +171,38 @@ bool UCombatComponent::CanTakeDamage() const
 
 void UCombatComponent::GrantShield()
 {
-    bHasShield = true;
-    OnRep_HasShield();
+    if (!IsValid(CachedASC)) return;
 
-    // 추가 — GE_Shield 적용 (Infinite 정책)
-    if (IsValid(CachedASC) && IsValid(ShieldEffectClass))
+    // 기존 활성화된 쉴드가 있다면 먼저 제거
+    if (ActiveShieldEffectHandle.IsValid())
+    {
+        CachedASC->RemoveActiveGameplayEffect(ActiveShieldEffectHandle);
+        ActiveShieldEffectHandle.Invalidate();
+    }
+
+    // GE_Shield를 적용하여 복제 가능한 무적 및 쉴드 태그 부여
+    if (IsValid(ShieldEffectClass))
     {
         FGameplayEffectContextHandle Context = CachedASC->MakeEffectContext();
         FGameplayEffectSpecHandle Spec = CachedASC->MakeOutgoingSpec(ShieldEffectClass, 1.f, Context);
-
         if (Spec.IsValid())
         {
+            Spec.Data->SetDuration(3.f, false);
             ActiveShieldEffectHandle = CachedASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
         }
     }
+
+    // 3초 후 안전하게 쉴드 이펙트를 해제하기 위해 타이머 설정
+    GetWorld()->GetTimerManager().SetTimer(
+        ShieldTagClearTimerHandle,
+        this,
+        &UCombatComponent::ClearShieldTags,
+        3.f,
+        false
+    );
+
+    // UI 동기화
+    OnbHasShieldChanged.Broadcast(true);
 }
 
 // 상태 전이 함수들
@@ -259,43 +293,58 @@ void UCombatComponent::Eliminate()
     }
 
     OnEliminated.Broadcast();
-    
-    // 처치 보상 드롭 요청 (시스템3 ItemDropComponent::DropKillReward)
-    
 }
 
 void UCombatComponent::Revive()
 {
     if (!IsValid(SpartaPlayerState)) return;
+    if (!IsValid(CachedASC)) return;
     GetWorld()->GetTimerManager().ClearTimer(StunTimerHandle);
 
     SpartaPlayerState->SetHearts(SpartaPlayerState->GetStartHearts());
     SpartaPlayerState->SetCurrentState(EBomberPlayerState::Alive);
-    bInvincible = true;
 
     if (UBomberAttributeSet* AttrSet = GetMutableAttributeSet())
     {
         CachedASC->ApplyModToAttribute(UBomberAttributeSet::GetHealthAttribute(), EGameplayModOp::Override, AttrSet->GetMaxHealth());
     }
 
-    if (IsValid(CachedASC))
-    {
-        CachedASC->RemoveLooseGameplayTag(BomberGameplayTags::State_Stunned);
-    }
-    
+    CachedASC->RemoveLooseGameplayTag(BomberGameplayTags::State_Stunned);
+
     // 상태 변경 후 GE_Stun 제거
-    if (IsValid(CachedASC) && ActiveStunEffectHandle.IsValid())
+    if (ActiveStunEffectHandle.IsValid())
     {
         CachedASC->RemoveActiveGameplayEffect(ActiveStunEffectHandle);
     }
 
-    
-
     OnRevived.Broadcast();
 
+    // 기존 피격 무적 GE 제거
+    if (ActiveInvincibleEffectHandle.IsValid())
+    {
+        CachedASC->RemoveActiveGameplayEffect(ActiveInvincibleEffectHandle);
+        ActiveInvincibleEffectHandle.Invalidate();
+    }
+
+    // 부활 후 1초 무적 — InvincibleEffectClass GE 적용 및 C++ 타이머 작동
+    if (IsValid(InvincibleEffectClass))
+    {
+        FGameplayEffectContextHandle Context = CachedASC->MakeEffectContext();
+        FGameplayEffectSpecHandle Spec = CachedASC->MakeOutgoingSpec(InvincibleEffectClass, 1.f, Context);
+        if (Spec.IsValid())
+        {
+            Spec.Data->SetDuration(InvincibleDuration, false);
+            ActiveInvincibleEffectHandle = CachedASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+        }
+    }
+
     GetWorld()->GetTimerManager().SetTimer(
-        InvincibleTimerHandle, this, &UCombatComponent::EndInvincible,
-        InvincibleDuration, false);
+        InvincibleTimerHandle,
+        this,
+        &UCombatComponent::EndInvincible,
+        InvincibleDuration,
+        false
+    );
 }
 
 void UCombatComponent::SelfRevive()
@@ -352,8 +401,16 @@ void UCombatComponent::InstantEliminate()
 
 void UCombatComponent::EndInvincible()
 {
-    bInvincible = false;
+    if (!IsValid(CachedASC)) return;
+
+    // 피격 1초 무적 GE 명시적 제거 -> 무적 태그(State.Invincible) 동반 해제
+    if (ActiveInvincibleEffectHandle.IsValid())
+    {
+        CachedASC->RemoveActiveGameplayEffect(ActiveInvincibleEffectHandle);
+        ActiveInvincibleEffectHandle.Invalidate();
+    }
 }
+
 
 void UCombatComponent::ResetDamageFlag()
 {
@@ -385,10 +442,26 @@ void UCombatComponent::OnOverlapWithAlly(AActor* Ally)
 
 void UCombatComponent::OnRep_HasShield()
 {
+    const bool bNowShielded = IsValid(CachedASC) && CachedASC->HasMatchingGameplayTag(BomberGameplayTags::State_Shielded);
     if (OnbHasShieldChanged.IsBound())
     {
-        OnbHasShieldChanged.Broadcast(bHasShield);
+        OnbHasShieldChanged.Broadcast(bNowShielded);
     }
+}
+
+
+
+void UCombatComponent::ClearShieldTags()
+{
+    if (!IsValid(CachedASC)) return;
+    
+    if (ActiveShieldEffectHandle.IsValid())
+    {
+        CachedASC->RemoveActiveGameplayEffect(ActiveShieldEffectHandle);
+        ActiveShieldEffectHandle.Invalidate();
+    }
+    
+    OnbHasShieldChanged.Broadcast(false);
 }
 
 // 추가 — 헤더에 선언만 있고 정의가 없어서 링크 에러 나던 함수
@@ -449,4 +522,9 @@ void UCombatComponent::BroadcastCurrentState()
 EBomberPlayerState UCombatComponent::GetPlayerState() const
 {
     return SpartaPlayerState ? SpartaPlayerState->GetCurrentState() : CurrentState;
+}
+
+bool UCombatComponent::IsShielded() const
+{
+    return IsValid(CachedASC) && CachedASC->HasMatchingGameplayTag(BomberGameplayTags::State_Shielded);
 }

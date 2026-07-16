@@ -29,7 +29,7 @@ ESpartaArcadeCharacterType ASpartaPlayerState::GetCharacterType() const
 
 void ASpartaPlayerState::SetShields(int32 NewCount)
 {
-	if (Shields != NewCount)
+	if (HasAuthority())
 	{
 		Shields = NewCount;
 		OnRep_Shields();
@@ -157,6 +157,8 @@ void ASpartaPlayerState::BroadcastCurrentState()
 	OnRep_CurrentState();
 	// 구급약 개수 초기 상태 브로드캐스트 호출 추가
 	OnRep_FirstAidKits();
+	// 쉴드 개수 초기 상태 브로드캐스트 추가 
+	OnRep_Shields();
 	// 발차기 해제 초기 상태 브로드캐스트 호출 추가
 	OnRep_bIsKickUnlocked();
 }

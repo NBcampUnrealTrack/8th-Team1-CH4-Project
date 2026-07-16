@@ -57,6 +57,9 @@ protected:
 
     UPROPERTY(meta = (BindWidget))
     USpartaButton* LobbyReturnButton;
+    
+    UPROPERTY(meta = (BindWidget))
+    USpartaButton* SpectateButton;
 
     // 리더보드 한 항목을 그릴 위젯 클래스
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MenuFlow | Settings")
@@ -86,9 +89,9 @@ protected:
     // --- 메인 메뉴 클릭 이벤트 ---
     UFUNCTION()
     void OnJoinClicked();
-
+    
     UFUNCTION()
-    void OnSettingsClicked();
+    void OnSpectateClicked();
 
     UFUNCTION()
     void OnQuitClicked();

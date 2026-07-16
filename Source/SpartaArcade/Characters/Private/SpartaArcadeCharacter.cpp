@@ -167,7 +167,7 @@ void ASpartaArcadeCharacter::OnRep_PlayerState()
 	UpdateNickname();
 }     
 
-// 하트 체력 감소, 실드 차단 및 체력 0 도달 시 기절 상태 진입 로직 구현
+	// 하트 체력 감소, 실드 차단 및 체력 0 도달 시 기절 상태 진입 로직 구현
 float ASpartaArcadeCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser)
 {
 	UE_LOG(LogTemp, Verbose, TEXT("ASpartaArcadeCharacter::TakeDamage 호출됨! 피해량: %f, 원인 제공자: %s"), DamageAmount, DamageCauser ? *DamageCauser->GetName() : TEXT("None"));
@@ -179,11 +179,14 @@ float ASpartaArcadeCharacter::TakeDamage(float DamageAmount, struct FDamageEvent
 			CombatComponent->ApplyDamage();
 
 			// 블루프린트에 구현된 피격 시각 연출(깜빡임 등)을 실행합니다.
+			// OnHitFlash는 폭탄/장애물 피격 모두에 적용됩니다.
 			OnHitFlash();
 
+			// 무적 시간은 CombatComponent::ApplyDamage() 내부에서 1초(InvincibleDuration)로 관리됩니다.
+			// 아래 ECC_Visibility 0.2초 차단은 폭발 스윕 중복 피격 방어용으로 병존시킵니다.
 			if (GetCapsuleComponent())
 			{
-				// 피해를 입는 즉시 캡슐의 Visibility 채널을 Ignore(무시)로 전환하여 0.2초간 무적 상태로 만듭니다.
+				// 피해를 입는 즉시 캡슐의 Visibility 채널을 Ignore(무시)로 전환
 				GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
 
 				// 0.2초 타이머 작동 후 RestoreCollisionResponse 실행하여 원복
@@ -341,7 +344,6 @@ void ASpartaArcadeCharacter::AddFirstAidKit()
 
 void ASpartaArcadeCharacter::AddShield()
 {
-	// CombatComponent에 방어막 획득 위임
 	if (SpartaPlayerState && SpartaPlayerState->GetShields() < 1)                                                                                                                                                               
 	{                                                                                                                                                                                                                           
 		SpartaPlayerState->SetShields(SpartaPlayerState->GetShields() + 1);                                                                                                                                                 
@@ -388,10 +390,19 @@ void ASpartaArcadeCharacter::UseFirstAidKit()
 
 void ASpartaArcadeCharacter::UseShield()
 {
-	if (IsValid(AbilitySystemComponent) && IsValid(UseShieldAbilityClass))                                                                                                                                                      
-	{                                                                                                                                                                                                                           
-		AbilitySystemComponent->TryActivateAbilityByClass(UseShieldAbilityClass);                                                                                                                                           
-	}  
+	bool bActivated = false;
+	if (IsValid(AbilitySystemComponent) && IsValid(UseShieldAbilityClass))
+	{
+		bActivated = AbilitySystemComponent->TryActivateAbilityByClass(UseShieldAbilityClass);
+		UE_LOG(LogTemp, Warning, TEXT("[Shield] TryActivateAbilityByClass 결과: %d"), bActivated);
+	}
+
+	// 어빌리티 클래스가 에디터에 미할당되었거나 활성화에 실패한 경우, 서버 권한으로 PerformUseShield()를 직접 실행하여 확실한 사용을 보장합니다.
+	if (!bActivated && HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Shield] GAS 어빌리티 미작동 -> PerformUseShield() 직접 호출 집행"));
+		PerformUseShield();
+	}
 }
 
 // 구급 상자를 소모하여 일반 상태에선 자가 치료(하트 회복), 기절 상태에선 자력 부활 처리

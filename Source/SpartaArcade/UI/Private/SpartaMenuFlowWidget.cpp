@@ -19,26 +19,22 @@ void USpartaMenuFlowWidget::NativeConstruct()
     {
         JoinButton->OnClicked.AddDynamic(this, &USpartaMenuFlowWidget::OnJoinClicked);
     }
-    if (SettingsButton)
-    {
-        SettingsButton->OnClicked.AddDynamic(this, &USpartaMenuFlowWidget::OnSettingsClicked);
-    }
     if (QuitButton)
     {
         QuitButton->OnClicked.AddDynamic(this, &USpartaMenuFlowWidget::OnQuitClicked);
     }
-
-    // 2) 일시정지 이벤트 바인딩
     if (ResumeButton)
     {
         ResumeButton->OnClicked.AddDynamic(this, &USpartaMenuFlowWidget::OnResumeClicked);
+    }
+    if (SpectateButton)
+    {
+        ResumeButton->OnClicked.AddDynamic(this, &USpartaMenuFlowWidget::OnSpectateClicked);
     }
     if (ExitToLobbyButton)
     {
         ExitToLobbyButton->OnClicked.AddDynamic(this, &USpartaMenuFlowWidget::OnExitToLobbyClicked);
     }
-
-    // 3) 결과 화면 이벤트 바인딩
     if (LobbyReturnButton)
     {
         LobbyReturnButton->OnClicked.AddDynamic(this, &USpartaMenuFlowWidget::OnLobbyReturnClicked);
@@ -123,7 +119,7 @@ void USpartaMenuFlowWidget::ShowMatchResult(EMatchResult Result, int32 MyRank, c
             TitleStr = TEXT("패배..");
             break;
         case EMatchResult::Draw:
-            TitleStr = TEXT("무승부");
+            TitleStr = TEXT("무승부!");
             break;
         }
         ResultTitleText->SetText(FText::FromString(TitleStr));
@@ -149,23 +145,15 @@ void USpartaMenuFlowWidget::ShowMatchResult(EMatchResult Result, int32 MyRank, c
                 {
                     UTextBlock* RankText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("RankTextBlock")));
                     UTextBlock* NameText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("PlayerNameTextBlock")));
-                    UTextBlock* TimeText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("SurvivalTimeTextBlock")));
 
                     if (RankText)
                     {
-                        RankText->SetText(FText::FromString(FString::Printf(TEXT("#%d"), PlayerRes.Rank)));
+                        RankText->SetText(FText::FromString(FString::Printf(TEXT("#%d "), PlayerRes.Rank)));
                     }
                     if (NameText)
                     {
                         NameText->SetText(FText::FromString(PlayerRes.PlayerName));
                     }
-                    if (TimeText)
-                    {
-                        int32 Mins = PlayerRes.SurvivalTime / 60;
-                        int32 Secs = PlayerRes.SurvivalTime % 60;
-                        TimeText->SetText(FText::FromString(FString::Printf(TEXT("%02d:%02d"), Mins, Secs)));
-                    }
-
                     LeaderboardScrollBox->AddChild(EntryWidget);
                 }
             }
@@ -176,11 +164,6 @@ void USpartaMenuFlowWidget::ShowMatchResult(EMatchResult Result, int32 MyRank, c
 void USpartaMenuFlowWidget::OnJoinClicked()
 {
     ShowPlayMenu();
-}
-
-void USpartaMenuFlowWidget::OnSettingsClicked()
-{
-    // 설정 서브메뉴가 있는 경우 화면 노출 처리 (추후 기획 연계 가능)
 }
 
 void USpartaMenuFlowWidget::OnQuitClicked()
@@ -203,6 +186,11 @@ void USpartaMenuFlowWidget::OnResumeClicked()
     
     // 화면에서 일시정지 위젯 제거 또는 비활성화
     SetVisibility(ESlateVisibility::Collapsed);
+}
+
+void USpartaMenuFlowWidget::OnSpectateClicked()
+{
+    // Todo: 관전 기능 연결
 }
 
 void USpartaMenuFlowWidget::OnExitToLobbyClicked()
