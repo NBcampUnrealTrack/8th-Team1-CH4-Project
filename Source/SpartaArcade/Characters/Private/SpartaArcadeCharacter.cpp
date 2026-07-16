@@ -180,7 +180,7 @@ float ASpartaArcadeCharacter::TakeDamage(float DamageAmount, struct FDamageEvent
 
 			// 블루프린트에 구현된 피격 시각 연출(깜빡임 등)을 실행합니다.
 			// OnHitFlash는 폭탄/장애물 피격 모두에 적용됩니다.
-			OnHitFlash();
+			OnHitFlash(1.0f);
 
 			// 무적 시간은 CombatComponent::ApplyDamage() 내부에서 1초(InvincibleDuration)로 관리됩니다.
 			// 아래 ECC_Visibility 0.2초 차단은 폭발 스윕 중복 피격 방어용으로 병존시킵니다.
@@ -362,6 +362,8 @@ void ASpartaArcadeCharacter::PerformUseShield()
 	
 	SpartaPlayerState->SetShields(SpartaPlayerState->GetShields() - 1);
 	CombatComponent->GrantShield();
+	
+	OnHitFlash(3.0f);
 }
 
 void ASpartaArcadeCharacter::UnlockKickBomb()
