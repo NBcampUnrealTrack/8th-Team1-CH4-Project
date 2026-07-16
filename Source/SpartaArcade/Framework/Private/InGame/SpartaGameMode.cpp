@@ -170,8 +170,10 @@ void ASpartaGameMode::HandlePlayerEliminated(ASpartaPlayerState* DeadPlayer)
 			}
 			DecreaseAliveTeam();
 		}
-		// 개인/팀 전멸 시점에는 결과창을 띄우지 않음 (관전 모드로 전환).
-		// 최종 결과는 매치가 끝날 때 ShowGameResultToAllPlayers()에서 한 번에 브로드캐스트됨
+
+		// 사망한 본인에게만 개인 결과 화면(순위 + 관전/로비 선택)을 띄움.
+		// 최종 승패 결과는 매치가 끝날 때 ShowGameResultToAllPlayers()에서 한 번에 브로드캐스트됨
+		ShowGameResultToEliminatedPlayer(DeadPlayer);
 	}
 
 	CheckGameEnd();

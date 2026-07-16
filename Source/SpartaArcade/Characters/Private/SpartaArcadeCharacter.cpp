@@ -621,37 +621,9 @@ void ASpartaArcadeCharacter::HandleOnEliminated()
 	UE_LOG(LogTemp, Log, TEXT("%s 게임에서 탈락(소멸)되었습니다. 사망 연출을 시작합니다."), *GetName());
 
 	// 사망 몽타주(DeathMontage)가 지정된 경우 재생
-	float PlayDuration = 1.3f;
 	if (DeathMontage)
 	{
-		float MontageLength = PlayAnimMontage(DeathMontage, 1.0f);
-		if (MontageLength > 0.f)
-		{
-			// 소멸(Destroy) 처리되기 직전에 결과 UI를 출력할 수 있도록 안전 클램프 설정 (DestroyDelay - 0.1초)
-			PlayDuration = FMath::Min(MontageLength, DestroyDelay - 0.1f);
-		}
-	}
-
-	// 사망 연출(몽타주)을 본 후, 결과 UI 대신 관전 모드로 진입
-	// HandleOnEliminated는 서버(Authority)에서만 실행되므로, 실제 관전 처리는
-	// Client RPC(ClientSpectating)로 소유 클라이언트에 위임한다
-	{
-		FTimerHandle SpectateTimerHandle;
-		if (GetWorld())
-		{
-			GetWorld()->GetTimerManager().SetTimer(
-				SpectateTimerHandle,
-				FTimerDelegate::CreateLambda([this]()
-				{
-					if (ASpartaArcadePlayerController* PC = Cast<ASpartaArcadePlayerController>(GetController()))
-					{
-						PC->ClientSpectating();
-					}
-				}),
-				PlayDuration,
-				false
-			);
-		}
+		PlayAnimMontage(DeathMontage, 1.0f);
 	}
 
 	// 사망 위치에 아이템 드롭 (서버 전용 컴포넌트 내부에서 Authority 체크)
