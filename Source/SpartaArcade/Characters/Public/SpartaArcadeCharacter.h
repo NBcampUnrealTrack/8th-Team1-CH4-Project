@@ -162,6 +162,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attributes|Animation")
 	TObjectPtr<UAnimMontage> KickBombMontage;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attributes|Animation")
+	TObjectPtr<UAnimMontage> DeathMontage;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 

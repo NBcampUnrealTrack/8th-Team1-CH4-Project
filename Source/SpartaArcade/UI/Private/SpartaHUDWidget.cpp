@@ -50,23 +50,7 @@ void USpartaHUDWidget::NativeDestruct()
 void USpartaHUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
     Super::NativeTick(MyGeometry, InDeltaTime);
-
-    // 1. 기절 상태가 아닐 시 스킵
-    if (!SpartaPlayerState || SpartaPlayerState->GetCurrentState() != EBomberPlayerState::Stunned)
-    {
-        return;
-    }
-
-    // 2. 기절 탈출 게이지 실시간 갱신
-    if (CombatComponent)
-    {
-        const float Progress = CombatComponent->GetStunProgressPercent();
-        if (!FMath::IsNearlyEqual(Progress, CachedStunProgress, 0.001f))
-        {
-            CachedStunProgress = Progress;
-            UpdateStunProgress(Progress);
-        }
-    }
+    // 기절 UI 실시간 갱신 로직은 NativeTick 대신 성능 최적화를 위해 0.1초 타이머(UpdateStunProgressTimer) 방식으로 변경하여 처리하므로 틱 로직 제거
 }
 
 // 1초 주기로 경기 시간 및 생존자 수를 업데이트
@@ -157,6 +141,40 @@ void USpartaHUDWidget::SetStunActive(bool bIsActive)
     if (StunOverlayPanel)
     {
         StunOverlayPanel->SetVisibility(bIsActive ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+    }
+
+    // 기절 활성화 시 0.1초 주기로 게이지를 갱신하는 타이머 구동, 기절 종료 시 타이머 해제
+    UWorld* World = GetWorld();
+    if (World)
+    {
+        if (bIsActive)
+        {
+            World->GetTimerManager().SetTimer(
+                StunUpdateTimerHandle,
+                this,
+                &USpartaHUDWidget::UpdateStunProgressTimer,
+                0.1f,
+                true
+            );
+        }
+        else
+        {
+            World->GetTimerManager().ClearTimer(StunUpdateTimerHandle);
+        }
+    }
+}
+
+// 기절 게이지 0.1초 주기 타이머 콜백 구현
+void USpartaHUDWidget::UpdateStunProgressTimer()
+{
+    if (CombatComponent)
+    {
+        const float Progress = CombatComponent->GetStunProgressPercent();
+        if (!FMath::IsNearlyEqual(Progress, CachedStunProgress, 0.001f))
+        {
+            CachedStunProgress = Progress;
+            UpdateStunProgress(Progress);
+        }
     }
 }
 

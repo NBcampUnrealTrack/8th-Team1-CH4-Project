@@ -1,6 +1,8 @@
 ﻿#include "CombatComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Framework/Public/InGame/SpartaPlayerState.h"
+#include "Framework/Public/InGame/SpartaGameState.h"
+#include "UI/Public/SpartaUIDefs.h"
 #include "BomberGameplayTags.h"
 #include "BomberAttributeSet.h"
 
@@ -174,6 +176,40 @@ void UCombatComponent::GrantShield()
 void UCombatComponent::EnterStun()
 {
     if (!IsValid(SpartaPlayerState)) return;
+
+    bool bHasAliveTeammate = false;
+    UWorld* World = GetWorld();
+    if (World)
+    {
+        ASpartaGameState* SpartaGS = World->GetGameState<ASpartaGameState>();
+        if (SpartaGS && SpartaGS->GetGameModeType() != EGameModeType::Solo)
+        {
+            int32 MyTeamID = SpartaPlayerState->GetTeamID();
+            for (APlayerState* PS : SpartaGS->PlayerArray)
+            {
+                ASpartaPlayerState* OtherPS = Cast<ASpartaPlayerState>(PS);
+                if (OtherPS && OtherPS != SpartaPlayerState)
+                {
+                    if (OtherPS->GetTeamID() == MyTeamID && OtherPS->GetCurrentState() == EBomberPlayerState::Alive)
+                    {
+                        bHasAliveTeammate = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    if (bHasAliveTeammate)
+    {
+        StunDuration = 10.f; // 아군이 생존해 있는 경우 기절(그로기) 대기 시간을 10초로 연장
+    }
+    else
+    {
+        Eliminate();
+        return;
+    }
+
     SpartaPlayerState->SetCurrentState(EBomberPlayerState::Stunned);
     OnStun.Broadcast();
 
@@ -189,6 +225,7 @@ void UCombatComponent::EnterStun()
 
         if (Spec.IsValid())
         {
+            Spec.Data->SetDuration(StunDuration, false);
             ActiveStunEffectHandle = CachedASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
 
             if (FOnActiveGameplayEffectRemoved_Info* RemovedDelegate =

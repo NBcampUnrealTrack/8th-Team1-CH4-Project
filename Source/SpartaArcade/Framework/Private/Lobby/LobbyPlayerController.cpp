@@ -97,6 +97,44 @@ bool ALobbyPlayerController::ServerStartMatch_Validate()
 	return true;
 }
 
+// 수동 팀 선택 RPC 구현 (준비 상태가 아닐 때만 1(Red) 또는 2(Blue) 팀 할당)
+void ALobbyPlayerController::ServerSelectTeam_Implementation(int32 NewTeamID)
+{
+	ALobbyPlayerState* LobbyPlayerState = GetPlayerState<ALobbyPlayerState>();
+	if (IsValid(LobbyPlayerState))
+	{
+		if (LobbyPlayerState->GetIsReady() == false)
+		{
+			LobbyPlayerState->SetTeamID(NewTeamID);
+			LobbyPlayerState->OnRep_LobbyStateChanged();
+		}
+	}
+}
+
+bool ALobbyPlayerController::ServerSelectTeam_Validate(int32 NewTeamID)
+{
+	return true;
+}
+
+// 방장 팀 자동 배분 기능 On/Off RPC 구현 (방장인 경우에만 작동)
+void ALobbyPlayerController::ServerSetAutoBalanceTeam_Implementation(bool bEnabled)
+{
+	ALobbyGameStateBase* LobbyGameState = GetWorld()->GetGameState<ALobbyGameStateBase>();
+	if (IsValid(LobbyGameState))
+	{
+		if (LobbyGameState->HostPlayerState == PlayerState)
+		{
+			LobbyGameState->bAutoBalanceTeam = bEnabled;
+			LobbyGameState->OnRep_RoomInfoChanged();
+		}
+	}
+}
+
+bool ALobbyPlayerController::ServerSetAutoBalanceTeam_Validate(bool bEnabled)
+{
+	return true;
+}
+
 void ALobbyPlayerController::LeaveLobby()
 {
 	if (IsLocalController() == false)

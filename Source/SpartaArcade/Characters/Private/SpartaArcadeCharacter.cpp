@@ -608,9 +608,32 @@ void ASpartaArcadeCharacter::HandleOnSelfRevive()
 void ASpartaArcadeCharacter::HandleOnEliminated()
 {
 	UE_LOG(LogTemp, Log, TEXT("%s 게임에서 탈락(소멸)되었습니다. 사망 연출을 시작합니다."), *GetName());
+
+	// 사망 몽타주(DeathMontage)가 지정된 경우 재생
+	float PlayDuration = 1.3f;
+	if (DeathMontage)
+	{
+		float MontageLength = PlayAnimMontage(DeathMontage, 1.0f);
+		if (MontageLength > 0.f)
+		{
+			// 소멸(Destroy) 처리되기 직전에 결과 UI를 출력할 수 있도록 안전 클램프 설정 (DestroyDelay - 0.1초)
+			PlayDuration = FMath::Min(MontageLength, DestroyDelay - 0.1f);
+		}
+	}
+
+	// 즉시 결과 UI를 띄우던 기존 코드를 주석 처리(보존)하고, 사망 연출을 먼저 본 후 결과 UI가 뜨도록 타이머 설정 지연 호출로 변경
+	// ShowMatchResultUI(EMatchResult::Defeat); // Removed: "사망 몽타쥬를 재생한 후 결과 UI가 나오도록" 변경을 위해 주석 처리됨
 	
-	// 팀원의 패배 UI 호출 보존
-	ShowMatchResultUI(EMatchResult::Defeat);
+	FTimerHandle ResultUITimerHandle;
+	if (GetWorld())
+	{
+		GetWorld()->GetTimerManager().SetTimer(
+			ResultUITimerHandle,
+			FTimerDelegate::CreateUObject(this, &ASpartaArcadeCharacter::ShowMatchResultUI, EMatchResult::Defeat),
+			PlayDuration,
+			false
+		);
+	}
 
 	// 사망 위치에 아이템 드롭 (서버 전용 컴포넌트 내부에서 Authority 체크)
 	if (IsValid(DeathDropComponent))
@@ -843,6 +866,15 @@ void ASpartaArcadeCharacter::ApplyTileEffectToMovement(float DeltaSeconds)
 		return;
 	}
 
+	// 드코딩된 Blueprint 기본값 대신 현재 AttributeSet의 MoveSpeed 속성에 비례하는 기준 속도를 동적 계산
+	float BaseWalkSpeed = DefaultMaxWalkSpeed;
+	if (IsValid(AttributeSet))
+	{
+		const float AttrBaseSpeed = 200.f;
+		const float AttrSpeedPerLevel = 100.f;
+		BaseWalkSpeed = AttrBaseSpeed + (AttributeSet->GetMoveSpeed() * AttrSpeedPerLevel);
+	}
+
 	// 현재 캐릭터가 서 있는 위치의 지형 타일 타입 조회
 	FVector CurrentLocation = GetActorLocation();
 	ESpartaArcadeTileType TileType = CachedMapBuilder->GetTileTypeAtWorldPosition(CurrentLocation);
@@ -853,21 +885,21 @@ void ASpartaArcadeCharacter::ApplyTileEffectToMovement(float DeltaSeconds)
 		// 얼음 타일: 마찰력을 대폭 줄이고 제동 감속도를 낮추어 미끄러지도록 설정
 		GetCharacterMovement()->GroundFriction = IceFriction;
 		GetCharacterMovement()->BrakingDecelerationWalking = IceBrakingDeceleration;
-		GetCharacterMovement()->MaxWalkSpeed = DefaultMaxWalkSpeed;
+		GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
 		break;
 
 	case ESpartaArcadeTileType::MudWater:
 		// 진흙 타일: 기본 속도를 절반(MudSpeedMultiplier)으로 감속
 		GetCharacterMovement()->GroundFriction = DefaultGroundFriction;
 		GetCharacterMovement()->BrakingDecelerationWalking = DefaultBrakingDeceleration;
-		GetCharacterMovement()->MaxWalkSpeed = DefaultMaxWalkSpeed * MudSpeedMultiplier;
+		GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed * MudSpeedMultiplier;
 		break;
 
 	case ESpartaArcadeTileType::Conveyor:
 		// 컨베이어 타일: 이동 속도와 마찰은 기본으로 유지하고, 컨베이어의 추진 방향으로 강제 입력 추가
 		GetCharacterMovement()->GroundFriction = DefaultGroundFriction;
 		GetCharacterMovement()->BrakingDecelerationWalking = DefaultBrakingDeceleration;
-		GetCharacterMovement()->MaxWalkSpeed = DefaultMaxWalkSpeed;
+		GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
 		
 		// [임시 방향 벡터]: 현재는 가로(Y축) 방향으로 캐릭터를 서서히 밀어내도록 임시 구현
 		// 실제 기획 또는 맵의 컨베이어 방향 데이터에 대응하여 방향 벡터를 조절할 수 있습니다.
@@ -881,7 +913,7 @@ void ASpartaArcadeCharacter::ApplyTileEffectToMovement(float DeltaSeconds)
 		// 일반 바닥 타일: 원래 백업해 두었던 기본 마찰력, 감속도, 이동 속도로 안전하게 복원
 		GetCharacterMovement()->GroundFriction = DefaultGroundFriction;
 		GetCharacterMovement()->BrakingDecelerationWalking = DefaultBrakingDeceleration;
-		GetCharacterMovement()->MaxWalkSpeed = DefaultMaxWalkSpeed;
+		GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
 		break;
 	}
 }

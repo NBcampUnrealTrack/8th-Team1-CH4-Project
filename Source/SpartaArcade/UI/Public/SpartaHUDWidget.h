@@ -162,6 +162,10 @@ private:
     FTimerHandle GameStateTimerHandle;
     void UpdateGameStateTimer();
 
+    // 기절 UI를 0.1초마다 갱신하기 위한 타이머 핸들 및 함수 추가
+    FTimerHandle StunUpdateTimerHandle;
+    void UpdateStunProgressTimer();
+
     // 내부 헬퍼 함수
     FString FormatTime(int32 TotalSeconds) const;
 

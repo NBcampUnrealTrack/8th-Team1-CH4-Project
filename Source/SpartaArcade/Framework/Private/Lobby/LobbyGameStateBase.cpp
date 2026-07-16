@@ -57,6 +57,7 @@ void ALobbyGameStateBase::NotifyLobbyUI()
 {
     TArray<FString> PlayerNames;
     TArray<bool> ReadyStates;
+    TArray<int32> TeamIDs;
 
     bool bAllReady = true;
 
@@ -72,6 +73,7 @@ void ALobbyGameStateBase::NotifyLobbyUI()
         if (ALobbyPlayerState* LobbyPlayerState = Cast<ALobbyPlayerState>(PlayerState))
         {
             ReadyStates.Add(LobbyPlayerState->GetIsReady());
+            TeamIDs.Add(LobbyPlayerState->GetTeamID()); // 플레이어의 TeamID 정보 저장
 
             if (!LobbyPlayerState->GetIsReady())
             {
@@ -81,6 +83,7 @@ void ALobbyGameStateBase::NotifyLobbyUI()
         else
         {
             ReadyStates.Add(false);
+            TeamIDs.Add(0); // 로비 플레이어 상태가 무효한 경우 기본 팀ID 0 할당
             bAllReady = false;
         }
     }
@@ -95,5 +98,6 @@ void ALobbyGameStateBase::NotifyLobbyUI()
     }
 
     const bool bCanStart = bAllReady && PlayerStates.Num() >= MinPlayerCount;
-    OnLobbyInfoChanged.Broadcast(PlayerNames, ReadyStates,bIsHost, bCanStart, StartCountdownTime);
+    // 확장된 7개 인자값 델리게이트 브로드캐스트 적용 (TeamIDs 및 bAutoBalanceTeam 포함)
+    OnLobbyInfoChanged.Broadcast(PlayerNames, ReadyStates, TeamIDs, bIsHost, bCanStart, bAutoBalanceTeam, StartCountdownTime);
 }
