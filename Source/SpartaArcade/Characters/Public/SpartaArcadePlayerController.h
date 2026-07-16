@@ -54,6 +54,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta=(AllowPrivateAccess = "true"))
 	UInputAction* SpectatePrevAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta=(AllowPrivateAccess = "true"))
+	UInputAction* ToggleMenuAction;
+
 	// 관전 모드 진입여부
 	UPROPERTY(Transient)
 	bool bIsSpectating = false;
@@ -121,6 +124,7 @@ protected:
 	void OnUseShieldTriggered();
 	void OnSpectateNextTriggered();
 	void OnSpectatePrevTriggered();
+	void OnToggleMenuTriggered();
 
 	// 서버 연산 주도를 위한 Server RPC 선언
 	UFUNCTION(Server, Reliable)
