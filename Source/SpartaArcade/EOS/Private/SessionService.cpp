@@ -18,7 +18,8 @@ void USessionService::Initialize(IOnlineSubsystem* InOnlineSubsystem)
 	{
 		Session->AddOnCreateSessionCompleteDelegate_Handle(FOnCreateSessionCompleteDelegate::CreateUObject(this, &USessionService::OnCreateSessionComplete));
 		Session->AddOnStartSessionCompleteDelegate_Handle(FOnStartSessionCompleteDelegate::CreateUObject(this, &USessionService::OnStartSessionComplete));
-		Session->AddOnDestroySessionCompleteDelegate_Handle(FOnDestroySessionCompleteDelegate::CreateUObject(this, &USessionService::OnDestroySessionComplete));
+		//Session->AddOnDestroySessionCompleteDelegate_Handle(FOnDestroySessionCompleteDelegate::CreateUObject(this, &USessionService::OnDestroySessionComplete));
+		SessionDestroyComplete.BindUObject(this, &USessionService::OnDestroySessionComplete);
 		Session->AddOnFindSessionsCompleteDelegate_Handle(FOnFindSessionsCompleteDelegate::CreateUObject(this, &USessionService::OnFindSessionsComplete));
 		Session->AddOnJoinSessionCompleteDelegate_Handle(FOnJoinSessionCompleteDelegate::CreateUObject(this, &USessionService::OnJoinSessionComplete));
 		Session->AddOnSessionUserInviteAcceptedDelegate_Handle(FOnSessionUserInviteAcceptedDelegate::CreateUObject(this, &USessionService::OnSessionInviteAccepted));
@@ -56,7 +57,11 @@ void USessionService::DestroySession()
 	{
 		return;
 	}
-	Session->DestroySession(NAME_GameSession);
+
+	// EOSPlus 에서는 해당 함수로 세션을 삭제하면, 델리게이트 OnDestroySessionComplete가 호출되지 않음. 
+	// 따라서, 델리게이트를 직접 호출하도록 수정함.
+	//Session->DestroySession(NAME_GameSession);
+	Session->DestroySession(NAME_GameSession, SessionDestroyComplete);
 }
 
 void USessionService::FindSessions()

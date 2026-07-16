@@ -87,6 +87,8 @@ private:
 
 	bool bPendingJoinAfterDestroy;
 
+	FOnDestroySessionCompleteDelegate SessionDestroyComplete;
+
 public:
 	FOnStartSessionCompleteEvent OnStartSessionCompleteEvent;
 	FOnSearchSessionCompleteEvent OnSearchSessionCompleteEvent;
