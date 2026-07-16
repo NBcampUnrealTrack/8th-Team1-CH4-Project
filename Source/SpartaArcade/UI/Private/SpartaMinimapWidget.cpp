@@ -5,7 +5,6 @@
 #include "GameFramework/Character.h"
 #include "Kismet/GameplayStatics.h"
 #include "Level/Public/SpartaArcadeMapBuilder.h"
-#include "Level/Public/SpartaArcadeZoneManager.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/SceneCaptureComponent2D.h"
 #include "Engine/TextureRenderTarget2D.h"
@@ -50,23 +49,7 @@ void USpartaMinimapWidget::NativeConstruct()
             MinimapBackground->SetColorAndOpacity(FLinearColor(0.05f, 0.05f, 0.05f, 0.7f)); // 반투명 검은색 폴백 배경
         }
         
-        // 3. 세이프존 안내선(원) 생성 및 레이아웃
-        if (MinimapCanvas && !SafeZoneIndicator)
-        {
-            SafeZoneIndicator = Tree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("SafeZoneIndicator"));
-            UCanvasPanelSlot* ZoneSlot = MinimapCanvas->AddChildToCanvas(SafeZoneIndicator);
-            if (ZoneSlot)
-            {
-                ZoneSlot->SetAnchors(FAnchors(0.5f, 0.5f)); // 중앙 앵커
-                ZoneSlot->SetAlignment(FVector2D(0.5f, 0.5f)); // 중앙 피벗
-                ZoneSlot->SetPosition(FVector2D::ZeroVector);
-                ZoneSlot->SetZOrder(1);
-            }
-            // 엔진 기본 원 텍스처 또는 흰색 평면에 적색 곱하기
-            SafeZoneIndicator->SetColorAndOpacity(FLinearColor(1.f, 0.1f, 0.1f, 0.8f));
-        }
-
-        // 4. 플레이어 위치 마커 생성 및 레이아웃
+        // 3. 플레이어 위치 마커 생성 및 레이아웃
         if (MinimapCanvas && !PlayerMarker)
         {
             PlayerMarker = Tree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("PlayerMarker"));
@@ -108,34 +91,10 @@ void USpartaMinimapWidget::NativeTick(const FGeometry& MyGeometry, float InDelta
             MapWorldSize = FMath::Max(GridWidth, GridHeight) * TileSize;
             MapCenter = CachedMapBuilder->GetActorLocation();
         }
-
-        // 2. 존 매니저를 통한 실시간 안전 구역 반경 동기화
-        static TWeakObjectPtr<ASpartaArcadeZoneManager> CachedZoneManager = nullptr;
-        if (!CachedZoneManager.IsValid())
-        {
-            CachedZoneManager = Cast<ASpartaArcadeZoneManager>(UGameplayStatics::GetActorOfClass(World, ASpartaArcadeZoneManager::StaticClass()));
-        }
-
-        if (CachedZoneManager.IsValid())
-        {
-            float ShrinkProgress = CachedZoneManager->GetShrinkProgress();
-            
-            float MaxRadius = MapWorldSize * 0.5f;
-            float MinRadius = (CachedMapBuilder.IsValid()) ? (CachedMapBuilder->GetTileSize() * 5.0f) : 500.f;
-            float CurrentSafeRadius = FMath::Lerp(MaxRadius, MinRadius, ShrinkProgress);
-
-            UpdateSafeZone(MapCenter, CurrentSafeRadius);
-        }
     }
 
-    // 매 프레임 플레이어 마커 및 자기장 표시 위치 동기화
+    // 매 프레임 플레이어 마커 위치 동기화
     UpdateMarkerPositions();
-}
-
-void USpartaMinimapWidget::UpdateSafeZone(const FVector& ZoneCenter, float ZoneRadius)
-{
-    CachedSafeZoneCenter = ZoneCenter;
-    CachedSafeZoneRadius = ZoneRadius;
 }
 
 void USpartaMinimapWidget::SetupMapStructure(UTexture2D* MapTexture, float WorldSize)
@@ -234,26 +193,6 @@ void USpartaMinimapWidget::UpdateMarkerPositions()
         float PlayerYaw = PlayerPawn->GetActorRotation().Yaw;
         PlayerMarker->SetRenderTransformAngle(PlayerYaw);
     }
-
-    // 3. 자기장 안전 구역 상대 위치 갱신
-    if (SafeZoneIndicator)
-    {
-        UCanvasPanelSlot* SafeZoneSlot = Cast<UCanvasPanelSlot>(SafeZoneIndicator->Slot);
-        if (SafeZoneSlot)
-        {
-            SafeZoneSlot->SetAnchors(FAnchors(0.5f, 0.5f));
-            SafeZoneSlot->SetAlignment(FVector2D(0.5f, 0.5f));
-
-            // 플레이어 대비 상대 픽셀 오프셋을 계산하여 인디케이터 위치로 설정 (중앙 앵커 기준)
-            FVector2D SafeZoneMinimapPos = WorldToMinimapPosition(CachedSafeZoneCenter, PlayerLocation);
-            SafeZoneSlot->SetPosition(SafeZoneMinimapPos);
-
-            // 미니맵 뷰 반경에 따른 자기장 크기 스케일링
-            float MinimapRadiusSizeX = (CachedSafeZoneRadius * 2.0f / MinimapViewRadius) * MinimapCanvasSize.X;
-            float MinimapRadiusSizeY = (CachedSafeZoneRadius * 2.0f / MinimapViewRadius) * MinimapCanvasSize.Y;
-            SafeZoneSlot->SetSize(FVector2D(MinimapRadiusSizeX, MinimapRadiusSizeY));
-        }
-    }
 }
 
 // UWidget 및 USlot의 ReleaseSlateResources()를 명시적으로 호출하여 Slate 리소스 메모리 누수 해결
@@ -301,15 +240,6 @@ void USpartaMinimapWidget::ReleaseSlateResources(bool bReleaseChildren)
             PlayerMarker->Slot->ReleaseSlateResources(bReleaseChildren);
         }
         PlayerMarker->ReleaseSlateResources(bReleaseChildren);
-    }
-
-    if (SafeZoneIndicator)
-    {
-        if (SafeZoneIndicator->Slot)
-        {
-            SafeZoneIndicator->Slot->ReleaseSlateResources(bReleaseChildren);
-        }
-        SafeZoneIndicator->ReleaseSlateResources(bReleaseChildren);
     }
 }
 
