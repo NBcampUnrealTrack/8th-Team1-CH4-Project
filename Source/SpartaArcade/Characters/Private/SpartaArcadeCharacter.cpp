@@ -147,6 +147,8 @@ void ASpartaArcadeCharacter::PossessedBy(AController* NewController)
 			}
 		}
 	}
+	// 서버 측에서 빙의 시 컴포넌트 및 HUD 초기화 진행
+	InitializeCharacterComponents();
 	UpdateNickname(); 
 }
 
@@ -157,6 +159,8 @@ void ASpartaArcadeCharacter::OnRep_PlayerState()
 	{                                                                                                                                                                                                                             
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);                                                                                                                                                                 
 	}                                                                                                                                                                                                                             
+	// 클라이언트 측에서 PlayerState 수신 시 컴포넌트 및 HUD 연동 초기화 재수행
+	InitializeCharacterComponents();
 	UpdateNickname();
 }     
 
@@ -196,8 +200,8 @@ float ASpartaArcadeCharacter::TakeDamage(float DamageAmount, struct FDamageEvent
 
 void ASpartaArcadeCharacter::InitializeCharacterComponents()
 {
-	// 이미 초기화가 완료되어 SpartaPlayerState가 할당되어 있다면 중복 실행을 차단합니다.
-	if (IsValid(SpartaPlayerState))
+	// 이미 초기화가 완료된 경우 실행 차단
+	if (bComponentsInitialized)
 	{
 		return;
 	}
@@ -220,6 +224,13 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 	FName RowName = FName(TEXT("Default"));
 	UMaterialInstance* TargetMaterial = nullptr;
 	SpartaPlayerState = GetPlayerState<ASpartaPlayerState>();
+	
+	// PlayerState가 아직 존재하지 않거나 캐스팅에 실패한 경우 조기 리턴 (OnRep_PlayerState 등에서 재수행 보장)
+	if (!IsValid(SpartaPlayerState))
+	{
+		return;
+	}
+
 	if (IsValid(SpartaPlayerState))
 	{
 		switch (SpartaPlayerState->GetCharacterType())
@@ -285,6 +296,9 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 		}
 	}
 	UpdateNickname();
+
+	// 성공적으로 모든 초기화 및 HUD 바인딩 완료 시 플래그 설정
+	bComponentsInitialized = true;
 }
 
 
@@ -352,6 +366,11 @@ void ASpartaArcadeCharacter::UnlockKickBomb()
 	
 	AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(KickBombAbilityClass,1, INDEX_NONE, this));
 	
+	// 발차기 활성화 시 PlayerState에도 해당 상태를 업데이트하여 UI와 동기화
+	if (IsValid(SpartaPlayerState))
+	{
+		SpartaPlayerState->SetKickUnlocked(true);
+	}
 }
 
 // 구급 상자 사용 어빌리티 트리거

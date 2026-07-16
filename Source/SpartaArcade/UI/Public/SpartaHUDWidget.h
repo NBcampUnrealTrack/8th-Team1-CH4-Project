@@ -86,6 +86,10 @@ protected:
     UPROPERTY(meta = (BindWidget, OptionalWidget = true))
     UImage* MedImg;
 
+    // 발차기 활성화 여부를 나타낼 아이콘 이미지 컴포넌트 변수 추가 (OptionalWidget)
+    UPROPERTY(meta = (BindWidget, OptionalWidget = true))
+    UImage* KickImg;
+
     UPROPERTY(meta = (BindWidget, OptionalWidget = true))
     class USpartaMinimapWidget* WBP_MinimapWidget; // 미니맵 UI 연동 변수 추가
 
@@ -122,6 +126,10 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "UI | Update")
     void UpdateShieldItemStatus(int32 ShieldCount);
+
+    // 발차기 활성화 가시성 제어 함수 선언
+    UFUNCTION(BlueprintCallable, Category = "UI | Update")
+    void UpdateKickStatus(bool bCanKick);
     
     // OnHit 델리게이트와 시그니처를 맞추기 위해 매개변수가 없는 HandleOnHit 추가
     UFUNCTION()
@@ -132,6 +140,10 @@ public:
 
     UFUNCTION()
     void HandleOnShieldBlock();
+
+    // 발차기 델리게이트 수신 핸들러 함수 선언
+    UFUNCTION()
+    void HandleOnKickUnlockedChanged(bool bIsUnlocked);
 
     // UI 업데이트 함수 추가
     UFUNCTION(BlueprintCallable, Category = "UI | Update")
@@ -146,6 +158,10 @@ public:
 	void InitializeHUD(ASpartaPlayerState* PlayerState, UBomberAttributeSet* InAttributeSet, UCombatComponent* CombatComp, UBombPlacerComponent* BombPlacerComp);
 
 private:
+    // 매 틱마다 무거운 정보(생존 플레이어 루프, 자기장 탐색, 텍스트 리빌드)를 갱신하지 않도록 1초 주기 타이머 추가
+    FTimerHandle GameStateTimerHandle;
+    void UpdateGameStateTimer();
+
     // 내부 헬퍼 함수
     FString FormatTime(int32 TotalSeconds) const;
 

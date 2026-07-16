@@ -11,6 +11,7 @@ void ASpartaPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 	DOREPLIFETIME(ASpartaPlayerState, Hearts);
 	DOREPLIFETIME(ASpartaPlayerState, CurrentState);
 	DOREPLIFETIME(ASpartaPlayerState, Shields);
+	DOREPLIFETIME(ASpartaPlayerState, bIsKickUnlocked);
 }
 
 void ASpartaPlayerState::SetCharacterType(ESpartaArcadeCharacterType NewType)
@@ -156,4 +157,31 @@ void ASpartaPlayerState::BroadcastCurrentState()
 	OnRep_CurrentState();
 	// 구급약 개수 초기 상태 브로드캐스트 호출 추가
 	OnRep_FirstAidKits();
+	// 발차기 해제 초기 상태 브로드캐스트 호출 추가
+	OnRep_bIsKickUnlocked();
+}
+
+// 발차기 잠금 해제 세터 함수 정의
+void ASpartaPlayerState::SetKickUnlocked(bool bUnlocked)
+{
+	if (HasAuthority())
+	{
+		bIsKickUnlocked = bUnlocked;
+		OnRep_bIsKickUnlocked();
+	}
+}
+
+// 발차기 잠금 해제 상태 반환 함수 정의
+bool ASpartaPlayerState::IsKickUnlocked() const
+{
+	return bIsKickUnlocked;
+}
+
+// 발차기 노티파이 함수 정의. 델리게이트를 통해 클라이언트 UI에 알림.
+void ASpartaPlayerState::OnRep_bIsKickUnlocked()
+{
+	if (OnKickUnlockedChanged.IsBound())
+	{
+		OnKickUnlockedChanged.Broadcast(bIsKickUnlocked);
+	}
 }

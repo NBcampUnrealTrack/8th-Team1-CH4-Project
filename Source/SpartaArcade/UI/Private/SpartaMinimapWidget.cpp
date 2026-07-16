@@ -352,6 +352,11 @@ void USpartaMinimapWidget::InitializeDynamicRenderTarget()
             // SceneCapture의 타겟 렌더타겟을 동적으로 생성한 RT로 변경
             SceneCapture->TextureTarget = DynamicRenderTarget;
             
+            //미니맵 카메라 갱신 누락 방지를 위해 매 프레임 캡처 및 움직임 기반 캡처를 강제 활성화하고 즉시 1회 캡처
+            SceneCapture->bCaptureEveryFrame = true;
+            SceneCapture->bCaptureOnMovement = true;
+            SceneCapture->CaptureScene();
+            
             //씬 캡쳐 카메라의 상대 높이를 가져와 캐싱
             CachedCameraRelativeZ = SceneCapture->GetRelativeLocation().Z;
             if (CachedCameraRelativeZ < 100.f)
@@ -359,9 +364,22 @@ void USpartaMinimapWidget::InitializeDynamicRenderTarget()
                 CachedCameraRelativeZ = 1500.f; // 높이가 비정상적인 경우 디폴트 1500 설정
             }
 
-            MinimapBackground->SetBrushResourceObject(DynamicRenderTarget);
+            // 미니맵 UI 머티리얼(MinimapMaterialClass)이 지정된 경우 동적 인스턴스를 생성해 렌더타겟 텍스처를 바인딩
+            if (MinimapMaterialClass)
+            {
+                DynamicMinimapMaterial = UMaterialInstanceDynamic::Create(MinimapMaterialClass, this);
+                if (DynamicMinimapMaterial)
+                {
+                    DynamicMinimapMaterial->SetTextureParameterValue(TEXT("RT_Minimap"), DynamicRenderTarget);
+                    MinimapBackground->SetBrushFromMaterial(DynamicMinimapMaterial);
+                }
+            }
+            else
+            {
+                MinimapBackground->SetBrushResourceObject(DynamicRenderTarget);
+            }
             
-            UE_LOG(LogTemp, Warning, TEXT("[MinimapSystem] 플레이어 %s 를 위한 동적 미니맵 렌더타겟(텍스처 직접 주입)이 성공적으로 생성되었습니다."), *PlayerPawn->GetName());
+            UE_LOG(LogTemp, Warning, TEXT("[MinimapSystem] 플레이어 %s 를 위한 동적 미니맵 렌더타겟 및 머터리얼 인스턴스 연동이 완료되었습니다."), *PlayerPawn->GetName());
             bInitializedDynamicRT = true;
         }
     }
