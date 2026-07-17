@@ -117,6 +117,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Gameplay")
 	FORCEINLINE int32 GetFirstAidKitCount() const { return FirstAidKits; }
 
+	FORCEINLINE UBomberAttributeSet* GetAttributeSet() const { return AttributeSet; }
+
+	FORCEINLINE UCombatComponent* GetCombatComponent() const { return CombatComponent; }
+
 protected:
 	// 캐릭터의 하트 체력, 속도 레벨, 폭탄 소지 한도 및 기절 상태 속성
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attributes|Setup")

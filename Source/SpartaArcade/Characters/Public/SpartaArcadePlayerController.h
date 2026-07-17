@@ -100,6 +100,10 @@ public:
 	// 다음 / 이전 대상으로 전환
 	void SpectateNext();
 	void SpectatePrev();
+	bool MoveSpectateTargetIndex(int32 Direction);
+
+	// HUD 업데이트를 위한 관전 대상 전환 함수
+	void SpectateTarget();
 
 	UFUNCTION(Client, Reliable)
 	void ClientShowMatchResult(EMatchResult Result, int32 MyRank, const TArray<FMatchPlayerResult>& PlayerResults);

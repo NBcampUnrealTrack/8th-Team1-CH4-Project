@@ -303,14 +303,10 @@ void ASpartaArcadeCharacter::InitializeHUD()
 			USpartaHUDWidget* HUDWidget = Cast<USpartaHUDWidget>(PC->HUDUIWidgetInstance);
 			if (IsValid(HUDWidget))
 			{
-				HUDWidget->InitializeHUD(SpartaPlayerState, AttributeSet, CombatComponent, nullptr);
+				HUDWidget->InitializeHUD(SpartaPlayerState, AttributeSet, CombatComponent);
 				SpartaPlayerState->BroadcastCurrentState();
 				CombatComponent->BroadcastCurrentState();
 			}
-		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("ASpartaArcadeCharacter::InitializeHUD - HUDWidgetInstance 또는 필요한 컴포넌트가 유효하지 않음"));
 		}
 	}
 }

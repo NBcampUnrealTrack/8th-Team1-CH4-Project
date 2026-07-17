@@ -155,7 +155,11 @@ public:
     UFUNCTION(BlueprintCallable, Category = "UI | Update")
     void UpdateHasShield(bool bHasShield);
 
-	void InitializeHUD(ASpartaPlayerState* PlayerState, UBomberAttributeSet* InAttributeSet, UCombatComponent* CombatComp, UBombPlacerComponent* BombPlacerComp);
+	void InitializeHUD(ASpartaPlayerState* PlayerState, UBomberAttributeSet* InAttributeSet, UCombatComponent* CombatComp);
+
+	void DeinitializeHUD();
+
+	void BindToTarget(ASpartaPlayerState* PlayerState, UBomberAttributeSet* InAttributeSet, UCombatComponent* CombatComp);
 
 private:
     // 매 틱마다 무거운 정보(생존 플레이어 루프, 자기장 탐색, 텍스트 리빌드)를 갱신하지 않도록 1초 주기 타이머 추가
@@ -174,21 +178,17 @@ private:
     TObjectPtr<ASpartaPlayerState> SpartaPlayerState;
 
     UPROPERTY()
-    TObjectPtr<UStatComponent> StatComponent;
-
-    UPROPERTY()
     TObjectPtr<UBomberAttributeSet> BomberAttributeSet;
 
     UPROPERTY()
     TObjectPtr<UCombatComponent> CombatComponent;
-
-    UPROPERTY()
-    TObjectPtr<UBombPlacerComponent> BombPlacerComponent;
 
     int32 CachedAliveCount    = -1;
     int32 CachedMatchSeconds  = -1;
     float CachedStunProgress  = -1.0f;
     int32 CachedCurrentHearts = -1;
     int32 CachedMaxHearts     = -1;
+
+    FDelegateHandle CurrentPlacedBombsHandle;
 	bool bIsInitialized = false;
 };
