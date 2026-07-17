@@ -70,6 +70,8 @@ public:
 
 	FMatchPlayerResult CreateGameResult(const ASpartaPlayerState* PlayerState);
 
+	bool IsTeamEliminated(int32 TeamID) const;
+
 	//----------------------
 	// 스폰 위치 조정 함수
 	void TeleportPlayersToSpawns(const TArray<FVector>& SpawnLocations);

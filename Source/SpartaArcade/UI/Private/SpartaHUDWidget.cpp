@@ -317,6 +317,7 @@ void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UBomberAtt
 
     if (PlayerState)
     {
+		UE_LOG(LogTemp, Log, TEXT("USpartaHUDWidget::InitializeHUD - PlayerState is valid. Binding delegates."));
 		PlayerState->OnHeartsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateHearts);
 		PlayerState->OnStunStateChanged.AddDynamic(this, &USpartaHUDWidget::SetStunActive);
 		PlayerState->OnFirstAidKitsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateMedKitStatus);

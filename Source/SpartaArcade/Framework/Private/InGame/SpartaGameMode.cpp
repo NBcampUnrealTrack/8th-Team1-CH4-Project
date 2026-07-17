@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "InGame/SpartaGameMode.h"
@@ -134,13 +134,6 @@ void ASpartaGameMode::HandlePlayerEliminated(ASpartaPlayerState* DeadPlayer)
 		return;
 	}
 
-	// 만약 TeamInfoMap이 비어있다면 즉시 자가 복구 초기화 수행
-	if (TeamInfoMap.Num() == 0)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[HandlePlayerEliminated] TeamInfoMap is empty. Rebuilding team info dynamically."));
-		InitializeTeamInfo();
-	}
-
 	UE_LOG(LogTemp, Warning, TEXT("[HandlePlayerEliminated] DeadPlayer: %s, TeamID: %d"), *DeadPlayer->GetPlayerName(), DeadPlayer->GetTeamID());
 
 	int32 TeamID = DeadPlayer->GetTeamID();
@@ -170,10 +163,6 @@ void ASpartaGameMode::HandlePlayerEliminated(ASpartaPlayerState* DeadPlayer)
 			}
 			DecreaseAliveTeam();
 		}
-
-		// 개인 결과 화면(순위 + 관전/로비 선택)은 사망 모션이 끝나는 시점에
-		// ASpartaArcadeCharacter::EliminateDestroy()에서 띄운다 (즉시 띄우지 않음).
-		// 최종 승패 결과는 매치가 끝날 때 ShowGameResultToAllPlayers()에서 한 번에 브로드캐스트됨
 	}
 
 	CheckGameEnd();
@@ -281,11 +270,6 @@ FMatchPlayerResult ASpartaGameMode::CreateGameResult(const ASpartaPlayerState* P
 	// 두 객체가 모두 유효할 때 게임 결과 구조체를 채우도록 올바른 조건식 적용
 	if(IsValid(PlayerState) && IsValid(SpartaGameState))
 	{
-		// 만약 TeamInfoMap이 비어있다면 즉시 자가 복구 초기화 수행
-		if (TeamInfoMap.Num() == 0)
-		{
-			InitializeTeamInfo();
-		}
 		// PlayerId 대신 고유 TeamID 사용
 		int32 TeamID = PlayerState->GetTeamID();
 		if (TeamInfoMap.Contains(TeamID))
@@ -306,13 +290,6 @@ FMatchPlayerResult ASpartaGameMode::CreateGameResult(const ASpartaPlayerState* P
 
 void ASpartaGameMode::ShowGameResultToAllPlayers()
 {
-	// 만약 TeamInfoMap이 비어있다면 즉시 자가 복구 초기화 수행
-	if (TeamInfoMap.Num() == 0)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[ShowGameResultToAllPlayers] TeamInfoMap is empty. Rebuilding team info dynamically."));
-		InitializeTeamInfo();
-	}
-
 	for (APlayerState* PlayerState : SpartaGameState->PlayerArray)
 	{
 		ASpartaPlayerState* SpartaPlayerState = Cast<ASpartaPlayerState>(PlayerState);
@@ -366,6 +343,15 @@ void ASpartaGameMode::ShowGameResultToEliminatedPlayer(ASpartaPlayerState* DeadP
 			PC->ClientShowMatchResult(EMatchResult::None, PlayerRank, TArray<FMatchPlayerResult>());
 		}
 	}
+}
+
+bool ASpartaGameMode::IsTeamEliminated(int32 TeamID) const
+{
+	if (TeamInfoMap.Contains(TeamID))
+	{
+		return TeamInfoMap[TeamID].bEliminated;
+	}
+	return false;
 }
 
 //----------------------

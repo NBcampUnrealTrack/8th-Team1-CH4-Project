@@ -121,6 +121,9 @@ void USpartaMenuFlowWidget::ShowMatchResult(EMatchResult Result, int32 MyRank, c
         case EMatchResult::Draw:
             TitleStr = TEXT("무승부!");
             break;
+        case EMatchResult::None:
+            TitleStr = TEXT("팀 생존 중..");
+			break;
         }
         ResultTitleText->SetText(FText::FromString(TitleStr));
     }
@@ -128,7 +131,14 @@ void USpartaMenuFlowWidget::ShowMatchResult(EMatchResult Result, int32 MyRank, c
     // 2. 본인 순위 출력
     if (MyRankText)
     {
-        MyRankText->SetText(FText::FromString(FString::Printf(TEXT("순위 : #%d"), MyRank)));
+        if(Result == EMatchResult::None)
+        {
+            MyRankText->SetText(FText::FromString(TEXT("순위 : 진행 중..")));
+        }
+        else
+        {
+            MyRankText->SetText(FText::FromString(FString::Printf(TEXT("순위 : #%d"), MyRank)));
+        }
     }
 
     // 3. 리더보드 목록 생성 및 렌더링

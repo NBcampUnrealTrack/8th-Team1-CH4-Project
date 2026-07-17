@@ -211,8 +211,8 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 	{
 		return;
 	}
-
-	if (!IsValid(GetPlayerState()) || !IsValid(CombatComponent) || !IsValid(Cast<ASpartaArcadePlayerController>(GetController())->HUDUIWidgetInstance))
+	ASpartaArcadePlayerController* PC = Cast<ASpartaArcadePlayerController>(GetController());
+	if (!IsValid(GetPlayerState()) || !IsValid(CombatComponent) || !IsValid(PC) || !IsValid(PC->HUDUIWidgetInstance))
 	{
 		if(InitializedComponentsCount >= MaxInitializedComponentsCount)
 		{
@@ -286,17 +286,15 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 
 	if (IsLocallyControlled())
 	{
-		if (ASpartaArcadePlayerController* PC = Cast<ASpartaArcadePlayerController>(GetController()))
+
+		if (PC->HUDUIWidgetInstance)
 		{
-			if (PC->HUDUIWidgetInstance)
+			USpartaHUDWidget* HUDWidget = Cast<USpartaHUDWidget>(PC->HUDUIWidgetInstance);
+			if (HUDWidget)
 			{
-				USpartaHUDWidget* HUDWidget = Cast<USpartaHUDWidget>(PC->HUDUIWidgetInstance);
-				if (HUDWidget)
-				{
-					HUDWidget->InitializeHUD(SpartaPlayerState, AttributeSet, CombatComponent, nullptr);
-					SpartaPlayerState->BroadcastCurrentState();
-					CombatComponent->BroadcastCurrentState();
-				}
+				HUDWidget->InitializeHUD(SpartaPlayerState, AttributeSet, CombatComponent, nullptr);
+				SpartaPlayerState->BroadcastCurrentState();
+				CombatComponent->BroadcastCurrentState();
 			}
 		}
 	}
@@ -661,7 +659,17 @@ void ASpartaArcadeCharacter::EliminateDestroy()
 
 	if (ASpartaGameMode* GameMode = GetWorld()->GetAuthGameMode<ASpartaGameMode>())
 	{
-		GameMode->ShowGameResultToEliminatedPlayer(SpartaPlayerState);
+		int32 TeamID = SpartaPlayerState ? SpartaPlayerState->GetTeamID() : -1;
+		// 팀 전체 탈락
+		if (GameMode->IsTeamEliminated(TeamID))
+		{
+			GameMode->ShowGameResultToTeam(TeamID);
+		}
+		// 팀 생존, 개인 탈락
+		else
+		{
+			GameMode->ShowGameResultToEliminatedPlayer(SpartaPlayerState);
+		}
 	}
 
 	Destroy();
@@ -764,55 +772,6 @@ void ASpartaArcadeCharacter::UpdateNickname()
 		// PlayerState가 유효해질 때까지 재시도
 		FTimerHandle TempHandle;
 		GetWorldTimerManager().SetTimer(TempHandle, this, &ASpartaArcadeCharacter::UpdateNickname, 0.1f, false);
-	}
-}
-
-void ASpartaArcadeCharacter::ShowMatchResultUI(EMatchResult Result)
-{
-	if (bMatchResultShown || !IsLocallyControlled())
-	{
-		return;
-	}
-	bMatchResultShown = true;
-
-	for (TObjectIterator<USpartaMenuFlowWidget> It; It; ++It)
-	{
-		if (It->GetWorld() == GetWorld())
-		{
-			int32 AliveCount = 0;
-			TArray<FMatchPlayerResult> MatchResults;
-
-			if (AGameStateBase* GS = GetWorld()->GetGameState())
-			{
-				for (APlayerState* PS : GS->PlayerArray)
-				{
-					if (ASpartaPlayerState* SPS = Cast<ASpartaPlayerState>(PS))
-					{
-						if (SPS->GetCurrentState() != EBomberPlayerState::Eliminated)
-						{
-							AliveCount++;
-						}
-
-						FMatchPlayerResult Res;
-						Res.PlayerName = SPS->GetPlayerName();
-						Res.Rank = (SPS->GetCurrentState() == EBomberPlayerState::Eliminated) ? 4 : 1;
-						MatchResults.Add(Res);
-					}
-				}
-			}
-
-			// 사망 당시 살아있던 플레이어 수 기준 순위 오류 수정
-			// 패배 시 본인 사망 후 생존한 플레이어 수(AliveCount)에 1을 더하여 정확한 순위 계산 (나를 포함해 2명 생존 시 2등)
-			int32 FinalRank = (Result == EMatchResult::Defeat) ? (AliveCount + 1) : 1;
-			It->ShowMatchResult(Result, FinalRank, MatchResults);
-
-			if (APlayerController* PC = Cast<APlayerController>(GetController()))
-			{
-				PC->SetShowMouseCursor(true);
-				PC->SetInputMode(FInputModeUIOnly());
-			}
-			return;
-		}
 	}
 }
 

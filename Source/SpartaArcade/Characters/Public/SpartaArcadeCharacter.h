@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -95,8 +95,6 @@ public:
 
 	void UpdateNickname(); 
 
-	void ShowMatchResultUI(EMatchResult Result);
-
 	// UI 및 HUD 연동을 위한 Getter 함수
 	UFUNCTION(BlueprintPure, Category = "Gameplay")
 	float GetHP() const;
@@ -147,10 +145,6 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Attributes|Health")
 	int32 FirstAidKits;
-
-	// 팀전 구분을 위한 TeamID 속성
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attributes|Team")
-	int32 TeamID;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay")
 	TSubclassOf<class ASpartaArcadeBomb> BombClass;
