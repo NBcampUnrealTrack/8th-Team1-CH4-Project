@@ -32,6 +32,7 @@
 #include "Components/TextBlock.h"
 #include "Blueprint/WidgetTree.h"
 #include "Styling/SlateColor.h"
+#include "WorldToScreenWidget.h"
 
 ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 {
@@ -95,12 +96,6 @@ ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 	{
 		CombatStatTable = CombatStatTableFinder.Object;
 	}
-
-	NicknameWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("NicknameWidgetComponent"));
-	NicknameWidgetComponent->SetupAttachment(RootComponent);
-	NicknameWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen); // 항상 화면을 향하도록 Screen 스페이스 설정
-	NicknameWidgetComponent->SetDrawSize(FVector2D(200.f, 50.f));
-	NicknameWidgetComponent->SetRelativeLocation(FVector(0.f, 0.f, 130.f)); // 캐릭터 머리 위 높이로 적당히 배치
 }
 
 void ASpartaArcadeCharacter::BeginPlay()
@@ -159,7 +154,9 @@ void ASpartaArcadeCharacter::PossessedBy(AController* NewController)
 
 void ASpartaArcadeCharacter::OnRep_PlayerState()                                                                                                                                                                                  
 {                                                                                                                                                                                                                                 
-	Super::OnRep_PlayerState();                                                                                                                                                                                                   
+	Super::OnRep_PlayerState();                         
+	SpartaPlayerState = GetPlayerState<ASpartaPlayerState>();
+
 	if (IsValid(AbilitySystemComponent))                                                                                                                                                                                          
 	{                                                                                                                                                                                                                             
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);                                                                                                                                                                 
@@ -716,67 +713,47 @@ UAbilitySystemComponent* ASpartaArcadeCharacter::GetAbilitySystemComponent() con
 // 캐릭터 위에 닉네임을 상시 렌더링하고 동기화하는 함수
 void ASpartaArcadeCharacter::UpdateNickname()
 {
-	if (!IsValid(NicknameWidgetComponent))
+	if (GetNetMode() == NM_DedicatedServer || !NicknameWidgetClass || IsValid(NicknameWidget))
 	{
 		return;
 	}
 
-	UUserWidget* UserWidget = NicknameWidgetComponent->GetUserWidgetObject();
-	if (!UserWidget)
+	APlayerController* LocalPlayerController = nullptr;
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
-		// 위젯 오브젝트가 아직 로드되지 않은 경우, 0.1초 뒤에 재시도
-		FTimerHandle TempHandle;
-		GetWorldTimerManager().SetTimer(TempHandle, this, &ASpartaArcadeCharacter::UpdateNickname, 0.1f, false);
-		return;
-	}
+		APlayerController* PC = It->Get();
 
-	APlayerState* PS = GetPlayerState();
-	if (IsValid(PS))
-	{
-		FString PlayerName = PS->GetPlayerName();
-		
-		// 위젯 트리에서 첫 번째 TextBlock을 찾아 플레이어 닉네임 적용
-		UTextBlock* TargetText = nullptr;
-		UserWidget->WidgetTree->ForEachWidget([&TargetText](UWidget* Widget)
+		if (PC && PC->IsLocalController() && PC->GetLocalPlayer())
 		{
-			// 첫 번째 발견한 TextBlock만 선택되도록 수정
-			if (!TargetText)
-			{
-				if (UTextBlock* TextBlock = Cast<UTextBlock>(Widget))
-				{
-					TargetText = TextBlock;
-				}
-			}
-		});
-
-		if (TargetText)
-		{
-			TargetText->SetText(FText::FromString(PlayerName));
-
-			// Team 1이면 빨간색, Team 2면 파란색으로 닉네임 색상 표시
-			if (ASpartaPlayerState* SPS = Cast<ASpartaPlayerState>(PS))
-			{
-				int32 LocalTeamID = SPS->GetTeamID();
-				if (LocalTeamID == 1)
-				{
-					TargetText->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.25f, 0.25f)));
-				}
-				else if (LocalTeamID == 2)
-				{
-					TargetText->SetColorAndOpacity(FSlateColor(FLinearColor(0.25f, 0.5f, 1.0f)));
-				}
-				else
-				{
-					TargetText->SetColorAndOpacity(FSlateColor(FLinearColor::White)); // 기본 색상 (흰색)
-				}
-			}
+			LocalPlayerController = PC;
+			break;
 		}
 	}
-	else
+
+	ASpartaPlayerState* SPS = GetPlayerState<ASpartaPlayerState>();
+	if (!IsValid(SPS) || !IsValid(LocalPlayerController))
 	{
-		// PlayerState가 유효해질 때까지 재시도
-		FTimerHandle TempHandle;
-		GetWorldTimerManager().SetTimer(TempHandle, this, &ASpartaArcadeCharacter::UpdateNickname, 0.1f, false);
+		FTimerDelegate TimerDel;
+		TimerDel.BindUObject(this, &ASpartaArcadeCharacter::UpdateNickname);
+		GetWorldTimerManager().SetTimerForNextTick(TimerDel);
+		return;
+	}
+
+	if (LocalPlayerController)
+	{
+		UWorldToScreenWidget* NameWidget = CreateWidget<UWorldToScreenWidget>(LocalPlayerController, NicknameWidgetClass);
+		if (NameWidget)
+		{
+			NameWidget->AttachedActor = this;
+			NameWidget->HeightOffset = 130.f;
+			NameWidget->SetVisibility(ESlateVisibility::HitTestInvisible);
+			NameWidget->AddToViewport(-1);
+			NicknameWidget = NameWidget;
+
+			FString PlayerName = SPS->GetPlayerName();
+			int32 TeamID = SPS->GetTeamID();
+			NameWidget->SetNickname(PlayerName, TeamID, LocalPlayerController);
+		}
 	}
 }
 
