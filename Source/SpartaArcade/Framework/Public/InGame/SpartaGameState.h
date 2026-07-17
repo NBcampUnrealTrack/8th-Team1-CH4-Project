@@ -39,6 +39,7 @@ public:
 	void SetAliveTeamCount(int32 NewAliveTeamCount);
 	void SetTotalAliveTeamCount(int32 NewTotalAliveTeamCount);
 	void SetZonePhase(int32 NewZonePhase);
+	void SetGameModeType(EGameModeType NewGameModeType);
 
 protected:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "GameState")

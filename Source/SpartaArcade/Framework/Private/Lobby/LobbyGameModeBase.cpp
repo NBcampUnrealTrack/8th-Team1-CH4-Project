@@ -173,7 +173,7 @@ void ALobbyGameModeBase::AutoAssignTeams(int32 TeamCount)
 			return;
 		}
 
-		if(TeamCount <= 0)
+		if(TeamCount < 2)
 		{
 			TeamCount = 2;
 		}

@@ -12,6 +12,8 @@
 #include "Engine/OverlapResult.h"
 #include "Level/Public/SpartaArcadeMapBuilder.h"
 #include "SpartaArcadePlayerController.h"
+#include "EOSGameInstanceSubsystem.h"
+#include "SessionService.h"
 
 ASpartaGameMode::ASpartaGameMode()
 	: MaxInitializeTeamInfoCount(10)
@@ -27,6 +29,17 @@ void ASpartaGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 	SpartaGameState = GetGameState<ASpartaGameState>();
+
+	if(IsValid(SpartaGameState))
+	{
+		UEOSGameInstanceSubsystem* EOSGameInstanceSubsystem = GetGameInstance()->GetSubsystem<UEOSGameInstanceSubsystem>();
+		if (IsValid(EOSGameInstanceSubsystem))
+		{
+			FSessionInfo CurrentSessionInfo = EOSGameInstanceSubsystem->GetSessionService()->GetCurrentSessionInfo();
+			SpartaGameState->SetGameModeType(static_cast<EGameModeType>(CurrentSessionInfo.GameModeType));
+		}
+	}
+
 	GetWorldTimerManager().SetTimerForNextTick(this, &ASpartaGameMode::InitializeTeamInfo);
 }
 
@@ -370,8 +383,6 @@ void ASpartaGameMode::TeleportPlayersToSpawns(const TArray<FVector>& SpawnLocati
 			ExecuteSafeTeleportAndClear(PC, SpawnLocations);
 		}
 	}
-
-	InitializeTeamInfo();
 }
 
 int32 ASpartaGameMode::GetOrAssignSpawnIndex(APlayerController* PC)
