@@ -260,11 +260,6 @@ void ASpartaArcadePlayerController::ServerUseFirstAidKit_Implementation()
 
 void ASpartaArcadePlayerController::ClientShowMatchResult_Implementation(EMatchResult Result, int32 MyRank, const TArray<FMatchPlayerResult>& PlayerResults)
 {
-	if (IsValid(HUDUIWidgetInstance))
-	{
-		HUDUIWidgetInstance->SetVisibility(ESlateVisibility::Collapsed);
-	}
-
 	if(IsValid(MainMenuWidgetInstance))
 	{
 		MainMenuWidgetInstance->SetVisibility(ESlateVisibility::Visible);

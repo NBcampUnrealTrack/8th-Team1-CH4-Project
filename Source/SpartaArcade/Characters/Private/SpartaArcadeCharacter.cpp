@@ -120,6 +120,8 @@ void ASpartaArcadeCharacter::BeginPlay()
 		DefaultGroundFriction = GetCharacterMovement()->GroundFriction;
 		DefaultBrakingDeceleration = GetCharacterMovement()->BrakingDecelerationWalking;
 	}
+
+	InitializeHUD();
 }
 
 void ASpartaArcadeCharacter::PossessedBy(AController* NewController)
@@ -151,6 +153,7 @@ void ASpartaArcadeCharacter::PossessedBy(AController* NewController)
 	}
 	// 서버 측에서 빙의 시 컴포넌트 및 HUD 초기화 진행
 	InitializeCharacterComponents();
+	InitializeHUD();
 	UpdateNickname(); 
 }
 
@@ -163,6 +166,7 @@ void ASpartaArcadeCharacter::OnRep_PlayerState()
 	}                                                                                                                                                                                                                             
 	// 클라이언트 측에서 PlayerState 수신 시 컴포넌트 및 HUD 연동 초기화 재수행
 	InitializeCharacterComponents();
+	InitializeHUD();
 	UpdateNickname();
 }     
 
@@ -211,8 +215,9 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 	{
 		return;
 	}
-	ASpartaArcadePlayerController* PC = Cast<ASpartaArcadePlayerController>(GetController());
-	if (!IsValid(GetPlayerState()) || !IsValid(CombatComponent) || !IsValid(PC) || !IsValid(PC->HUDUIWidgetInstance))
+
+	SpartaPlayerState = GetPlayerState<ASpartaPlayerState>();
+	if (!IsValid(SpartaPlayerState) || !IsValid(CombatComponent))
 	{
 		if(InitializedComponentsCount >= MaxInitializedComponentsCount)
 		{
@@ -229,8 +234,6 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 	// 컴포넌트 기반 초기화 및 델리게이트 바인딩
 	FName RowName = FName(TEXT("Default"));
 	UMaterialInstance* TargetMaterial = nullptr;
-	SpartaPlayerState = GetPlayerState<ASpartaPlayerState>();
-	
 
 	if (IsValid(SpartaPlayerState))
 	{
@@ -284,27 +287,33 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 		}
 	}
 
-	if (IsLocallyControlled())
-	{
-
-		if (PC->HUDUIWidgetInstance)
-		{
-			USpartaHUDWidget* HUDWidget = Cast<USpartaHUDWidget>(PC->HUDUIWidgetInstance);
-			if (HUDWidget)
-			{
-				HUDWidget->InitializeHUD(SpartaPlayerState, AttributeSet, CombatComponent, nullptr);
-				SpartaPlayerState->BroadcastCurrentState();
-				CombatComponent->BroadcastCurrentState();
-			}
-		}
-	}
-
 	UpdateNickname();
 
 	// 성공적으로 모든 초기화 및 HUD 바인딩 완료 시 플래그 설정
 	bComponentsInitialized = true;
 }
 
+void ASpartaArcadeCharacter::InitializeHUD()
+{
+	if (IsLocallyControlled())
+	{
+		ASpartaArcadePlayerController* PC = Cast<ASpartaArcadePlayerController>(GetController());
+		if (IsValid(PC) && IsValid(PC->HUDUIWidgetInstance) && IsValid(SpartaPlayerState) && IsValid(AttributeSet) && IsValid(CombatComponent))
+		{
+			USpartaHUDWidget* HUDWidget = Cast<USpartaHUDWidget>(PC->HUDUIWidgetInstance);
+			if (IsValid(HUDWidget))
+			{
+				HUDWidget->InitializeHUD(SpartaPlayerState, AttributeSet, CombatComponent, nullptr);
+				SpartaPlayerState->BroadcastCurrentState();
+				CombatComponent->BroadcastCurrentState();
+			}
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("ASpartaArcadeCharacter::InitializeHUD - HUDWidgetInstance 또는 필요한 컴포넌트가 유효하지 않음"));
+		}
+	}
+}
 
 // 클래식 봄버맨 타일 일치를 위해 캐릭터의 현재 발밑 좌표를 100단위 그리드로 보정하여 스폰
 void ASpartaArcadeCharacter::PlaceBomb()

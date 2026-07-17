@@ -84,8 +84,6 @@ public:
 
 	void ClearAroundLocation(const FVector& Location, APawn* IgnoredPawn);
 
-
-
 private:
 	TObjectPtr<ASpartaGameState> SpartaGameState;
 

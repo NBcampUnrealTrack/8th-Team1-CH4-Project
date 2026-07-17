@@ -302,6 +302,12 @@ void USpartaHUDWidget::UpdateHasShield(bool bHasShield)
 
 void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UBomberAttributeSet* InAttributeSet, UCombatComponent* CombatComp, UBombPlacerComponent* BombPlacerComp)
 {
+    if(bIsInitialized)
+    {
+        return;
+	}
+    bIsInitialized = true;
+
     // 멤버 컴포넌트 캐싱 추가
     SpartaPlayerState = PlayerState;
     BomberAttributeSet = InAttributeSet;
@@ -331,7 +337,10 @@ void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UBomberAtt
 		// 발차기 기능 초기 가시성 상태 세팅
 		UpdateKickStatus(PlayerState->IsKickUnlocked());
     }
-    
+    else
+    {
+		UE_LOG(LogTemp, Warning, TEXT("USpartaHUDWidget::InitializeHUD - PlayerState is null."));
+    }
 
     if (InAttributeSet)
     {

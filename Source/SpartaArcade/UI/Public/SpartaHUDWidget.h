@@ -190,4 +190,5 @@ private:
     float CachedStunProgress  = -1.0f;
     int32 CachedCurrentHearts = -1;
     int32 CachedMaxHearts     = -1;
+	bool bIsInitialized = false;
 };

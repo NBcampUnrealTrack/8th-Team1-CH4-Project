@@ -61,7 +61,9 @@ protected:
 	void OnHitFlash(float FlashDuration);
 	
 	void InitializeCharacterComponents();
-	
+
+	void InitializeHUD();
+
 	virtual void OnRep_PlayerState() override;
 
 public:
