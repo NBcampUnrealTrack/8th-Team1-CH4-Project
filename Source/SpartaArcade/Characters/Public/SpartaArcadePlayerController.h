@@ -83,6 +83,8 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
 	TObjectPtr<USpartaMenuFlowWidget> MainMenuWidgetInstance;
 
+	FTimerHandle ResultUITimerHandle;
+	FMatchResultData MatchResultData;
 
 public:
 	// LeaveGame
@@ -106,8 +108,9 @@ public:
 	void SpectateTarget();
 
 	UFUNCTION(Client, Reliable)
-	void ClientShowMatchResult(EMatchResult Result, int32 MyRank, const TArray<FMatchPlayerResult>& PlayerResults);
+	void ClientShowMatchResult(const FMatchResultData& InMatchResultData);
 
+	void ShowMatchResult();
 protected:
 
 	virtual void SetupInputComponent() override;
@@ -117,7 +120,7 @@ protected:
 	// Pawn을 잃으면 엔진이 이 함수 안에서 자동으로 SetViewTarget(this)를 호출해
 	// 카메라를 컨트롤러 자신으로 되돌리므로, 관전 중이라면 그 직후 다시 관전 대상으로 되돌린다
 	virtual void BeginInactiveState() override;
-	
+
 	//  WASD 이동 입력 처리 함수
 	void OnMoveTriggered(const struct FInputActionValue& Value);
 

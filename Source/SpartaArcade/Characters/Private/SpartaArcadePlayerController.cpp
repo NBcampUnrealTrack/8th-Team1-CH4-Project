@@ -258,12 +258,26 @@ void ASpartaArcadePlayerController::ServerUseFirstAidKit_Implementation()
 	}
 }
 
-void ASpartaArcadePlayerController::ClientShowMatchResult_Implementation(EMatchResult Result, int32 MyRank, const TArray<FMatchPlayerResult>& PlayerResults)
+void ASpartaArcadePlayerController::ClientShowMatchResult_Implementation(const FMatchResultData& InMatchResultData)
 {
-	if(IsValid(MainMenuWidgetInstance))
+	if(IsValid(GetWorld()) == false)
+	{
+		return;
+	}
+
+	GetWorld()->GetTimerManager().ClearTimer(ResultUITimerHandle);
+
+	MatchResultData = InMatchResultData;
+	FTimerDelegate TimerDelegate;
+	GetWorld()->GetTimerManager().SetTimer(ResultUITimerHandle, this, &ASpartaArcadePlayerController::ShowMatchResult, 2.0f, false);
+}
+
+void ASpartaArcadePlayerController::ShowMatchResult()
+{
+	if (IsValid(MainMenuWidgetInstance))
 	{
 		MainMenuWidgetInstance->SetVisibility(ESlateVisibility::Visible);
-		MainMenuWidgetInstance->ShowMatchResult(Result, MyRank, PlayerResults);
+		MainMenuWidgetInstance->ShowMatchResult(MatchResultData);
 		FInputModeUIOnly Mode;
 		Mode.SetWidgetToFocus(MainMenuWidgetInstance->GetCachedWidget());
 		SetInputMode(Mode);

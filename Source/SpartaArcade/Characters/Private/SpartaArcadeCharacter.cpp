@@ -662,21 +662,6 @@ void ASpartaArcadeCharacter::EliminateDestroy()
 {
 	UE_LOG(LogTemp, Log, TEXT("%s 캐릭터 액터가 월드에서 완전히 제거(소멸)됩니다."), *GetName());
 
-	if (ASpartaGameMode* GameMode = GetWorld()->GetAuthGameMode<ASpartaGameMode>())
-	{
-		int32 TeamID = SpartaPlayerState ? SpartaPlayerState->GetTeamID() : -1;
-		// 팀 전체 탈락
-		if (GameMode->IsTeamEliminated(TeamID))
-		{
-			GameMode->ShowGameResultToTeam(TeamID);
-		}
-		// 팀 생존, 개인 탈락
-		else
-		{
-			GameMode->ShowGameResultToEliminatedPlayer(SpartaPlayerState);
-		}
-	}
-
 	Destroy();
 }
 

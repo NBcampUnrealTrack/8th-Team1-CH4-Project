@@ -175,6 +175,11 @@ void ASpartaGameMode::HandlePlayerEliminated(ASpartaPlayerState* DeadPlayer)
 				}
 			}
 			DecreaseAliveTeam();
+			ShowGameResultToTeam(TeamID);
+		}
+		else
+		{
+			ShowGameResultToEliminatedPlayer(DeadPlayer);
 		}
 	}
 
@@ -261,6 +266,7 @@ void ASpartaGameMode::InitializeTeamInfo()
 					TeamInfoMap.Add(TeamID, NewTeamInfo);
 					UE_LOG(LogTemp, Warning, TEXT("[InitializeTeamInfo] Added TeamID: %d to TeamInfoMap"), TeamID);
 				}
+				TeamInfoMap[TeamID].TeamPlayerStates.Add(SpartaPlayerState);
 				++TeamInfoMap[TeamID].AliveCount;
 				++TotalAlivePlayers;
 				UE_LOG(LogTemp, Warning, TEXT("[InitializeTeamInfo] Player: %s, Assigned TeamID: %d, Current AliveCount: %d"), *SpartaPlayerState->GetPlayerName(), TeamID, TeamInfoMap[TeamID].AliveCount);
@@ -311,15 +317,13 @@ void ASpartaGameMode::ShowGameResultToAllPlayers()
 			ASpartaArcadePlayerController* PC = Cast<ASpartaArcadePlayerController>(SpartaPlayerState->GetOwner());
 			if(IsValid(PC))
 			{
-				// PlayerId 대신 고유 TeamID 사용
 				int32 TeamID = SpartaPlayerState->GetTeamID();
 				int32 PlayerRank = TeamInfoMap.Contains(TeamID) ? TeamInfoMap[TeamID].Rank : 0;
-				UE_LOG(LogTemp, Warning, TEXT("[ShowGameResultToAllPlayers] PC: %s, PlayerState: %s, TeamID: %d, Rank: %d"), *PC->GetName(), *SpartaPlayerState->GetPlayerName(), TeamID, PlayerRank);
-				PC->ClientShowMatchResult(PlayerRank == 1 ? EMatchResult::Victory : EMatchResult::Defeat, PlayerRank, MatchResults);
-			}
-			else
-			{
-				UE_LOG(LogTemp, Warning, TEXT("[ShowGameResultToAllPlayers] PlayerState: %s Owner is not a valid ASpartaArcadePlayerController"), *SpartaPlayerState->GetPlayerName());
+				FMatchResultData MatchResultData;
+				MatchResultData.Result = PlayerRank == 1 ? EMatchResult::Victory : EMatchResult::Defeat;
+				MatchResultData.MyRank = PlayerRank;
+				MatchResultData.PlayerResults = MatchResults;
+				PC->ClientShowMatchResult(MatchResultData);
 			}
 		}
 	}
@@ -337,7 +341,11 @@ void ASpartaGameMode::ShowGameResultToTeam(int32 TeamID)
 				if(IsValid(PC))
 				{
 					int32 PlayerRank = TeamInfoMap[TeamID].Rank;
-					PC->ClientShowMatchResult(EMatchResult::Defeat, PlayerRank, TArray<FMatchPlayerResult>());
+					FMatchResultData MatchResultData;
+					MatchResultData.Result = EMatchResult::Defeat;
+					MatchResultData.MyRank = PlayerRank;
+					MatchResultData.PlayerResults = TArray<FMatchPlayerResult>();
+					PC->ClientShowMatchResult(MatchResultData);
 				}
 			}
 		}
@@ -353,7 +361,11 @@ void ASpartaGameMode::ShowGameResultToEliminatedPlayer(ASpartaPlayerState* DeadP
 		{
 			int32 TeamID = DeadPlayer->GetTeamID();
 			int32 PlayerRank = TeamInfoMap.Contains(TeamID) ? TeamInfoMap[TeamID].Rank : 0;
-			PC->ClientShowMatchResult(EMatchResult::None, PlayerRank, TArray<FMatchPlayerResult>());
+			FMatchResultData MatchResultData;
+			MatchResultData.Result = EMatchResult::InProgress;
+			MatchResultData.MyRank = PlayerRank;
+			MatchResultData.PlayerResults = TArray<FMatchPlayerResult>();
+			PC->ClientShowMatchResult(MatchResultData);
 		}
 	}
 }
