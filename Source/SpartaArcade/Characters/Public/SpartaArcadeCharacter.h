@@ -267,4 +267,22 @@ private:
 	int32 InitializedComponentsCount;
 
 	bool bComponentsInitialized = false;
+
+	//------------------------------
+	// 애니메이션 재생 멀티캐스트 함수
+
+	UFUNCTION(NetMulticast, UnReliable)
+	void MulticastPlayPlaceBombAnim();
+
+	UFUNCTION(NetMulticast, UnReliable)
+	void MulticastPlayKickAnim();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastPlayDeathAnim();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastHitFlash(float FlashDuration);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastStopAnim(float InBlendOutTime);
 };

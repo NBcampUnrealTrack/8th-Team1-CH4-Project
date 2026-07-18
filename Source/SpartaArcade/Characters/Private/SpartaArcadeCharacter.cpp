@@ -180,7 +180,8 @@ float ASpartaArcadeCharacter::TakeDamage(float DamageAmount, struct FDamageEvent
 
 			// 블루프린트에 구현된 피격 시각 연출(깜빡임 등)을 실행합니다.
 			// OnHitFlash는 폭탄/장애물 피격 모두에 적용됩니다.
-			OnHitFlash(1.0f);
+			MulticastHitFlash(1.0f);
+			//OnHitFlash(1.0f);
 
 			// 무적 시간은 CombatComponent::ApplyDamage() 내부에서 1초(InvincibleDuration)로 관리됩니다.
 			// 아래 ECC_Visibility 0.2초 차단은 폭발 스윕 중복 피격 방어용으로 병존시킵니다.
@@ -329,7 +330,8 @@ void ASpartaArcadeCharacter::PlayPlaceBombAnim()
 	// 실제 스폰 성공 시 어빌리티 단에서 이 함수를 호출하여 몽타주 재생
 	if (PlaceBombMontage)
 	{
-		PlayAnimMontage(PlaceBombMontage, 1.0f);
+		MulticastPlayPlaceBombAnim();
+		//PlayAnimMontage(PlaceBombMontage, 1.0f);
 	}
 }
 
@@ -362,7 +364,8 @@ void ASpartaArcadeCharacter::PerformUseShield()
 	SpartaPlayerState->SetShields(SpartaPlayerState->GetShields() - 1);
 	CombatComponent->GrantShield();
 	
-	OnHitFlash(3.0f);
+	MulticastHitFlash(3.0f);
+	//OnHitFlash(3.0f);
 }
 
 void ASpartaArcadeCharacter::UnlockKickBomb()
@@ -530,7 +533,8 @@ void ASpartaArcadeCharacter::PerformKickBomb()
 		FVector KickDir = GetSnappedKickDirection();
 		if (KickBombMontage)
 		{
-			PlayAnimMontage(KickBombMontage, 1.0f);
+			MulticastPlayKickAnim();
+			//PlayAnimMontage(KickBombMontage, 1.0f);
 		}
 		Bomb->Kick(KickDir);
 		UE_LOG(LogTemp, Log, TEXT("%s 가 폭탄을 %s 방향으로 찼습니다!"), *GetName(), *KickDir.ToString());
@@ -566,10 +570,7 @@ void ASpartaArcadeCharacter::HandleOnStun()
 	GetCharacterMovement()->DisableMovement();
 
 	// 기절 진입 시 현재 재생 중인 몽타주(폭탄 설치/차기 등)를 강제 정지하여 상태 기계 핑퐁 방지
-	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
-	{
-		AnimInstance->Montage_Stop(0.2f);
-	}
+	MulticastStopAnim(0.2f);
 
 	UE_LOG(LogTemp, Warning, TEXT("%s 기절 상태 진입!"), *GetName());
 }
@@ -625,7 +626,9 @@ void ASpartaArcadeCharacter::HandleOnEliminated()
 	float WaitDuration = DestroyDelay;
 	if (DeathMontage)
 	{
-		float MontageLength = PlayAnimMontage(DeathMontage, 1.0f);
+		MulticastPlayDeathAnim();
+		//float MontageLength = PlayAnimMontage(DeathMontage, 1.0f);
+		float MontageLength = DeathMontage->GetPlayLength();
 		WaitDuration = FMath::Max(DestroyDelay, MontageLength);
 	}
 
@@ -859,3 +862,66 @@ void ASpartaArcadeCharacter::ApplyTileEffectToMovement(float DeltaSeconds)
 	}
 }
 
+//------------------------------
+// 애니메이션 재생 멀티캐스트 함수
+
+void ASpartaArcadeCharacter::MulticastPlayPlaceBombAnim_Implementation()
+{
+	if(IsRunningDedicatedServer())
+	{
+		return;
+	}
+
+	if(IsValid(PlaceBombMontage))
+	{
+		PlayAnimMontage(PlaceBombMontage, 1.0f);
+	}
+}
+
+void ASpartaArcadeCharacter::MulticastPlayKickAnim_Implementation()
+{
+	if (IsRunningDedicatedServer())
+	{
+		return;
+	}
+
+	if (IsValid(KickBombMontage))
+	{
+		PlayAnimMontage(KickBombMontage, 1.0f);
+	}
+}
+
+void ASpartaArcadeCharacter::MulticastPlayDeathAnim_Implementation()
+{
+	if (IsRunningDedicatedServer())
+	{
+		return;
+	}
+	if (IsValid(DeathMontage))
+	{
+		PlayAnimMontage(DeathMontage, 1.0f);
+	}
+}
+
+void ASpartaArcadeCharacter::MulticastHitFlash_Implementation(float FlashDuration)
+{
+	if (IsRunningDedicatedServer())
+	{
+		return;
+	}
+	
+	OnHitFlash(FlashDuration);
+}
+
+void ASpartaArcadeCharacter::MulticastStopAnim_Implementation(float InBlendOutTime)
+{
+	if (IsRunningDedicatedServer())
+	{
+		return;
+	}
+
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		AnimInstance->Montage_Stop(0.2f);
+	}
+}
