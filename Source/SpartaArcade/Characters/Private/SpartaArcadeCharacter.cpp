@@ -52,8 +52,16 @@ ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 	// 무브먼트 컴포넌트 기본값 설정 (이동 방향으로 캐릭터 회전)
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 640.f, 0.f);
-	GetCharacterMovement()->bConstrainToPlane = true;
-	GetCharacterMovement()->bSnapToPlaneAtStart = true;
+	GetCharacterMovement()->bConstrainToPlane = false;
+	GetCharacterMovement()->bSnapToPlaneAtStart = false;
+	GetCharacterMovement()->GravityScale = 1.0f;
+	GetCharacterMovement()->MaxStepHeight = 45.0f;
+	GetCharacterMovement()->bAlwaysCheckFloor = true;
+	if (GetMesh())
+	{
+		GetMesh()->SetRelativeLocation(FVector(0.f, 0.f, -96.f));
+		GetMesh()->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
+	}
 
 	// 스프링암 생성 및 부착
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -107,6 +115,12 @@ void ASpartaArcadeCharacter::BeginPlay()
 
 	// 블루프린트 덮어쓰기 설정을 방어하기 위해 런타임에 틱 강제 활성화
 	SetActorTickEnabled(true);
+
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->bConstrainToPlane = false;
+		GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+	}
 
 	// 맵 빌더 인스턴스 검색 및 캐싱
 	CachedMapBuilder = Cast<ASpartaArcadeMapBuilder>(UGameplayStatics::GetActorOfClass(GetWorld(), ASpartaArcadeMapBuilder::StaticClass()));

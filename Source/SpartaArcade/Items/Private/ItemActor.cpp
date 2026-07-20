@@ -16,10 +16,12 @@ AItemActor::AItemActor()
 
     CollisionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionSphere"));
     SetRootComponent(CollisionSphere);
-    CollisionSphere->SetSphereRadius(50.f);
+    CollisionSphere->SetSphereRadius(75.f);
     CollisionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     CollisionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
     CollisionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+    CollisionSphere->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap);
+    CollisionSphere->SetGenerateOverlapEvents(true);
     CollisionSphere->SetMobility(EComponentMobility::Movable);
 
     ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
@@ -27,7 +29,6 @@ AItemActor::AItemActor()
     ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
     bReplicates = true;
-    // Modified: [경고 수정] UE 5.5 Deprecation - SetNetUpdateFrequency / SetMinNetUpdateFrequency 사용
     SetNetUpdateFrequency(66.0f);
     SetMinNetUpdateFrequency(2.0f);
 
@@ -41,6 +42,8 @@ void AItemActor::BeginPlay()
     if (CollisionSphere)
     {
         CollisionSphere->SetMobility(EComponentMobility::Movable);
+        CollisionSphere->SetGenerateOverlapEvents(true);
+        CollisionSphere->UpdateOverlaps();
     }
 
     Super::BeginPlay();
@@ -64,6 +67,11 @@ void AItemActor::InitializeItem(FName InItemRowName, UDataTable* InItemDataTable
     ItemDataTable = InItemDataTable;
 
     UpdateItemVisual();
+
+    if (CollisionSphere && HasAuthority())
+    {
+        CollisionSphere->UpdateOverlaps();
+    }
 }
 
 void AItemActor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -80,6 +88,9 @@ void AItemActor::NotifyActorBeginOverlap(AActor* OtherActor)
 
     if (!HasAuthority()) return;
     if (!IsValid(ItemDataTable)) return;
+
+    ASpartaArcadeCharacter* Character = Cast<ASpartaArcadeCharacter>(OtherActor);
+    if (!Character) return;
 
     FItemDataRow* Row = ItemDataTable->FindRow<FItemDataRow>(
         ItemRowName, TEXT("NotifyActorBeginOverlap"));
@@ -117,24 +128,15 @@ void AItemActor::NotifyActorBeginOverlap(AActor* OtherActor)
         break;
 
     case EBomberItemType::MedKit:
-        if (ASpartaArcadeCharacter* Character = Cast<ASpartaArcadeCharacter>(OtherActor))
-        {
-            Character->AddFirstAidKit();
-        }
+        Character->AddFirstAidKit();
         break;
 
     case EBomberItemType::Shield:
-        if (ASpartaArcadeCharacter* Character = Cast<ASpartaArcadeCharacter>(OtherActor))
-        {
-            Character->AddShield();
-        }
+        Character->AddShield();
         break;
         
     case EBomberItemType::KickUnlock:
-        if (ASpartaArcadeCharacter* Character = Cast<ASpartaArcadeCharacter>(OtherActor))
-        {
-            Character->UnlockKickBomb();
-        }   
+        Character->UnlockKickBomb();
         break;
 
     default:

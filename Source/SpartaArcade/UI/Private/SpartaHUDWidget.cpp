@@ -157,6 +157,9 @@ void USpartaHUDWidget::SetStunActive(bool bIsActive)
         StunOverlayPanel->SetVisibility(bIsActive ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
     }
 
+    // 기절 상태 진입 시 이전 게이지 캐시 값을 초기화하여 UI 게이지가 첫 프레임부터 즉시 갱신되도록 처리
+    CachedStunProgress = -1.f;
+
     // 기절 활성화 시 0.1초 주기로 게이지를 갱신하는 타이머 구동, 기절 종료 시 타이머 해제
     UWorld* World = GetWorld();
     if (World)

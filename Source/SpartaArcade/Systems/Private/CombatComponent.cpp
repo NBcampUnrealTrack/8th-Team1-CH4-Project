@@ -518,8 +518,25 @@ float UCombatComponent::GetStunProgressPercent() const
     {
         if (GetWorld() && StunDuration > 0.f)
         {
+            // 1. 서버 측 타이머 핸들 남은 시간 우선 확인
             float Remaining = GetWorld()->GetTimerManager().GetTimerRemaining(StunTimerHandle);
-            return FMath::Clamp((StunDuration - Remaining) / StunDuration, 0.f, 1.f);
+            if (Remaining > 0.f)
+            {
+                return FMath::Clamp((StunDuration - Remaining) / StunDuration, 0.f, 1.f);
+            }
+
+            if (ActiveStunEffectHandle.IsValid())
+            {
+                if (const FActiveGameplayEffect* ActiveGE = CachedASC->GetActiveGameplayEffect(ActiveStunEffectHandle))
+                {
+                    float TimeRemaining = ActiveGE->GetTimeRemaining(GetWorld()->GetTimeSeconds());
+                    float TotalDuration = ActiveGE->GetDuration();
+                    if (TotalDuration > 0.f && TimeRemaining >= 0.f)
+                    {
+                        return FMath::Clamp((TotalDuration - TimeRemaining) / TotalDuration, 0.f, 1.f);
+                    }
+                }
+            }
         }
     }
     return 0.f;

@@ -548,9 +548,8 @@ void ASpartaArcadeMapBuilder::BuildVisuals()
     // 배경 바닥 플레인: 맵 전체를 덮게(= 빈 공간 색). 룸은 그 위에 밝은 타일로 따로.
     if (FloorPlane->GetStaticMesh())
     {
-        // [버그 수정] FloorPlane의 Z 위치를 -50.f 로 한층 더 내리고 Scale을 설정하여 FloorISM 타일과의 Z-Fighting (깊이 버퍼 깜빡임) 완벽 예방
         FloorPlane->SetRelativeScale3D(FVector(MapGrid.Width * S / CubeUU, MapGrid.Height * S / CubeUU, 1.f));
-        FloorPlane->SetRelativeLocation(FVector((MapGrid.Width - 1) * S * 0.5f, (MapGrid.Height - 1) * S * 0.5f, -50.f));
+        FloorPlane->SetRelativeLocation(FVector((MapGrid.Width - 1) * S * 0.5f, (MapGrid.Height - 1) * S * 0.5f, -15.f));
     }
 
     // 타일별 트랜스폼을 먼저 전부 모은 뒤 '한 번에' 추가(배치).
@@ -972,7 +971,7 @@ void ASpartaArcadeMapBuilder::EditorClearPreview()
     if (FloorPlane)
     {
         FloorPlane->SetRelativeScale3D(FVector(1.f));
-        FloorPlane->SetRelativeLocation(FVector::ZeroVector);
+        FloorPlane->SetRelativeLocation(FVector(0.f, 0.f, -2.f));
     }
 
     BoxCellToInstance.Reset();
