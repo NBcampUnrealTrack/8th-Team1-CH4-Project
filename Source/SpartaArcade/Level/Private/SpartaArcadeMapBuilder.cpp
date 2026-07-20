@@ -1,4 +1,4 @@
-﻿#include "SpartaArcadeMapBuilder.h"
+#include "SpartaArcadeMapBuilder.h"
 #include "SpartaArcadeRoomGenerator.h"
 #include "SpartaArcadeMovingObstacle.h"
 #include "SpartaArcadeZoneManager.h"
@@ -464,7 +464,9 @@ void ASpartaArcadeMapBuilder::OnRep_MapGrid()
 // 스폰 위치 좌표 정보가 복제 완료되었을 때 호출되어 비주얼을 정확하게 다시 렌더링
 void ASpartaArcadeMapBuilder::OnRep_SpawnWorldLocations()
 {
-    if (bVisualsBuilt)
+    // if (bVisualsBuilt) { BuildVisuals(); }
+    // [버그 수정] bVisualsBuilt가 이미 true일 때 BuildVisuals()를 재호출하면 ISM ClearInstances()로 인해 생기는 (Flashing) 문제 해결
+    if (!bVisualsBuilt)
     {
         BuildVisuals();
     }
@@ -546,9 +548,9 @@ void ASpartaArcadeMapBuilder::BuildVisuals()
     // 배경 바닥 플레인: 맵 전체를 덮게(= 빈 공간 색). 룸은 그 위에 밝은 타일로 따로.
     if (FloorPlane->GetStaticMesh())
     {
-        // 클라이언트 갱신(Replicate) 시에도 올바른 바닥 크기 및 위치 동기화를 보장하기 위해 GridWidth/Height 대신 MapGrid.Width/Height 사용
+        // [버그 수정] FloorPlane의 Z 위치를 -10.f 로 내리고 Scale을 설정하여 FloorISM 타일과의 Z-Fighting (깊이 버퍼 깜빡임) 완전 제거
         FloorPlane->SetRelativeScale3D(FVector(MapGrid.Width * S / CubeUU, MapGrid.Height * S / CubeUU, 1.f));
-        FloorPlane->SetRelativeLocation(FVector((MapGrid.Width - 1) * S * 0.5f, (MapGrid.Height - 1) * S * 0.5f, 0.f));
+        FloorPlane->SetRelativeLocation(FVector((MapGrid.Width - 1) * S * 0.5f, (MapGrid.Height - 1) * S * 0.5f, -10.f));
     }
 
     // 타일별 트랜스폼을 먼저 전부 모은 뒤 '한 번에' 추가(배치).
@@ -594,13 +596,14 @@ void ASpartaArcadeMapBuilder::BuildVisuals()
         return TPair<FVector, FVector>(Scale, Offset);
     };
 
-    TPair<FVector, FVector> EmptyVis = GetVisualInfo(ESpartaArcadeTileType::Empty, FVector(WallScale), FVector(0.f, 0.f, 1.f));
+    // [버그 수정] Z-Fighting 방지를 위해 바닥(Empty) 및 특수 지형 타일별 Z 레이어 간격(0.f, 2.f, 3.f, 4.f) 분리
+    TPair<FVector, FVector> EmptyVis = GetVisualInfo(ESpartaArcadeTileType::Empty, FVector(WallScale), FVector(0.f, 0.f, 0.f));
     TPair<FVector, FVector> WallVis = GetVisualInfo(ESpartaArcadeTileType::FixedWall, FVector(WallScale), FVector(0.f, 0.f, S * 0.5f));
     TPair<FVector, FVector> PillarVis = GetVisualInfo(ESpartaArcadeTileType::FixedWall, FVector(WallScale * 0.85f, WallScale * 0.85f, WallScale), FVector(0.f, 0.f, S * 0.5f));
     TPair<FVector, FVector> BoxVis = GetVisualInfo(ESpartaArcadeTileType::DestructibleBox, FVector(WallScale * 0.8f, WallScale * 0.8f, WallScale * 0.6f), FVector(0.f, 0.f, S * 0.3f));
     TPair<FVector, FVector> IceVis = GetVisualInfo(ESpartaArcadeTileType::Ice, FVector(WallScale), FVector(0.f, 0.f, 2.f));
-    TPair<FVector, FVector> MudVis = GetVisualInfo(ESpartaArcadeTileType::MudWater, FVector(WallScale), FVector(0.f, 0.f, 2.f));
-    TPair<FVector, FVector> BushVis = GetVisualInfo(ESpartaArcadeTileType::Bush, FVector(WallScale), FVector(0.f, 0.f, 2.f));
+    TPair<FVector, FVector> MudVis = GetVisualInfo(ESpartaArcadeTileType::MudWater, FVector(WallScale), FVector(0.f, 0.f, 3.f));
+    TPair<FVector, FVector> BushVis = GetVisualInfo(ESpartaArcadeTileType::Bush, FVector(WallScale), FVector(0.f, 0.f, 4.f));
 
     // 동적 모퉁이 방 검색 결과로 유동 결정된 스폰 위치 좌표를 복제된 SpawnWorldLocations를 기반으로 정확히 겹침 판정
     auto IsSpawnCell = [this](int32 CX, int32 CY) -> bool
