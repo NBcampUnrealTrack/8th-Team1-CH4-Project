@@ -1,4 +1,4 @@
-#include "SpartaArcadeMapBuilder.h"
+﻿#include "SpartaArcadeMapBuilder.h"
 #include "SpartaArcadeRoomGenerator.h"
 #include "SpartaArcadeMovingObstacle.h"
 #include "SpartaArcadeZoneManager.h"
@@ -19,6 +19,8 @@ ASpartaArcadeMapBuilder::ASpartaArcadeMapBuilder()
 {
     PrimaryActorTick.bCanEverTick = false;
     bReplicates = true;             // MapGrid 복제용
+    NetUpdateFrequency = 10.0f;
+    MinNetUpdateFrequency = 2.0f;
 
     SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
     RootComponent = SceneRoot;
