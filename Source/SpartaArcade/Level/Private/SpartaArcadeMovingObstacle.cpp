@@ -1,4 +1,4 @@
-#include "SpartaArcadeMovingObstacle.h"
+﻿#include "SpartaArcadeMovingObstacle.h"
 #include "SpartaArcadeMapBuilder.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -12,6 +12,8 @@ ASpartaArcadeMovingObstacle::ASpartaArcadeMovingObstacle()
 {
     PrimaryActorTick.bCanEverTick = true;
     bReplicates = true;
+    NetUpdateFrequency = 66.0f;
+    MinNetUpdateFrequency = 33.0f;
     SetReplicateMovement(true);   // 서버 이동 → 클라 위치 복제(네트워크 팀과 세부 조율 가능)
 
     Collision = CreateDefaultSubobject<USphereComponent>(TEXT("Collision"));

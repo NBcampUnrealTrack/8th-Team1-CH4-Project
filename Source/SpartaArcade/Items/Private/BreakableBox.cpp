@@ -1,4 +1,4 @@
-#include "BreakableBox.h"
+﻿#include "BreakableBox.h"
 #include "Components/StaticMeshComponent.h"
 #include "ItemDropComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -9,6 +9,8 @@ ABreakableBox::ABreakableBox()
 	PrimaryActorTick.bCanEverTick = false;
 
 	bReplicates = true;
+	NetUpdateFrequency = 66.0f;
+	MinNetUpdateFrequency = 2.0f;
 
 	BoxMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BoxMesh"));
 	SetRootComponent(BoxMesh);

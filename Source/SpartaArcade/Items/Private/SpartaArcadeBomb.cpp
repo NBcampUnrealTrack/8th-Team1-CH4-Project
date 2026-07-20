@@ -1,4 +1,4 @@
-#include "SpartaArcadeBomb.h"
+﻿#include "SpartaArcadeBomb.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SphereComponent.h"
 #include "Net/UnrealNetwork.h"
@@ -23,6 +23,8 @@ ASpartaArcadeBomb::ASpartaArcadeBomb()
 
 	// 데디케이티드 서버를 위한 복제 및 이동 동기화 설정
 	bReplicates = true;
+	NetUpdateFrequency = 66.0f;
+	MinNetUpdateFrequency = 33.0f;
 	SetReplicateMovement(true);
 
 	// 구체 콜리전을 생성하여 루트 컴포넌트로 지정 (물리 스윕 감지용)

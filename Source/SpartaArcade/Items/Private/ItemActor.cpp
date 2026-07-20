@@ -1,4 +1,4 @@
-#include "ItemActor.h"
+﻿#include "ItemActor.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "ItemDropComponent.h"
@@ -26,6 +26,8 @@ AItemActor::AItemActor()
     ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
     bReplicates = true;
+    NetUpdateFrequency = 66.0f;
+    MinNetUpdateFrequency = 2.0f;
 
     FloatSpeed = 2.0f;
     FloatHeight = 15.0f;
