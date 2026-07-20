@@ -1,4 +1,4 @@
-﻿using UnrealBuildTool;
+using UnrealBuildTool;
 using System.IO;
 
 public class SpartaArcade : ModuleRules
@@ -24,7 +24,6 @@ public class SpartaArcade : ModuleRules
 	        Path.Combine(ModuleDirectory, "Framework/Public"),
             Path.Combine(ModuleDirectory, "Items/Public"),
 	        Path.Combine(ModuleDirectory, "Level/Public"),
-	        Path.Combine(ModuleDirectory, "Spawn/Public"),
 	        Path.Combine(ModuleDirectory, "Systems/Public"),
 	        Path.Combine(ModuleDirectory, "UI/Public"),
 			Path.Combine(ModuleDirectory, "EOS/Public")
@@ -37,7 +36,6 @@ public class SpartaArcade : ModuleRules
 			Path.Combine(ModuleDirectory, "Framework/Private/Title"),
             Path.Combine(ModuleDirectory, "Items/Private"),
 	        Path.Combine(ModuleDirectory, "Level/Private"),
-	        Path.Combine(ModuleDirectory, "Spawn/Private"),
 	        Path.Combine(ModuleDirectory, "Systems/Private"),
 	        Path.Combine(ModuleDirectory, "UI/Private"),
 			Path.Combine(ModuleDirectory, "EOS/Private")

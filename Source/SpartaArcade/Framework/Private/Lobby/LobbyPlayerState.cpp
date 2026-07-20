@@ -7,8 +7,8 @@
 #include "Lobby/LobbyGameStateBase.h"
 #include "InGame/SpartaPlayerState.h"
 ALobbyPlayerState::ALobbyPlayerState() 
-	: bIsReady(false)
-	, SelectedCharacterType(ESpartaArcadeCharacterType::Explosive)
+	: SelectedCharacterType(ESpartaArcadeCharacterType::Explosive)
+	, bIsReady(false)
 	, TeamID(0)
 {
 	bReplicates = true;
