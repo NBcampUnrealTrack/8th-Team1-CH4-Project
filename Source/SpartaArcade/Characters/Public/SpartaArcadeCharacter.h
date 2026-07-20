@@ -212,7 +212,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement|TileEffects")
 	float ConveyorPushSpeed = 250.f;
 
-	// 지연 사망 소멸 처리용 변수 및 함수
+	// 지연 사망 소멸 처리용 변수 및 함수 (개인전에서 사망 모션을 잠깐 보여주기 위한 짧은 대기 시간)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attributes|Death")
 	float DestroyDelay = 1.5f;
 

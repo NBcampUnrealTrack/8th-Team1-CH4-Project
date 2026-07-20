@@ -25,6 +25,7 @@
 #include "BomberAttributeSet.h"
 #include "BomberGameplayTags.h"
 #include "InGame/SpartaGameMode.h"
+#include "InGame/SpartaGameState.h"
 #include "UI/Public/SpartaMenuFlowWidget.h"
 #include "UObject/UObjectIterator.h"
 #include "GameFramework/GameStateBase.h"
@@ -622,14 +623,21 @@ void ASpartaArcadeCharacter::HandleOnEliminated()
 {
 	UE_LOG(LogTemp, Log, TEXT("%s 게임에서 탈락(소멸)되었습니다. 사망 연출을 시작합니다."), *GetName());
 
-	// 사망 몽타주가 지정된 경우 재생
-	float WaitDuration = DestroyDelay;
+	// 사망 몽타주가 지정된 경우 재생 (연출용 - Destroy 타이밍에는 영향을 주지 않음)
 	if (DeathMontage)
 	{
 		MulticastPlayDeathAnim();
-		//float MontageLength = PlayAnimMontage(DeathMontage, 1.0f);
-		float MontageLength = DeathMontage->GetPlayLength();
-		WaitDuration = FMath::Max(DestroyDelay, MontageLength);
+	}
+
+	// 팀전은 Eliminate()가 이미 기절 시간(설정값)에 맞춰 호출되므로 추가 대기 없이 바로 Destroy.
+	// 개인전은 Eliminate()가 즉시 호출되므로, 사망 모션을 잠깐 보여주기 위해 DestroyDelay만큼 대기.
+	float WaitDuration = 0.f;
+	if (ASpartaGameState* SpartaGS = GetWorld()->GetGameState<ASpartaGameState>())
+	{
+		if (SpartaGS->GetGameModeType() == EGameModeType::Solo)
+		{
+			WaitDuration = DestroyDelay;
+		}
 	}
 
 	// 사망 위치에 아이템 드롭 (서버 전용 컴포넌트 내부에서 Authority 체크)
