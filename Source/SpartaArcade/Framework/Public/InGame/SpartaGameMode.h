@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -53,7 +53,7 @@ public:
 
 	virtual void EndMatch() override;
 
-    void HandlePlayerEliminated(ASpartaPlayerState* DeadPlayer);
+    void HandlePlayerEliminated(ASpartaPlayerState* DeadPlayer, ASpartaPlayerState* KillerPlayerState, EDeathReason Reason);
 
     void DecreaseAlivePlayer();
 
@@ -68,6 +68,8 @@ public:
 	void ShowGameResultToTeam(int32 TeamID);
 
 	void ShowGameResultToEliminatedPlayer(ASpartaPlayerState* DeadPlayer);
+
+	void BroadcastKillLog(const FString& KillerName, const FString& VictimName, EDeathReason Reason);
 
 	FMatchPlayerResult CreateGameResult(const ASpartaPlayerState* PlayerState);
 

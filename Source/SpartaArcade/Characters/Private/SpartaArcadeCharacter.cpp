@@ -1,4 +1,4 @@
-﻿#include "SpartaArcadeCharacter.h"
+#include "SpartaArcadeCharacter.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -85,6 +85,8 @@ ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 
 	// 데디케이티드 서버 네트워크 동기화용 캐릭터 복제 활성화
 	bReplicates = true;
+	NetUpdateFrequency = 66.0f;
+	MinNetUpdateFrequency = 33.0f;
 
 	static ConstructorHelpers::FObjectFinder<UDataTable> CharacterStatTableFinder(TEXT("/Game/DataFile/DT_CharacterStat.DT_CharacterStat"));
 	if (CharacterStatTableFinder.Succeeded())
@@ -108,6 +110,9 @@ void ASpartaArcadeCharacter::BeginPlay()
 
 	// 맵 빌더 인스턴스 검색 및 캐싱
 	CachedMapBuilder = Cast<ASpartaArcadeMapBuilder>(UGameplayStatics::GetActorOfClass(GetWorld(), ASpartaArcadeMapBuilder::StaticClass()));
+
+	// [성능 최적화] SceneCaptureComponent2D 사전 캐싱으로 매 틱 FindComponentByClass 탐색 제거
+	CachedSceneCaptureComponent = FindComponentByClass<USceneCaptureComponent2D>();
 
 	// 기본 무브먼트 매개변수 백업
 	if (GetCharacterMovement())
@@ -760,9 +765,14 @@ void ASpartaArcadeCharacter::Tick(float DeltaSeconds)
 
 	// 지형 지물 효과를 이동 속도 및 상태에 반영
 	ApplyTileEffectToMovement(DeltaSeconds);
+	
+	// [성능 최적화] 매 프레임 FindComponentByClass 호출 대신 사전 캐싱된 SceneCapture 사용 (유효성 검사 추가)
+	if (!IsValid(CachedSceneCaptureComponent))
+	{
+		CachedSceneCaptureComponent = FindComponentByClass<USceneCaptureComponent2D>();
+	}
 
-	// 캐릭터에 부착된 SceneCaptureComponent2D 검색
-	USceneCaptureComponent2D* SceneCapture = FindComponentByClass<USceneCaptureComponent2D>();
+	USceneCaptureComponent2D* SceneCapture = CachedSceneCaptureComponent;
 
 	if (SceneCapture)
 	{
@@ -803,6 +813,23 @@ void ASpartaArcadeCharacter::ApplyTileEffectToMovement(float DeltaSeconds)
 		return;
 	}
 
+	// 현재 캐릭터가 서 있는 위치의 지형 타일 타입 및 좌표 조회
+	FVector CurrentLocation = GetActorLocation();
+	int32 TileX = 0, TileY = 0;
+	bool bValidTile = CachedMapBuilder->WorldToTile(CurrentLocation, TileX, TileY);
+	FIntPoint CurrentTileCoords(TileX, TileY);
+	ESpartaArcadeTileType TileType = CachedMapBuilder->GetTileTypeAtWorldPosition(CurrentLocation);
+	uint8 CurrentTileTypeRaw = static_cast<uint8>(TileType);
+
+	// [성능 최적화] 동일 타일에 머물러 있고 컨베이어 타일이 아닌 경우, 매 프레임 속성 재할당 부하 차단
+	if (bValidTile && CurrentTileCoords == LastTileLocation && CurrentTileTypeRaw == LastTileTypeRaw && TileType != ESpartaArcadeTileType::Conveyor)
+	{
+		return;
+	}
+
+	LastTileLocation = CurrentTileCoords;
+	LastTileTypeRaw = CurrentTileTypeRaw;
+
 	// 드코딩된 Blueprint 기본값 대신 현재 AttributeSet의 MoveSpeed 속성에 비례하는 기준 속도를 동적 계산
 	float BaseWalkSpeed = DefaultMaxWalkSpeed;
 	if (IsValid(AttributeSet))
@@ -811,10 +838,6 @@ void ASpartaArcadeCharacter::ApplyTileEffectToMovement(float DeltaSeconds)
 		const float AttrSpeedPerLevel = 100.f;
 		BaseWalkSpeed = AttrBaseSpeed + (AttributeSet->GetMoveSpeed() * AttrSpeedPerLevel);
 	}
-
-	// 현재 캐릭터가 서 있는 위치의 지형 타일 타입 조회
-	FVector CurrentLocation = GetActorLocation();
-	ESpartaArcadeTileType TileType = CachedMapBuilder->GetTileTypeAtWorldPosition(CurrentLocation);
 
 	switch (TileType)
 	{

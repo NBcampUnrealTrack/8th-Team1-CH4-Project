@@ -8,10 +8,11 @@
 #include "AbilitySystemComponent.h"
 #include "GameplayEffect.h"
 #include "ActiveGameplayEffectHandle.h"
+#include "SpartaUIDefs.h"
 #include "CombatComponent.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCombatEvent);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnEliminatedEvent, class ASpartaPlayerState*);
+DECLARE_MULTICAST_DELEGATE_ThreeParams(FOnEliminatedEvent, class ASpartaPlayerState* /*DeadPlayer*/, class ASpartaPlayerState* /*KillerPlayerState*/, EDeathReason /*Reason*/);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnbHasShieldChangedSignature, bool, bHasShield);
 
@@ -97,6 +98,8 @@ public:
     
     void BroadcastCurrentState();
 
+    void SetLastAttacker(ASpartaPlayerState* Attacker, EDeathReason Reason);
+
 protected:
     virtual void BeginPlay() override;
 
@@ -108,6 +111,11 @@ protected:
 
     UPROPERTY()
     TObjectPtr<ASpartaPlayerState> SpartaPlayerState;
+
+    UPROPERTY()
+    TObjectPtr<ASpartaPlayerState> LastAttackerPlayerState;
+
+    EDeathReason LastDeathReason = EDeathReason::Explosion;
 
 private:
     void EnterStun();

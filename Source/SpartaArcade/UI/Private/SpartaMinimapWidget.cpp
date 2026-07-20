@@ -145,17 +145,23 @@ void USpartaMinimapWidget::UpdateMarkerPositions()
 
     FVector PlayerLocation = PlayerPawn->GetActorLocation();
 
-    // 미니맵 카메라가 각 로컬 캐릭터의 머리 위에 오도록 씬 캡처 위치를 매 틱 강제 이동
-    USceneCaptureComponent2D* SceneCapture = PlayerPawn->FindComponentByClass<USceneCaptureComponent2D>();
-    if (!SceneCapture)
+    // [성능 최적화] 매 프레임 FindComponentByClass/GetComponents 검색 대신 캐시된 SceneCapture 활용
+    if (!CachedSceneCapture.IsValid())
     {
-        TArray<USceneCaptureComponent2D*> Captures;
-        PlayerPawn->GetComponents<USceneCaptureComponent2D>(Captures);
-        if (Captures.Num() > 0)
+        USceneCaptureComponent2D* FoundCapture = PlayerPawn->FindComponentByClass<USceneCaptureComponent2D>();
+        if (!FoundCapture)
         {
-            SceneCapture = Captures[0];
+            TArray<USceneCaptureComponent2D*> Captures;
+            PlayerPawn->GetComponents<USceneCaptureComponent2D>(Captures);
+            if (Captures.Num() > 0)
+            {
+                FoundCapture = Captures[0];
+            }
         }
+        CachedSceneCapture = FoundCapture;
     }
+
+    USceneCaptureComponent2D* SceneCapture = CachedSceneCapture.Get();
 
     if (SceneCapture)
     {

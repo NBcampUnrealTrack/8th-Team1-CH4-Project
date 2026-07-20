@@ -1,4 +1,4 @@
-﻿#include "SpartaHUDWidget.h"
+#include "SpartaHUDWidget.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
@@ -8,6 +8,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
 #include "Framework/Public/InGame/SpartaPlayerState.h"
+#include "SpartaKillLogWidget.h"
 #include "Systems/Public/StatComponent.h"
 #include "Systems/Public/CombatComponent.h"
 #include "Systems/Public/BombPlacerComponent.h"
@@ -120,16 +121,29 @@ void USpartaHUDWidget::UpdateHearts(int32 CurrentHearts, int32 MaxHearts)
     CachedCurrentHearts = CurrentHearts;
     CachedMaxHearts     = MaxHearts;
 
-    // 하트 개수만큼 UI 슬롯에 하트 유닛 스폰 및 리스트업
+    // [성능 최적화] 매번 ClearChildren() 및 CreateWidget() 동적 스폰 대신 기존 자식 위젯을 풀링/재활용하여 SetVisibility 제어
     if (HeartHorizontalBox && HeartUnitWidgetClass)
     {
-        HeartHorizontalBox->ClearChildren();
-        for (int32 i = 0; i < CurrentHearts; ++i)
+        int32 ExistingCount = HeartHorizontalBox->GetChildrenCount();
+        int32 TargetTotal = FMath::Max(CurrentHearts, MaxHearts);
+
+        // 부족한 수만큼 위젯 추가 생성하여 슬롯에 등록
+        for (int32 i = ExistingCount; i < TargetTotal; ++i)
         {
             UUserWidget* HeartWidget = CreateWidget<UUserWidget>(this, HeartUnitWidgetClass);
             if (HeartWidget)
             {
                 HeartHorizontalBox->AddChildToHorizontalBox(HeartWidget);
+            }
+        }
+
+        // 현재 체력 수량에 맞춰 가시성 활성/비활성화 토글
+        int32 TotalChildCount = HeartHorizontalBox->GetChildrenCount();
+        for (int32 i = 0; i < TotalChildCount; ++i)
+        {
+            if (UWidget* Child = HeartHorizontalBox->GetChildAt(i))
+            {
+                Child->SetVisibility(i < CurrentHearts ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
             }
         }
     }
@@ -481,5 +495,13 @@ void USpartaHUDWidget::HandleOnEliminated()
     {
         CachedAliveCount = AliveCount;
         UpdateGameStateInfo(AliveCount, CachedMatchSeconds >= 0 ? CachedMatchSeconds : 0);
+    }
+}
+
+void USpartaHUDWidget::AddKillLog(const FString& KillerName, const FString& VictimName, EDeathReason Reason)
+{
+    if (IsValid(WBP_KillLogWidget))
+    {
+        WBP_KillLogWidget->AddKillLog(KillerName, VictimName, Reason);
     }
 }

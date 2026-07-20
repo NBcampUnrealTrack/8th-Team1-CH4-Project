@@ -72,5 +72,7 @@ private:
 
 	float CachedCameraRelativeZ = 2500.f;
 
+	TWeakObjectPtr<class USceneCaptureComponent2D> CachedSceneCapture;
+
 	void InitializeDynamicRenderTarget();
 };

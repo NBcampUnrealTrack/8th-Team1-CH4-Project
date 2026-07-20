@@ -5,13 +5,8 @@
 
 void USpartaKillLogWidget::AddKillLog(const FString& KillerName, const FString& VictimName, EDeathReason Reason)
 {
-    if (!KillLogContainer || !KillLogItemClass)
-    {
-        return;
-    }
-
     // 1. 개별 로그 아이템 생성 및 데이터 세팅
-    USpartaKillLogItemWidget* LogItem = CreateWidget<USpartaKillLogItemWidget>(GetWorld(), KillLogItemClass);
+    USpartaKillLogItemWidget* LogItem = CreateWidget<USpartaKillLogItemWidget>(this, KillLogItemClass);
     if (LogItem)
     {
         LogItem->SetupKillLog(KillerName, VictimName, Reason);

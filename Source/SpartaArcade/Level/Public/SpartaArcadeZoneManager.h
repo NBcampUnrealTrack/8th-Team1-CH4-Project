@@ -109,6 +109,9 @@ protected:
     int32 RenderedCrush = 0;        // 지금까지 렌더한 낙하 블록 수
     int32 KillIndex = 0;            // 지금까지 압사 처리한 인덱스(서버)
 
+    int32 LastWarnStart = INDEX_NONE;
+    int32 LastWarnEnd = INDEX_NONE;
+
     void TryBuildSpiral();
     void RefreshVisuals();
     void ProcessCrushKills();

@@ -1,4 +1,4 @@
-#include "SpartaArcadeZoneManager.h"
+﻿#include "SpartaArcadeZoneManager.h"
 #include "SpartaArcadeMapBuilder.h"
 #include "SpartaArcadeMovingObstacle.h"
 #include "Components/SceneComponent.h"
@@ -19,6 +19,8 @@ ASpartaArcadeZoneManager::ASpartaArcadeZoneManager()
 {
     PrimaryActorTick.bCanEverTick = true;
     bReplicates = true;
+    NetUpdateFrequency = 66.0f;
+    MinNetUpdateFrequency = 2.0f;
 
     USceneComponent* Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
     SetRootComponent(Root);
@@ -56,6 +58,8 @@ void ASpartaArcadeZoneManager::StartCountdown()
     ShrinkProgress = 0.f;
     RenderedCrush = 0;
     KillIndex = 0;
+    LastWarnStart = INDEX_NONE;
+    LastWarnEnd = INDEX_NONE;
     if (CrushISM) CrushISM->ClearInstances();
     if (WarningISM) WarningISM->ClearInstances();
 }
@@ -191,15 +195,24 @@ void ASpartaArcadeZoneManager::RefreshVisuals()
         ++RenderedCrush;
     }
 
-    WarningISM->ClearInstances();
+    // [성능 최적화] 경고 타일 범위(WarnStart, WarnEnd)가 프레임 간 동일할 경우 ClearInstances() 및 AddInstance() 재호출을 차단
+    int32 CurWarnStart = DropIndex;
+    int32 CurWarnEnd = DropIndex;
     if (Elapsed >= (ActivationDelay - WarningLead) && DropIndex < N)
     {
         const int32 WarnN = FMath::Max(1, FMath::FloorToInt(N * (WarningLead / FMath::Max(1.f, ShrinkDuration))));
-        const int32 WarnEnd = FMath::Min(N, DropIndex + WarnN);
-        for (int32 i = DropIndex; i < WarnEnd; ++i)
+        CurWarnEnd = FMath::Min(N, DropIndex + WarnN);
+    }
+
+    if (CurWarnStart != LastWarnStart || CurWarnEnd != LastWarnEnd)
+    {
+        LastWarnStart = CurWarnStart;
+        LastWarnEnd = CurWarnEnd;
+
+        WarningISM->ClearInstances();
+        for (int32 i = CurWarnStart; i < CurWarnEnd; ++i)
         {
             const FIntPoint C = SpiralCells[i];
-            // 바닥 타일 머티리얼과 겹쳐서 깜빡이거나 묻히는 Z-fighting 방지를 위해 오프셋 높이를 10.f 로 상향 조정
             const FVector P = Map->TileToWorld(C.X, C.Y) + FVector(0, 0, 10.f);
             WarningISM->AddInstance(FTransform(FRotator::ZeroRotator, P, FVector(VisualScaleXY, VisualScaleXY, 1.f)));
         }
@@ -241,8 +254,10 @@ void ASpartaArcadeZoneManager::ProcessCrushKills()
             
             if (ASpartaArcadeCharacter* Character = Cast<ASpartaArcadeCharacter>(CrushedPawn))
             {
-                if (UCombatComponent* CombatComp = Character->FindComponentByClass<UCombatComponent>())
+                // [성능 최적화] FindComponentByClass 대신 Getter(GetCombatComponent) 직접 활용
+                if (UCombatComponent* CombatComp = Character->GetCombatComponent())
                 {
+                    CombatComp->SetLastAttacker(nullptr, EDeathReason::SafeZone);
                     CombatComp->InstantEliminate();
                 }
                 else

@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "InGame/SpartaGameMode.h"
@@ -51,7 +51,7 @@ void ASpartaGameMode::Logout(AController* Exiting)
 		ASpartaPlayerState* ExitingPlayerState = Cast<ASpartaPlayerState>(Exiting->PlayerState);
 		if (IsValid(ExitingPlayerState))
 		{
-			HandlePlayerEliminated(ExitingPlayerState);
+			HandlePlayerEliminated(ExitingPlayerState, nullptr, EDeathReason::Obstacle);
 		}
 	}
 
@@ -146,14 +146,21 @@ void ASpartaGameMode::EndMatch()
 	ShowGameResultToAllPlayers();
 }
 
-void ASpartaGameMode::HandlePlayerEliminated(ASpartaPlayerState* DeadPlayer)
+void ASpartaGameMode::HandlePlayerEliminated(ASpartaPlayerState* DeadPlayer, ASpartaPlayerState* KillerPlayerState, EDeathReason Reason)
 {
 	if (!IsValid(DeadPlayer) || !IsValid(SpartaGameState))
 	{
 		return;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("[HandlePlayerEliminated] DeadPlayer: %s, TeamID: %d"), *DeadPlayer->GetPlayerName(), DeadPlayer->GetTeamID());
+	UE_LOG(LogTemp, Warning, TEXT("[HandlePlayerEliminated] DeadPlayer: %s, Killer: %s, TeamID: %d"),
+		*DeadPlayer->GetPlayerName(),
+		IsValid(KillerPlayerState) ? *KillerPlayerState->GetPlayerName() : TEXT("None"),
+		DeadPlayer->GetTeamID());
+
+	FString VictimName = DeadPlayer->GetPlayerName();
+	FString KillerName = IsValid(KillerPlayerState) ? KillerPlayerState->GetPlayerName() : TEXT("");
+	BroadcastKillLog(KillerName, VictimName, Reason);
 
 	int32 TeamID = DeadPlayer->GetTeamID();
 
@@ -316,13 +323,11 @@ FMatchPlayerResult ASpartaGameMode::CreateGameResult(const ASpartaPlayerState* P
 
 void ASpartaGameMode::ShowGameResultToAllPlayers()
 {
-	for (APlayerState* PlayerState : SpartaGameState->PlayerArray)
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
-		ASpartaPlayerState* SpartaPlayerState = Cast<ASpartaPlayerState>(PlayerState);
-		if (IsValid(SpartaPlayerState))
+		if (ASpartaArcadePlayerController* PC = Cast<ASpartaArcadePlayerController>(It->Get()))
 		{
-			ASpartaArcadePlayerController* PC = Cast<ASpartaArcadePlayerController>(SpartaPlayerState->GetOwner());
-			if(IsValid(PC))
+			if (ASpartaPlayerState* SpartaPlayerState = PC->GetPlayerState<ASpartaPlayerState>())
 			{
 				int32 TeamID = SpartaPlayerState->GetTeamID();
 				int32 PlayerRank = TeamInfoMap.Contains(TeamID) ? TeamInfoMap[TeamID].Rank : 0;
@@ -373,6 +378,21 @@ void ASpartaGameMode::ShowGameResultToEliminatedPlayer(ASpartaPlayerState* DeadP
 			MatchResultData.MyRank = PlayerRank;
 			MatchResultData.PlayerResults = TArray<FMatchPlayerResult>();
 			PC->ClientShowMatchResult(MatchResultData);
+		}
+	}
+}
+
+void ASpartaGameMode::BroadcastKillLog(const FString& KillerName, const FString& VictimName, EDeathReason Reason)
+{
+	if (!IsValid(GetWorld())) return;
+
+	int32 SentCount = 0;
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (ASpartaArcadePlayerController* PC = Cast<ASpartaArcadePlayerController>(It->Get()))
+		{
+			PC->ClientShowKillLog(KillerName, VictimName, Reason);
+			SentCount++;
 		}
 	}
 }

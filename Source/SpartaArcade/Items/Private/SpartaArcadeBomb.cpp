@@ -1,4 +1,4 @@
-#include "SpartaArcadeBomb.h"
+﻿#include "SpartaArcadeBomb.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SphereComponent.h"
 #include "Net/UnrealNetwork.h"
@@ -10,8 +10,11 @@
 #include "NiagaraComponent.h" 
 #include "Particles/ParticleSystemComponent.h"
 #include "SpartaArcadeCharacter.h"
+#include "Framework/Public/InGame/SpartaPlayerState.h"
+#include "Systems/Public/CombatComponent.h"
 #include "BreakableBox.h"
 #include "Damageable.h"
+#include "Engine/OverlapResult.h"
 #include "WorldPartition/HLOD/DestructibleHLODComponent.h"
 
 ASpartaArcadeBomb::ASpartaArcadeBomb()
@@ -21,6 +24,8 @@ ASpartaArcadeBomb::ASpartaArcadeBomb()
 
 	// 데디케이티드 서버를 위한 복제 및 이동 동기화 설정
 	bReplicates = true;
+	NetUpdateFrequency = 66.0f;
+	MinNetUpdateFrequency = 33.0f;
 	SetReplicateMovement(true);
 
 	// 구체 콜리전을 생성하여 루트 컴포넌트로 지정 (물리 스윕 감지용)
@@ -71,25 +76,32 @@ void ASpartaArcadeBomb::BeginPlay()
 		GetWorld()->GetTimerManager().SetTimer(FuseTimerHandle, this, &ASpartaArcadeBomb::Multicast_PlayFuseEffect, FuseDelay, false);
 	}
 
-
-	// 스폰 시점에 이 폭탄의 2D 평면 영역(반경 80유닛 이내)에 겹쳐 있는 캐릭터들을 완벽히 감지하여 충돌 무시 설정
-	TArray<AActor*> FoundCharacters;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ASpartaArcadeCharacter::StaticClass(), FoundCharacters);
-	
+	//[성능 최적화] GetAllActorsOfClass 전수 검색 대신 OverlapMultiByChannel 범위 쿼리로 주변 폰만 탐색
 	FVector MyLoc = GetActorLocation();
-	for (AActor* Actor : FoundCharacters)
+	TArray<FOverlapResult> OverlapResults;
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(this);
+
+	bool bHasOverlap = GetWorld()->OverlapMultiByChannel(
+		OverlapResults,
+		MyLoc,
+		FQuat::Identity,
+		ECC_Pawn,
+		FCollisionShape::MakeSphere(80.f),
+		QueryParams
+	);
+
+	if (bHasOverlap)
 	{
-		ASpartaArcadeCharacter* Character = Cast<ASpartaArcadeCharacter>(Actor);
-		if (Character)
+		for (const FOverlapResult& Overlap : OverlapResults)
 		{
-			// Z축 높이 값을 배제하고 오직 XY 평면 기준 2D 평면 거리만 판정하도록 Dist2D 사용
-			float Dist2D = FVector::Dist2D(MyLoc, Character->GetActorLocation());
-			// 캐릭터 캡슐 반경 42.f + 알파 마진을 고려해 스폰 시 80유닛 이내 겹친 자들을 감지
-			if (Dist2D < 80.f)
+			if (ASpartaArcadeCharacter* Character = Cast<ASpartaArcadeCharacter>(Overlap.GetActor()))
 			{
-				IgnoredCharacters.Add(Character);
-				// 물리 관통 솔버(Penetration Solver)의 튕겨내기 버그를 피하기 위해 캡슐 레벨에서 충돌을 완전히 무시
-				Character->GetCapsuleComponent()->IgnoreActorWhenMoving(this, true);
+				if (!IgnoredCharacters.Contains(Character))
+				{
+					IgnoredCharacters.Add(Character);
+					Character->GetCapsuleComponent()->IgnoreActorWhenMoving(this, true);
+				}
 			}
 		}
 	}
@@ -204,6 +216,15 @@ bool ASpartaArcadeBomb::HandleExplosionHit(AActor* HitActor)
 		{
 			if (!DamagedActors.Contains(HitActor))
 			{
+				if (ASpartaArcadeCharacter* TargetChar = Cast<ASpartaArcadeCharacter>(HitActor))
+				{
+					ASpartaPlayerState* KillerPS = IsValid(InstigatorCharacter) ? InstigatorCharacter->GetPlayerState<ASpartaPlayerState>() : nullptr;
+					if (UCombatComponent* CombatComp = TargetChar->GetCombatComponent())
+					{
+						CombatComp->SetLastAttacker(KillerPS, EDeathReason::Explosion);
+					}
+				}
+
 				// 과도한 Warning 로그 방지를 위해 Verbose 레벨로 변경
 				UE_LOG(LogTemp, Verbose, TEXT("[Bomb] HandleExplosionHit: %s 에 TakeExplosionDamage 호출"), *HitActor->GetName());
 				IDamageable::Execute_TakeExplosionDamage(HitActor);
@@ -299,23 +320,25 @@ void ASpartaArcadeBomb::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// 2D 거리를 수동 검사하여 캐릭터가 안전하게 영역을 벗어났을 때 충돌을 켬 (Z축 및 튕김 방지)
-	for (int32 i = IgnoredCharacters.Num() - 1; i >= 0; --i)
+	// [성능 최적화] IgnoredCharacters가 존재할 때만 순회하고, 원소 제거 시 RemoveAtSwap(O(1))을 활용하여 배열 시프트 저지
+	if (IgnoredCharacters.Num() > 0)
 	{
-		ASpartaArcadeCharacter* Character = IgnoredCharacters[i];
-		if (IsValid(Character))
+		for (int32 i = IgnoredCharacters.Num() - 1; i >= 0; --i)
 		{
-			float Dist2D = FVector::Dist2D(GetActorLocation(), Character->GetActorLocation());
-			// 캐릭터 캡슐 반경(42.f)과 폭탄 물리 반경을 합해 안전한 이탈 거리인 90.f 유닛 이상 멀어지면 충돌 무시 제거
-			if (Dist2D >= 90.f)
+			ASpartaArcadeCharacter* Character = IgnoredCharacters[i];
+			if (IsValid(Character))
 			{
-				Character->GetCapsuleComponent()->IgnoreActorWhenMoving(this, false);
-				IgnoredCharacters.RemoveAt(i);
+				float Dist2D = FVector::Dist2D(GetActorLocation(), Character->GetActorLocation());
+				if (Dist2D >= 90.f)
+				{
+					Character->GetCapsuleComponent()->IgnoreActorWhenMoving(this, false);
+					IgnoredCharacters.RemoveAtSwap(i);
+				}
 			}
-		}
-		else
-		{
-			IgnoredCharacters.RemoveAt(i);
+			else
+			{
+				IgnoredCharacters.RemoveAtSwap(i);
+			}
 		}
 	}
 
