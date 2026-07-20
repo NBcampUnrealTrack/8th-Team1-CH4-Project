@@ -661,21 +661,30 @@ void ASpartaArcadeCharacter::HandleOnEliminated()
 		GetCharacterMovement()->DisableMovement();
 	}
 
-	// 사망 모션이 끝나고 UI
-	GetWorld()->GetTimerManager().SetTimer(
-		DestroyTimerHandle,
-		this,
-		&ASpartaArcadeCharacter::EliminateDestroy,
-		WaitDuration,
-		false
-	);
+	// 사망 모션 대기 후 소멸 처리
+	if (WaitDuration <= 0.f)
+	{
+		EliminateDestroy();
+	}
+	else
+	{
+		GetWorld()->GetTimerManager().SetTimer(
+			DestroyTimerHandle,
+			this,
+			&ASpartaArcadeCharacter::EliminateDestroy,
+			WaitDuration,
+			false
+		);
+	}
 }
 
 void ASpartaArcadeCharacter::EliminateDestroy()
 {
-	UE_LOG(LogTemp, Log, TEXT("%s 캐릭터 액터가 월드에서 완전히 제거(소멸)됩니다."), *GetName());
-
-	Destroy();
+	// [버그 수정] Replicated Actor 소멸은 오직 서버(HasAuthority) 권한에서만 진행되어야 네트워크 상에서 정상 제거됨
+	if (HasAuthority())
+	{
+		Destroy();
+	}
 }
 
 void ASpartaArcadeCharacter::RestoreCollisionResponse()

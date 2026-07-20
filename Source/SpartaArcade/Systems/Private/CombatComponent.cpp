@@ -270,8 +270,13 @@ void UCombatComponent::EnterStun()
         }
     }
 
+    // [버그 수정] StunTimerHandle 만료 시 Eliminate()가 호출되도록 콜백 함수 바인딩 추가
     GetWorld()->GetTimerManager().SetTimer(
-        StunTimerHandle, StunDuration, false);
+        StunTimerHandle,
+        this,
+        &UCombatComponent::Eliminate,
+        StunDuration,
+        false);
 }
 
 void UCombatComponent::SetLastAttacker(ASpartaPlayerState* Attacker, EDeathReason Reason)
