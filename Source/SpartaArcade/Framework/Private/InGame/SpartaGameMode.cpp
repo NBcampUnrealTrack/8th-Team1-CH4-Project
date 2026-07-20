@@ -63,6 +63,12 @@ void ASpartaGameMode::Logout(AController* Exiting)
 	}
 }
 
+void ASpartaGameMode::PostLogin(APlayerController* NewPlayer)
+{
+	Super::PostLogin(NewPlayer);
+	InitializeTeamInfo();
+}
+
 void ASpartaGameMode::RestartPlayer(AController* NewPlayer)
 {
 	Super::RestartPlayer(NewPlayer);
@@ -215,6 +221,7 @@ void ASpartaGameMode::CheckGameEnd()
 void ASpartaGameMode::InitializeTeamInfo()
 {
 	TeamInfoMap.Empty();
+	MatchResults.Empty();
 	
 	if (SpartaGameState)
 	{

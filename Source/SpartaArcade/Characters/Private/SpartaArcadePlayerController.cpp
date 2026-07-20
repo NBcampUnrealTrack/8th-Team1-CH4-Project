@@ -29,6 +29,8 @@ ASpartaArcadePlayerController::ASpartaArcadePlayerController()
 void ASpartaArcadePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	bIsSpectating = false;
 
 	if (IsLocalController() == false)
 	{
@@ -146,6 +148,11 @@ void ASpartaArcadePlayerController::SetupInputComponent()
 // WASD 이동 처리 함수
 void ASpartaArcadePlayerController::OnMoveTriggered(const FInputActionValue& Value)
 {
+	if (bIsSpectating)
+	{
+		return;
+	}
+
 	FVector2D MovementVector = Value.Get<FVector2D>();
 
 	APawn* ControlledPawn = GetPawn();
@@ -167,21 +174,37 @@ void ASpartaArcadePlayerController::OnMoveTriggered(const FInputActionValue& Val
 // 로컬 입력 트리거 시 서버 RPC를 호출하도록 연결
 void ASpartaArcadePlayerController::OnPlaceBombTriggered()
 {
+	if (bIsSpectating)
+	{
+		return;
+	}
 	ServerPlaceBomb();
 }
 
 void ASpartaArcadePlayerController::OnKickBombTriggered()
 {
+	if (bIsSpectating)
+	{
+		return;
+	}
 	ServerKickBomb();
 }
 
 void ASpartaArcadePlayerController::OnUseFirstAidKitTriggered()
 {
+	if (bIsSpectating)
+	{
+		return;
+	}
 	ServerUseFirstAidKit();
 }
 
 void ASpartaArcadePlayerController::OnUseShieldTriggered()
 {
+	if (bIsSpectating)
+	{
+		return;
+	}
 	ServerUseShield();
 }
 
