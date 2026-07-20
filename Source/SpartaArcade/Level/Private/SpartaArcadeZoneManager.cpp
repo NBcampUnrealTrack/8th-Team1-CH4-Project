@@ -243,6 +243,7 @@ void ASpartaArcadeZoneManager::ProcessCrushKills()
             {
                 if (UCombatComponent* CombatComp = Character->FindComponentByClass<UCombatComponent>())
                 {
+                    CombatComp->SetLastAttacker(nullptr, EDeathReason::SafeZone);
                     CombatComp->InstantEliminate();
                 }
                 else

@@ -110,6 +110,9 @@ public:
 	UFUNCTION(Client, Reliable)
 	void ClientShowMatchResult(const FMatchResultData& InMatchResultData);
 
+	UFUNCTION(Client, Reliable)
+	void ClientShowKillLog(const FString& KillerName, const FString& VictimName, EDeathReason Reason);
+
 	void ShowMatchResult();
 protected:
 

@@ -1,4 +1,4 @@
-﻿#include "SpartaHUDWidget.h"
+#include "SpartaHUDWidget.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
@@ -8,6 +8,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
 #include "Framework/Public/InGame/SpartaPlayerState.h"
+#include "SpartaKillLogWidget.h"
 #include "Systems/Public/StatComponent.h"
 #include "Systems/Public/CombatComponent.h"
 #include "Systems/Public/BombPlacerComponent.h"
@@ -481,5 +482,13 @@ void USpartaHUDWidget::HandleOnEliminated()
     {
         CachedAliveCount = AliveCount;
         UpdateGameStateInfo(AliveCount, CachedMatchSeconds >= 0 ? CachedMatchSeconds : 0);
+    }
+}
+
+void USpartaHUDWidget::AddKillLog(const FString& KillerName, const FString& VictimName, EDeathReason Reason)
+{
+    if (IsValid(WBP_KillLogWidget))
+    {
+        WBP_KillLogWidget->AddKillLog(KillerName, VictimName, Reason);
     }
 }

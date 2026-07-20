@@ -10,6 +10,8 @@
 #include "NiagaraComponent.h" 
 #include "Particles/ParticleSystemComponent.h"
 #include "SpartaArcadeCharacter.h"
+#include "Framework/Public/InGame/SpartaPlayerState.h"
+#include "Systems/Public/CombatComponent.h"
 #include "BreakableBox.h"
 #include "Damageable.h"
 #include "WorldPartition/HLOD/DestructibleHLODComponent.h"
@@ -204,6 +206,15 @@ bool ASpartaArcadeBomb::HandleExplosionHit(AActor* HitActor)
 		{
 			if (!DamagedActors.Contains(HitActor))
 			{
+				if (ASpartaArcadeCharacter* TargetChar = Cast<ASpartaArcadeCharacter>(HitActor))
+				{
+					ASpartaPlayerState* KillerPS = IsValid(InstigatorCharacter) ? InstigatorCharacter->GetPlayerState<ASpartaPlayerState>() : nullptr;
+					if (UCombatComponent* CombatComp = TargetChar->GetCombatComponent())
+					{
+						CombatComp->SetLastAttacker(KillerPS, EDeathReason::Explosion);
+					}
+				}
+
 				// 과도한 Warning 로그 방지를 위해 Verbose 레벨로 변경
 				UE_LOG(LogTemp, Verbose, TEXT("[Bomb] HandleExplosionHit: %s 에 TakeExplosionDamage 호출"), *HitActor->GetName());
 				IDamageable::Execute_TakeExplosionDamage(HitActor);

@@ -1,4 +1,4 @@
-﻿#include "CombatComponent.h"
+#include "CombatComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Framework/Public/InGame/SpartaPlayerState.h"
 #include "Framework/Public/InGame/SpartaGameState.h"
@@ -274,6 +274,12 @@ void UCombatComponent::EnterStun()
         StunTimerHandle, StunDuration, false);
 }
 
+void UCombatComponent::SetLastAttacker(ASpartaPlayerState* Attacker, EDeathReason Reason)
+{
+    LastAttackerPlayerState = Attacker;
+    LastDeathReason = Reason;
+}
+
 void UCombatComponent::Eliminate()
 {
     if (!IsValid(SpartaPlayerState)) return;
@@ -286,10 +292,10 @@ void UCombatComponent::Eliminate()
         CachedASC->AddLooseGameplayTag(BomberGameplayTags::State_Eliminated);
     }
 
-    // GameMode에 Eliminate 이벤트 전달
+    // GameMode에 Eliminate 이벤트 전달 (가해자 및 사유 포함)
     if (GetOwner()->HasAuthority() && IsValid(SpartaPlayerState))
     {
-        OnEliminatedEvent.Broadcast(SpartaPlayerState);
+        OnEliminatedEvent.Broadcast(SpartaPlayerState, LastAttackerPlayerState, LastDeathReason);
     }
 
     OnEliminated.Broadcast();
@@ -393,7 +399,7 @@ void UCombatComponent::InstantEliminate()
     // 즉사 판정(자기장 압사 등) 시에도 GameMode가 탈락 및 매치 종료 처리를 연동할 수 있도록 이벤트 브로드캐스트 추가
     if (IsValid(SpartaPlayerState))
     {
-        OnEliminatedEvent.Broadcast(SpartaPlayerState);
+        OnEliminatedEvent.Broadcast(SpartaPlayerState, LastAttackerPlayerState, LastDeathReason);
     }
 
     OnEliminated.Broadcast();

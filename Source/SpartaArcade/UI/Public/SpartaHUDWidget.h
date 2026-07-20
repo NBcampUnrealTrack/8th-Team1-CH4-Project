@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
@@ -90,9 +90,12 @@ protected:
     UPROPERTY(meta = (BindWidget, OptionalWidget = true))
     class USpartaMinimapWidget* WBP_MinimapWidget; // 미니맵 UI 연동 변수 추가
 
-
+    UPROPERTY(meta = (BindWidget, OptionalWidget = true))
+    class USpartaKillLogWidget* WBP_KillLogWidget;
 
 public:
+    UFUNCTION(BlueprintCallable, Category = "UI | KillLog")
+    void AddKillLog(const FString& KillerName, const FString& VictimName, EDeathReason Reason);
     // 하트 개수 업데이트 함수 추가
     UFUNCTION(BlueprintCallable, Category = "UI | Update")
     void UpdateHearts(int32 CurrentHearts, int32 MaxHearts);

@@ -1,4 +1,4 @@
-﻿#include "SpartaArcadePlayerController.h"
+#include "SpartaArcadePlayerController.h"
 
 #include "BomberTypes.h"
 #include "GameFramework/Pawn.h"
@@ -293,6 +293,17 @@ void ASpartaArcadePlayerController::ClientShowMatchResult_Implementation(const F
 	MatchResultData = InMatchResultData;
 	FTimerDelegate TimerDelegate;
 	GetWorld()->GetTimerManager().SetTimer(ResultUITimerHandle, this, &ASpartaArcadePlayerController::ShowMatchResult, 2.0f, false);
+}
+
+void ASpartaArcadePlayerController::ClientShowKillLog_Implementation(const FString& KillerName, const FString& VictimName, EDeathReason Reason)
+{
+	if (IsValid(HUDUIWidgetInstance))
+	{
+		if (USpartaHUDWidget* HUDWidget = Cast<USpartaHUDWidget>(HUDUIWidgetInstance))
+		{
+			HUDWidget->AddKillLog(KillerName, VictimName, Reason);
+		}
+	}
 }
 
 void ASpartaArcadePlayerController::ShowMatchResult()
