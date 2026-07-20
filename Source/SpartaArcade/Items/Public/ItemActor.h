@@ -82,7 +82,7 @@ protected:
 	FVector StartLocation;
 	
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_PlayPickupEffects(FVector Location);
+	void Multicast_PlayPickupEffects(FVector Location, AActor* Interactor);
 
 private:
 	// ReplicatedUsing을 적용하여 클라이언트에서도 아이템 데이터 복제 시 비주얼이 동적 갱신되도록 처리

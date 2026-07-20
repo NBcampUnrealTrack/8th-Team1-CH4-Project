@@ -807,10 +807,13 @@ void ASpartaArcadeCharacter::Tick(float DeltaSeconds)
 				SceneCapture->SetActive(true);
 			}
 
-			// 2. 상대 위치/회전을 로컬 캐릭터의 정수리 위 1500 uu 상공, 수직 하방으로 고정
 			FVector TargetRelativeLoc = FVector(0.f, 0.f, 1500.f);
 			FRotator TargetRelativeRot = FRotator(-90.f, 0.f, 0.f);
-			SceneCapture->SetRelativeLocationAndRotation(TargetRelativeLoc, TargetRelativeRot);
+			if (!SceneCapture->GetRelativeLocation().Equals(TargetRelativeLoc, 1.f) ||
+				!SceneCapture->GetRelativeRotation().Equals(TargetRelativeRot, 1.f))
+			{
+				SceneCapture->SetRelativeLocationAndRotation(TargetRelativeLoc, TargetRelativeRot);
+			}
 		}
 		else
 		{

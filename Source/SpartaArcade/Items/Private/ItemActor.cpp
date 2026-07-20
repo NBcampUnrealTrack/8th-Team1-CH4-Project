@@ -35,6 +35,12 @@ AItemActor::AItemActor()
     FloatSpeed = 2.0f;
     FloatHeight = 15.0f;
     RotationSpeed = 45.0f;
+
+    static ConstructorHelpers::FObjectFinder<USoundBase> SoundF(TEXT("/Engine/EngineSounds/A_Item_Pickup_Cue.A_Item_Pickup_Cue"));
+    if (SoundF.Succeeded())
+    {
+        PickupSound = SoundF.Object;
+    }
 }
 
 void AItemActor::BeginPlay()
@@ -151,41 +157,21 @@ void AItemActor::NotifyActorBeginOverlap(AActor* OtherActor)
     //         FString::Printf(TEXT("%s 아이템 획득! (%s)"), *ItemTypeName, *OtherActor->GetName()));
     // }
 
-    Multicast_PlayPickupEffects(GetActorLocation());
+    Multicast_PlayPickupEffects(GetActorLocation(), Character);
 
     Destroy();
 }
 
-void AItemActor::Multicast_PlayPickupEffects_Implementation(FVector Location)
+void AItemActor::Multicast_PlayPickupEffects_Implementation(FVector Location, AActor* Interactor)
 {
     if (PickupSound)
     {
-        // [3D 사운드 버그 수정] 전역(2D)으로 들리는 문제를 방지하기 위해 PickupSoundAttenuation 인자를 전달하고, 없을 시 기본 3D 감쇄 객체 동적 적용
-        USoundAttenuation* TargetAttenuation = PickupSoundAttenuation;
-        if (!TargetAttenuation)
+        //다른 사람이 아이템을 먹을 때는 사운드가 들리지 않고 오직 아이템을 직접 획득한 본인(로컬 플레이어)에게만 재생되도록 설정
+        APawn* InteractingPawn = Cast<APawn>(Interactor);
+        if (InteractingPawn && InteractingPawn->IsLocallyControlled())
         {
-            static TWeakObjectPtr<USoundAttenuation> DefaultPickupAtten = nullptr;
-            if (!DefaultPickupAtten.IsValid())
-            {
-                USoundAttenuation* NewAtten = NewObject<USoundAttenuation>();
-                NewAtten->Attenuation.bAttenuate = true;
-                NewAtten->Attenuation.bSpatialize = true;
-                NewAtten->Attenuation.AttenuationShape = EAttenuationShape::Sphere;
-                NewAtten->Attenuation.AttenuationShapeExtents = FVector(300.f, 0.f, 0.f);
-                NewAtten->Attenuation.FalloffDistance = 1200.f;
-                DefaultPickupAtten = NewAtten;
-            }
-            TargetAttenuation = DefaultPickupAtten.Get();
+            UGameplayStatics::PlaySound2D(GetWorld(), PickupSound, 1.0f);
         }
-
-        UGameplayStatics::PlaySoundAtLocation(
-            GetWorld(),
-            PickupSound,
-            Location,
-            FRotator::ZeroRotator,
-            1.f, 1.f, 0.f,
-            TargetAttenuation
-        );
     }
 
     if (PickupVFX)

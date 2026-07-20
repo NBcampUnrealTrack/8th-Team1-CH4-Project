@@ -46,7 +46,7 @@ void USpartaMinimapWidget::NativeConstruct()
                 BGSlot->SetAlignment(FVector2D(0.5f, 0.5f));
                 BGSlot->SetZOrder(0);
             }
-            MinimapBackground->SetColorAndOpacity(FLinearColor(0.05f, 0.05f, 0.05f, 0.7f)); // 반투명 검은색 폴백 배경
+            MinimapBackground->SetColorAndOpacity(FLinearColor(0.75f, 0.75f, 0.75f, 1.0f)); // 과도한 눈부심 방지를 위한 적정 톤다운 설정
         }
         
         // 3. 플레이어 위치 마커 생성 및 레이아웃
@@ -285,12 +285,14 @@ void USpartaMinimapWidget::InitializeDynamicRenderTarget()
             DynamicRenderTarget->InitAutoFormat(256, 256);
             DynamicRenderTarget->UpdateResourceImmediate(true);
             
-            // SceneCapture의 타겟 렌더타겟을 동적으로 생성한 RT로 변경
             SceneCapture->TextureTarget = DynamicRenderTarget;
-            
-            // [버그 수정] bCaptureEveryFrame = true 는 메인 렌더링 파이프라인(Depth/Shadow Buffer)과 오버랩되어 맵 전체가 깜빡이는(Flicker) 원인이 되므로 false로 설정
-            SceneCapture->bCaptureEveryFrame = false;
-            SceneCapture->bCaptureOnMovement = true;
+            SceneCapture->bCaptureEveryFrame = true;
+            SceneCapture->bCaptureOnMovement = false;
+            SceneCapture->ShowFlags.SetStaticMeshes(true);
+            SceneCapture->ShowFlags.SetInstancedStaticMeshes(true);
+            SceneCapture->ShowFlags.SetLighting(false);
+            SceneCapture->ShowFlags.SetDynamicShadows(false);
+            SceneCapture->ShowFlags.SetAmbientOcclusion(false);
             SceneCapture->CaptureScene();
             
             //씬 캡쳐 카메라의 상대 높이를 가져와 캐싱
@@ -307,6 +309,8 @@ void USpartaMinimapWidget::InitializeDynamicRenderTarget()
                 if (DynamicMinimapMaterial)
                 {
                     DynamicMinimapMaterial->SetTextureParameterValue(TEXT("RT_Minimap"), DynamicRenderTarget);
+                    DynamicMinimapMaterial->SetTextureParameterValue(TEXT("Texture"), DynamicRenderTarget);
+                    DynamicMinimapMaterial->SetTextureParameterValue(TEXT("MinimapTexture"), DynamicRenderTarget);
                     MinimapBackground->SetBrushFromMaterial(DynamicMinimapMaterial);
                 }
             }

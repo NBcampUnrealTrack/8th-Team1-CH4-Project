@@ -1,5 +1,6 @@
 #include "SpartaArcadeMovingObstacle.h"
 #include "SpartaArcadeMapBuilder.h"
+#include "SpartaArcadeBomb.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
@@ -101,6 +102,26 @@ bool ASpartaArcadeMovingObstacle::CellOpen(const FIntPoint& C) const
         return false;
     }
 
+    if (GetWorld())
+    {
+        TArray<AActor*> Bombs;
+        UGameplayStatics::GetAllActorsOfClass(GetWorld(), ASpartaArcadeBomb::StaticClass(), Bombs);
+        for (AActor* BombActor : Bombs)
+        {
+            if (IsValid(BombActor))
+            {
+                int32 BombX = 0, BombY = 0;
+                if (Map->WorldToTile(BombActor->GetActorLocation(), BombX, BombY))
+                {
+                    if (BombX == C.X && BombY == C.Y)
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+
     // 시작하는 방(구석 3x3 안전지대) 안으로는 움직이는 장애물이 절대 침입하지 못하도록 경로 탐색 시 차단 (벽 취급)
     const int32 W = Map->GetGridWidth();
     const int32 H = Map->GetGridHeight();
@@ -177,6 +198,15 @@ void ASpartaArcadeMovingObstacle::Tick(float DeltaSeconds)
     PrevLocation = CurLocation; // 다음 프레임 연산을 위해 캐시 갱신
 
     if (!HasAuthority() || !Map.IsValid() || !bHasTarget) return;
+
+    if (!CellOpen(TargetCell))
+    {
+        int32 X = 0, Y = 0;
+        Map->WorldToTile(GetActorLocation(), X, Y);
+        CurCell = FIntPoint(X, Y);
+        ChooseNextTarget();
+        return;
+    }
 
     const FVector TargetW = Map->TileToWorld(TargetCell.X, TargetCell.Y);
     const FVector Cur = GetActorLocation();

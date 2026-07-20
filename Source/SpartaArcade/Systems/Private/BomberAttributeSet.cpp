@@ -12,11 +12,11 @@
 
 UBomberAttributeSet::UBomberAttributeSet()
 {
-	BombRange.SetBaseValue(2.f);
-	BombRange.SetCurrentValue(2.f);
+	BombRange.SetBaseValue(1.f);
+	BombRange.SetCurrentValue(1.f);
 
-	BombCount.SetBaseValue(3.f);
-	BombCount.SetCurrentValue(3.f);
+	BombCount.SetBaseValue(1.f);
+	BombCount.SetCurrentValue(1.f);
 
 	MoveSpeed.SetBaseValue(3.f);
 	MoveSpeed.SetCurrentValue(3.f);

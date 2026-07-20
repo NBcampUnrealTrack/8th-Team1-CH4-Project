@@ -5,7 +5,7 @@
 #include "Engine/World.h"
 #include "Net/UnrealNetwork.h"
 #include "Components/StaticMeshComponent.h"
-#include "Components/HierarchicalInstancedStaticMeshComponent.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -29,35 +29,51 @@ ASpartaArcadeMapBuilder::ASpartaArcadeMapBuilder()
     FloorPlane->SetupAttachment(SceneRoot);
     FloorPlane->SetCollisionProfileName(TEXT("BlockAll"));
 
-    FloorISM = CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(TEXT("FloorISM"));
+    FloorISM = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("FloorISM"));
     FloorISM->SetupAttachment(SceneRoot);
     FloorISM->SetCollisionEnabled(ECollisionEnabled::NoCollision);   // 룸 바닥 타일은 시각용
 
-    WallISM = CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(TEXT("WallISM"));
+    WallISM = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("WallISM"));
     WallISM->SetupAttachment(SceneRoot);
     WallISM->SetCollisionProfileName(TEXT("BlockAll"));
 
-    BoxISM = CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(TEXT("BoxISM"));
+    BoxISM = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("BoxISM"));
     BoxISM->SetupAttachment(SceneRoot);
     BoxISM->SetCollisionProfileName(TEXT("BlockAll"));
 
     // 실내 기둥 — 그리드상 FixedWall이지만 시각적으로 벽과 구분(색·두께). 충돌은 벽과 동일.
-    PillarISM = CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(TEXT("PillarISM"));
+    PillarISM = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("PillarISM"));
     PillarISM->SetupAttachment(SceneRoot);
     PillarISM->SetCollisionProfileName(TEXT("BlockAll"));
 
     // 변형 타일 — 바닥 타일처럼 시각용(충돌 없음). 효과는 게임플레이 레이어에서.
-    IceISM = CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(TEXT("IceISM"));
+    IceISM = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("IceISM"));
     IceISM->SetupAttachment(SceneRoot);
     IceISM->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-    MudWaterISM = CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(TEXT("MudWaterISM"));
+    MudWaterISM = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("MudWaterISM"));
     MudWaterISM->SetupAttachment(SceneRoot);
     MudWaterISM->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-    BushISM = CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(TEXT("BushISM"));
+    BushISM = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("BushISM"));
     BushISM->SetupAttachment(SceneRoot);
     BushISM->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+    auto SetupISMOptions = [](UInstancedStaticMeshComponent* ISMComp)
+    {
+        if (!ISMComp) return;
+        ISMComp->bNeverDistanceCull = true;
+        ISMComp->bUseAsOccluder = false;
+        ISMComp->SetCullDistances(0, 0);
+    };
+
+    SetupISMOptions(FloorISM);
+    SetupISMOptions(WallISM);
+    SetupISMOptions(BoxISM);
+    SetupISMOptions(PillarISM);
+    SetupISMOptions(IceISM);
+    SetupISMOptions(MudWaterISM);
+    SetupISMOptions(BushISM);
 
     // 엔진 기본 메쉬 로드 및 TileVisualMap 기본 설정
     static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeF(TEXT("/Engine/BasicShapes/Cube.Cube"));
@@ -168,6 +184,8 @@ void ASpartaArcadeMapBuilder::BeginPlay()
             ObstacleClass = LoadedBPClass;
         }
     }
+
+    EnsureComponents();
 
     // 그리드 생성은 서버에서만. 클라는 OnRep_MapGrid에서 비주얼만.
     if (HasAuthority())
@@ -472,8 +490,64 @@ void ASpartaArcadeMapBuilder::OnRep_SpawnWorldLocations()
     }
 }
 
+void ASpartaArcadeMapBuilder::EnsureComponents()
+{
+    if (!SceneRoot)
+    {
+        SceneRoot = NewObject<USceneComponent>(this, TEXT("SceneRootDynamic"));
+        SetRootComponent(SceneRoot);
+        SceneRoot->RegisterComponent();
+    }
+
+    auto RestoreISM = [this](UInstancedStaticMeshComponent*& Comp, FName CompName, bool bCollision)
+    {
+        if (!Comp)
+        {
+            Comp = NewObject<UInstancedStaticMeshComponent>(this, CompName);
+            if (Comp)
+            {
+                Comp->SetupAttachment(SceneRoot);
+                if (bCollision)
+                {
+                    Comp->SetCollisionProfileName(TEXT("BlockAll"));
+                }
+                else
+                {
+                    Comp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+                }
+                Comp->bNeverDistanceCull = true;
+                Comp->bUseAsOccluder = false;
+                Comp->SetCullDistances(0, 0);
+                Comp->RegisterComponent();
+                UE_LOG(LogTemp, Warning, TEXT("[MapBuilder] 누락되었던 ISM 컴포넌트(%s)를 동적으로 복구 및 등록했습니다."), *CompName.ToString());
+            }
+        }
+    };
+
+    RestoreISM(FloorISM, TEXT("FloorISMDynamic"), false);
+    RestoreISM(WallISM, TEXT("WallISMDynamic"), true);
+    RestoreISM(BoxISM, TEXT("BoxISMDynamic"), true);
+    RestoreISM(PillarISM, TEXT("PillarISMDynamic"), true);
+    RestoreISM(IceISM, TEXT("IceISMDynamic"), false);
+    RestoreISM(MudWaterISM, TEXT("MudWaterISMDynamic"), false);
+    RestoreISM(BushISM, TEXT("BushISMDynamic"), false);
+
+    if (!FloorPlane)
+    {
+        FloorPlane = NewObject<UStaticMeshComponent>(this, TEXT("FloorPlaneDynamic"));
+        if (FloorPlane)
+        {
+            FloorPlane->SetupAttachment(SceneRoot);
+            FloorPlane->SetCollisionProfileName(TEXT("BlockAll"));
+            FloorPlane->RegisterComponent();
+        }
+    }
+}
+
 void ASpartaArcadeMapBuilder::BuildVisuals()
 {
+    EnsureComponents();
+
     if (MapGrid.Tiles.Num() == 0)
     {
         return;
@@ -499,7 +573,7 @@ void ASpartaArcadeMapBuilder::BuildVisuals()
     SyncVisualInfo(ESpartaArcadeTileType::Void, ESpartaArcadeTileType::FloorPlane);
 
     // TileVisualMap에 들어있는 비주얼 데이터를 추출하여 각 ISM 컴포넌트에 동적 반영
-    auto ApplyVisualToISM = [this](ESpartaArcadeTileType TileType, UHierarchicalInstancedStaticMeshComponent* ISMComp)
+    auto ApplyVisualToISM = [this](ESpartaArcadeTileType TileType, UInstancedStaticMeshComponent* ISMComp)
     {
         if (!ISMComp) return;
         if (TileVisualMap.Contains(TileType))
@@ -520,18 +594,20 @@ void ASpartaArcadeMapBuilder::BuildVisuals()
     ApplyVisualToISM(ESpartaArcadeTileType::MudWater, MudWaterISM);
     ApplyVisualToISM(ESpartaArcadeTileType::Bush, BushISM);
 
-    if (TileVisualMap.Contains(ESpartaArcadeTileType::Empty) && TileVisualMap[ESpartaArcadeTileType::Empty].Mesh)
+    if (FloorPlane && TileVisualMap.Contains(ESpartaArcadeTileType::Empty) && TileVisualMap[ESpartaArcadeTileType::Empty].Mesh)
     {
         FloorPlane->SetStaticMesh(TileVisualMap[ESpartaArcadeTileType::Empty].Mesh);
+        FloorPlane->SetRelativeLocation(FVector(0.f, 0.f, -10.f));
     }
 
-    WallISM->ClearInstances();
-    PillarISM->ClearInstances();
-    BoxISM->ClearInstances();
-    FloorISM->ClearInstances();
-    IceISM->ClearInstances();
-    MudWaterISM->ClearInstances();
-    BushISM->ClearInstances();
+    auto SafeClearISM = [](UInstancedStaticMeshComponent* C) { if (C) C->ClearInstances(); };
+    SafeClearISM(WallISM);
+    SafeClearISM(PillarISM);
+    SafeClearISM(BoxISM);
+    SafeClearISM(FloorISM);
+    SafeClearISM(IceISM);
+    SafeClearISM(MudWaterISM);
+    SafeClearISM(BushISM);
     BoxCellToInstance.Reset();   // 박스 셀→인스턴스 매핑도 처음부터
 
     // 런타임 게임월드에서는 진짜 액터가 스폰되므로 중복 렌더링/충돌 방지를 위해 BoxISM 생성을 차단 (에디터 프리뷰 모드에서만 그리도록 설계)
@@ -668,9 +744,12 @@ void ASpartaArcadeMapBuilder::BuildVisuals()
                 }
                 break;
             case ESpartaArcadeTileType::Ice:
+                // 얼음 및 진흙 타일 아래에도 바닥(Floor)을 함께 배치하여 비치는 틈으로 어두운 배경이 노출되어 깜빡이는 현상 차단
+                FloorXfs.Emplace(FRotator::ZeroRotator, Pos + EmptyVis.Value, EmptyVis.Key);
                 IceXfs.Emplace(FRotator::ZeroRotator, Pos + IceVis.Value, IceVis.Key);
                 break;
             case ESpartaArcadeTileType::MudWater:
+                FloorXfs.Emplace(FRotator::ZeroRotator, Pos + EmptyVis.Value, EmptyVis.Key);
                 MudXfs.Emplace(FRotator::ZeroRotator, Pos + MudVis.Value, MudVis.Key);
                 break;
             case ESpartaArcadeTileType::Bush:
@@ -684,18 +763,29 @@ void ASpartaArcadeMapBuilder::BuildVisuals()
         }
     }
 
-    FloorISM->AddInstances(FloorXfs, /*bShouldReturnIndices=*/false);
-    WallISM->AddInstances(WallXfs, /*bShouldReturnIndices=*/false);
-    PillarISM->AddInstances(PillarXfs, /*bShouldReturnIndices=*/false);
-    IceISM->AddInstances(IceXfs, /*bShouldReturnIndices=*/false);
-    MudWaterISM->AddInstances(MudXfs, /*bShouldReturnIndices=*/false);
-    BushISM->AddInstances(BushXfs, /*bShouldReturnIndices=*/false);
+    auto SafeAddInstances = [](UInstancedStaticMeshComponent* C, const TArray<FTransform>& Xfs)
+    {
+        if (C && Xfs.Num() > 0)
+        {
+            C->AddInstances(Xfs, /*bShouldReturnIndices=*/false);
+        }
+    };
+
+    SafeAddInstances(FloorISM, FloorXfs);
+    SafeAddInstances(WallISM, WallXfs);
+    SafeAddInstances(PillarISM, PillarXfs);
+    SafeAddInstances(IceISM, IceXfs);
+    SafeAddInstances(MudWaterISM, MudXfs);
+    SafeAddInstances(BushISM, BushXfs);
 
     // 박스는 셀→인스턴스 매핑이 필요해 인덱스를 받아서 기록(파괴 시 증분 숨김용).
-    const TArray<int32> BoxIndices = BoxISM->AddInstances(BoxXfs, /*bShouldReturnIndices=*/true);
-    for (int32 i = 0; i < BoxCells.Num(); ++i)
+    if (BoxISM && BoxXfs.Num() > 0)
     {
-        BoxCellToInstance.Add(BoxCells[i], BoxIndices.IsValidIndex(i) ? BoxIndices[i] : i);
+        const TArray<int32> BoxIndices = BoxISM->AddInstances(BoxXfs, /*bShouldReturnIndices=*/true);
+        for (int32 i = 0; i < BoxCells.Num(); ++i)
+        {
+            BoxCellToInstance.Add(BoxCells[i], BoxIndices.IsValidIndex(i) ? BoxIndices[i] : i);
+        }
     }
 
     // 색칠: 컴포넌트별 다이내믹 머티리얼 인스턴스로 색 지정 또는 커스텀 머티리얼 바인딩.
@@ -745,13 +835,19 @@ void ASpartaArcadeMapBuilder::BuildVisuals()
     ColorComp(MudWaterISM, ESpartaArcadeTileType::MudWater, FLinearColor(0.28f, 0.44f, 0.54f));
     ColorComp(BushISM, ESpartaArcadeTileType::Bush, FLinearColor(0.24f, 0.55f, 0.28f));
 
-    FloorISM->MarkRenderStateDirty();
-    WallISM->MarkRenderStateDirty();
-    PillarISM->MarkRenderStateDirty();
-    BoxISM->MarkRenderStateDirty();
-    IceISM->MarkRenderStateDirty();
-    MudWaterISM->MarkRenderStateDirty();
-    BushISM->MarkRenderStateDirty();
+    auto FinalizeISM = [](UInstancedStaticMeshComponent* ISMComp)
+    {
+        if (!ISMComp) return;
+        ISMComp->MarkRenderStateDirty();
+    };
+
+    FinalizeISM(FloorISM);
+    FinalizeISM(WallISM);
+    FinalizeISM(PillarISM);
+    FinalizeISM(BoxISM);
+    FinalizeISM(IceISM);
+    FinalizeISM(MudWaterISM);
+    FinalizeISM(BushISM);
 
     bVisualsBuilt = true;   // 이후 OnRep은 증분 갱신 경로로
 
@@ -959,7 +1055,7 @@ void ASpartaArcadeMapBuilder::EditorClearPreview()
 {
     if (HasAnyFlags(RF_ClassDefaultObject)) return;
 
-    auto ClearISM = [](UHierarchicalInstancedStaticMeshComponent* C) { if (C) C->ClearInstances(); };
+    auto ClearISM = [](UInstancedStaticMeshComponent* C) { if (C) C->ClearInstances(); };
     ClearISM(WallISM);
     ClearISM(PillarISM);
     ClearISM(BoxISM);
@@ -971,7 +1067,7 @@ void ASpartaArcadeMapBuilder::EditorClearPreview()
     if (FloorPlane)
     {
         FloorPlane->SetRelativeScale3D(FVector(1.f));
-        FloorPlane->SetRelativeLocation(FVector(0.f, 0.f, -2.f));
+        FloorPlane->SetRelativeLocation(FVector(0.f, 0.f, -10.f));
     }
 
     BoxCellToInstance.Reset();
@@ -1074,8 +1170,8 @@ void ASpartaArcadeMapBuilder::ClearStructuresAtSpawns()
         // 언리얼 피지컬/월드 트랜스폼 지연 오류를 완벽히 우회하기 위해 로컬 좌표 기준으로 안전하고 정확하게 제거
         FVector LocalSpawnLoc = SpawnLoc - GetActorLocation();
 
-        TArray<UHierarchicalInstancedStaticMeshComponent*> ISMComponents = { WallISM, PillarISM, BoxISM };
-        for (UHierarchicalInstancedStaticMeshComponent* ISMComp : ISMComponents)
+        TArray<UInstancedStaticMeshComponent*> ISMComponents = { WallISM, PillarISM, BoxISM };
+        for (UInstancedStaticMeshComponent* ISMComp : ISMComponents)
         {
             if (!ISMComp) continue;
 

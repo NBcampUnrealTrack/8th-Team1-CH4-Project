@@ -1,4 +1,4 @@
-﻿#include "SpartaArcadeBomb.h"
+#include "SpartaArcadeBomb.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SphereComponent.h"
 #include "Net/UnrealNetwork.h"
@@ -407,7 +407,6 @@ void ASpartaArcadeBomb::Multicast_PlayExplosionEffects_Implementation(const TArr
 	// 폭발 사운드 에셋이 지정되어 있다면 처음 폭발 위치에서 3D 감쇄 사운드로 재생
 	if (ExplosionSound && Locations.Num() > 0)
 	{
-		// [3D 사운드 버그 수정] 전역(2D)으로 들리는 문제를 방지하기 위해 ExplosionSoundAttenuation 인자를 전달하고, 없을 시 기본 3D 감쇄 객체 동적 적용
 		USoundAttenuation* TargetAttenuation = ExplosionSoundAttenuation;
 		if (!TargetAttenuation)
 		{
@@ -418,8 +417,8 @@ void ASpartaArcadeBomb::Multicast_PlayExplosionEffects_Implementation(const TArr
 				NewAtten->Attenuation.bAttenuate = true;
 				NewAtten->Attenuation.bSpatialize = true;
 				NewAtten->Attenuation.AttenuationShape = EAttenuationShape::Sphere;
-				NewAtten->Attenuation.AttenuationShapeExtents = FVector(400.f, 0.f, 0.f);
-				NewAtten->Attenuation.FalloffDistance = 2100.f;
+				NewAtten->Attenuation.AttenuationShapeExtents = FVector(1500.f, 0.f, 0.f);
+				NewAtten->Attenuation.FalloffDistance = 4000.f;
 				DefaultExplosionAtten = NewAtten;
 			}
 			TargetAttenuation = DefaultExplosionAtten.Get();

@@ -9,7 +9,7 @@
 class UStaticMesh;
 class UMaterialInterface;
 class UStaticMeshComponent;
-class UHierarchicalInstancedStaticMeshComponent;
+class UInstancedStaticMeshComponent;
 class UDataTable;
 
 /** 런타임에 칸이 바뀔 때 알림(서버·클라 각자 로컬 브로드캐스트). UI 미니맵 갱신 등 구독용. */
@@ -324,27 +324,30 @@ protected:
 
     /** 룸 바닥을 칸별 타일로(밝은 색) → 빈 공간(어두운 배경 플레인)과 구분. */
     UPROPERTY(VisibleAnywhere, Category = "SpartaArcade|Visual")
-    UHierarchicalInstancedStaticMeshComponent* FloorISM;
+    UInstancedStaticMeshComponent* FloorISM;
 
     UPROPERTY(VisibleAnywhere, Category = "SpartaArcade|Visual")
-    UHierarchicalInstancedStaticMeshComponent* WallISM;
+    UInstancedStaticMeshComponent* WallISM;
 
     UPROPERTY(VisibleAnywhere, Category = "SpartaArcade|Visual")
-    UHierarchicalInstancedStaticMeshComponent* BoxISM;
+    UInstancedStaticMeshComponent* BoxISM;
 
     /** 실내 기둥(홀로 선 FixedWall) — 벽과 시각 구분용. 그리드 의미·충돌은 벽과 동일. */
     UPROPERTY(VisibleAnywhere, Category = "SpartaArcade|Visual")
-    UHierarchicalInstancedStaticMeshComponent* PillarISM;
+    UInstancedStaticMeshComponent* PillarISM;
 
     /** 변형 타일(지형 효과) — 바닥 타일처럼 평평하게, 색만 다르게. */
     UPROPERTY(VisibleAnywhere, Category = "SpartaArcade|Visual")
-    UHierarchicalInstancedStaticMeshComponent* IceISM;
+    UInstancedStaticMeshComponent* IceISM;
 
     UPROPERTY(VisibleAnywhere, Category = "SpartaArcade|Visual")
-    UHierarchicalInstancedStaticMeshComponent* MudWaterISM;
+    UInstancedStaticMeshComponent* MudWaterISM;
 
     UPROPERTY(VisibleAnywhere, Category = "SpartaArcade|Visual")
-    UHierarchicalInstancedStaticMeshComponent* BushISM;
+    UInstancedStaticMeshComponent* BushISM;
+
+    /** 누락된 ISM/StaticMesh 컴포넌트가 있을 경우 런타임에 동적으로 생성 및 등록하여 맵 생성을 보장하는 함수 */
+    void EnsureComponents();
 
     /** 순수 데이터 생성(그리드·스폰 좌표·연결성 로그). 액터 스폰 없음 — 에디터 프리뷰/런타임 공용. */
     void GenerateGridData();
