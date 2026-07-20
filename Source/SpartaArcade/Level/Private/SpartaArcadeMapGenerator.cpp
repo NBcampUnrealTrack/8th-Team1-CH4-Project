@@ -1,4 +1,6 @@
 #include "SpartaArcadeMapGenerator.h"
+
+#include "Engine/OverlapResult.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerStart.h"
 #include "Kismet/GameplayStatics.h"
@@ -200,7 +202,6 @@ void ASpartaArcadeMapGenerator::RepositionPlayerStarts()
 	}
 }
 
-// 스폰 포인트 주변의 구조물/장애물 액터 강제 파괴 함수 구현
 void ASpartaArcadeMapGenerator::ClearStructuresAtSpawns()
 {
 	if (!GetWorld()) return;
@@ -208,8 +209,6 @@ void ASpartaArcadeMapGenerator::ClearStructuresAtSpawns()
 	// 타일 크기 1칸 전체(90%)를 덮어 겹치는 모든 구조물 액터를 완전히 제거
 	const float ClearRadius = TileSize * 0.90f; 
 
-	// 4개 모서리 스폰 위치 (RepositionPlayerStarts 에서 사용하는 좌표와 동일)
-	TArray<FVector> CornerLocations;
 	FVector StartLoc = GetActorLocation();
 	TArray<FIntPoint> Corners = {
 		FIntPoint(1, 1),
@@ -218,37 +217,24 @@ void ASpartaArcadeMapGenerator::ClearStructuresAtSpawns()
 		FIntPoint(GridWidth - 2, GridHeight - 2)
 	};
 
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(this);
+
 	for (const FIntPoint& Corner : Corners)
 	{
-		FVector Loc = StartLoc + FVector(Corner.X * TileSize, Corner.Y * TileSize, 100.f);
-		CornerLocations.Add(Loc);
-	}
+		FVector SpawnLoc = StartLoc + FVector(Corner.X * TileSize, Corner.Y * TileSize, 100.f);
 
-	for (const FVector& SpawnLoc : CornerLocations)
-	{
-		TArray<AActor*> OverlappingActors;
-		UGameplayStatics::GetAllActorsOfClass(GetWorld(), AActor::StaticClass(), OverlappingActors);
-
-		for (AActor* Actor : OverlappingActors)
+		// [성능 최적화] 루프 내 GetAllActorsOfClass 전수 검색 및 FString::Contains 연산을 범위 기반 Overlap 쿼리로 대체
+		TArray<FOverlapResult> Overlaps;
+		if (GetWorld()->OverlapMultiByChannel(Overlaps, SpawnLoc, FQuat::Identity, ECC_WorldStatic, FCollisionShape::MakeSphere(ClearRadius), QueryParams))
 		{
-			if (!IsValid(Actor) || Actor == this || Actor->IsA(APlayerStart::StaticClass())) continue;
-
-			FVector ActorLoc = Actor->GetActorLocation();
-			float Distance2D = FVector::Dist2D(SpawnLoc, ActorLoc);
-			float DistanceZ = FMath::Abs(SpawnLoc.Z - ActorLoc.Z);
-
-			if (Distance2D < ClearRadius && DistanceZ < 200.f)
+			for (const FOverlapResult& Overlap : Overlaps)
 			{
-				FString ClassName = Actor->GetClass()->GetName();
-				if (ClassName.Contains(TEXT("Wall")) || 
-					ClassName.Contains(TEXT("Block")) || 
-					ClassName.Contains(TEXT("Box")) || 
-					ClassName.Contains(TEXT("Pillar")) ||
-					ClassName.Contains(TEXT("Obstacle")))
-				{
-					UE_LOG(LogTemp, Warning, TEXT("[MapGenerator] 스폰 위치(%s)에 겹치는 구조물 액터 %s 를 파괴합니다."), *SpawnLoc.ToString(), *Actor->GetName());
-					Actor->Destroy();
-				}
+				AActor* Actor = Overlap.GetActor();
+				if (!IsValid(Actor) || Actor == this || Actor->IsA(APlayerStart::StaticClass())) continue;
+
+				UE_LOG(LogTemp, Warning, TEXT("[MapGenerator] 스폰 위치(%s)에 겹치는 구조물 액터 %s 를 파괴합니다."), *SpawnLoc.ToString(), *Actor->GetName());
+				Actor->Destroy();
 			}
 		}
 	}

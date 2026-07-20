@@ -199,6 +199,13 @@ protected:
 	float DefaultGroundFriction;
 	float DefaultBrakingDeceleration;
 
+	// [성능 최적화] 매 프레임 FindComponentByClass 및 타일 지형 효과 재할당 부하 감소용 캐시 변수
+	UPROPERTY()
+	TObjectPtr<class USceneCaptureComponent2D> CachedSceneCaptureComponent;
+
+	FIntPoint LastTileLocation = FIntPoint(INDEX_NONE, INDEX_NONE);
+	uint8 LastTileTypeRaw = 255; // ESpartaArcadeTileType 미정의 상태 초기값
+
 	// 지형 효과 밸런싱 변수 (디렉토리 디테일 패널 개방)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement|TileEffects")
 	float MudSpeedMultiplier = 0.5f;
