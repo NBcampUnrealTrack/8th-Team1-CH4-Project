@@ -46,6 +46,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Audio")
 	class USoundBase* PickupSound;
 
+	// 아이템 획득 음원 3D 감쇄 설정 (없을 시 C++ 3D 거리 감쇄 설정 기본 적용)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Audio")
+	class USoundAttenuation* PickupSoundAttenuation;
+
 	// 아이템 획득 시 재생할 나이아가라 이펙트
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Visuals")
 	UNiagaraSystem* PickupVFX;

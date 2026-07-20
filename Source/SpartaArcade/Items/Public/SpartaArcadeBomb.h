@@ -75,10 +75,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio")
 	class USoundBase* ExplosionSound;
 
+	// [3D 사운드] 폭발 음원 3D 감쇄 설정 (없을 시 C++ 3D 거리 감쇄 설정 기본 적용)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio")
+	class USoundAttenuation* ExplosionSoundAttenuation;
+
 	// 폭발 좌표를 저장하여 해당 좌표에서 애니메이션 재생
 	TArray<FVector> ExplosionLocations;
 
-	// Modified: 2D 거리 수동 판정을 기반으로 충돌 무시를 관리할 캐릭터 목록 추가
+	// 2D 거리 수동 판정을 기반으로 충돌 무시를 관리할 캐릭터 목록 추가
 	UPROPERTY()
 	TArray<class ASpartaArcadeCharacter*> IgnoredCharacters;
 

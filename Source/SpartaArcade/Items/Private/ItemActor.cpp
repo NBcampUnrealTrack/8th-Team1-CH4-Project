@@ -1,4 +1,4 @@
-﻿#include "ItemActor.h"
+#include "ItemActor.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "ItemDropComponent.h"
@@ -7,6 +7,7 @@
 #include "Net/UnrealNetwork.h"
 #include "SpartaArcadeCharacter.h"
 #include "NiagaraFunctionLibrary.h"
+#include "Sound/SoundAttenuation.h"
 
 AItemActor::AItemActor()
 {
@@ -26,8 +27,9 @@ AItemActor::AItemActor()
     ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
     bReplicates = true;
-    NetUpdateFrequency = 66.0f;
-    MinNetUpdateFrequency = 2.0f;
+    // Modified: [경고 수정] UE 5.5 Deprecation - SetNetUpdateFrequency / SetMinNetUpdateFrequency 사용
+    SetNetUpdateFrequency(66.0f);
+    SetMinNetUpdateFrequency(2.0f);
 
     FloatSpeed = 2.0f;
     FloatHeight = 15.0f;
@@ -156,7 +158,32 @@ void AItemActor::Multicast_PlayPickupEffects_Implementation(FVector Location)
 {
     if (PickupSound)
     {
-        UGameplayStatics::PlaySoundAtLocation(this, PickupSound, Location);
+        // [3D 사운드 버그 수정] 전역(2D)으로 들리는 문제를 방지하기 위해 PickupSoundAttenuation 인자를 전달하고, 없을 시 기본 3D 감쇄 객체 동적 적용
+        USoundAttenuation* TargetAttenuation = PickupSoundAttenuation;
+        if (!TargetAttenuation)
+        {
+            static TWeakObjectPtr<USoundAttenuation> DefaultPickupAtten = nullptr;
+            if (!DefaultPickupAtten.IsValid())
+            {
+                USoundAttenuation* NewAtten = NewObject<USoundAttenuation>();
+                NewAtten->Attenuation.bAttenuate = true;
+                NewAtten->Attenuation.bSpatialize = true;
+                NewAtten->Attenuation.AttenuationShape = EAttenuationShape::Sphere;
+                NewAtten->Attenuation.AttenuationShapeExtents = FVector(300.f, 0.f, 0.f);
+                NewAtten->Attenuation.FalloffDistance = 1200.f;
+                DefaultPickupAtten = NewAtten;
+            }
+            TargetAttenuation = DefaultPickupAtten.Get();
+        }
+
+        UGameplayStatics::PlaySoundAtLocation(
+            GetWorld(),
+            PickupSound,
+            Location,
+            FRotator::ZeroRotator,
+            1.f, 1.f, 0.f,
+            TargetAttenuation
+        );
     }
 
     if (PickupVFX)

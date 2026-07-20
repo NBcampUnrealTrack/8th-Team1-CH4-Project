@@ -288,8 +288,8 @@ void USpartaMinimapWidget::InitializeDynamicRenderTarget()
             // SceneCapture의 타겟 렌더타겟을 동적으로 생성한 RT로 변경
             SceneCapture->TextureTarget = DynamicRenderTarget;
             
-            //미니맵 카메라 갱신 누락 방지를 위해 매 프레임 캡처 및 움직임 기반 캡처를 강제 활성화하고 즉시 1회 캡처
-            SceneCapture->bCaptureEveryFrame = true;
+            // [버그 수정] bCaptureEveryFrame = true 는 메인 렌더링 파이프라인(Depth/Shadow Buffer)과 오버랩되어 맵 전체가 깜빡이는(Flicker) 원인이 되므로 false로 설정
+            SceneCapture->bCaptureEveryFrame = false;
             SceneCapture->bCaptureOnMovement = true;
             SceneCapture->CaptureScene();
             

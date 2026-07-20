@@ -15,6 +15,7 @@
 #include "BreakableBox.h"
 #include "Damageable.h"
 #include "Engine/OverlapResult.h"
+#include "Sound/SoundAttenuation.h"
 #include "WorldPartition/HLOD/DestructibleHLODComponent.h"
 
 ASpartaArcadeBomb::ASpartaArcadeBomb()
@@ -24,8 +25,9 @@ ASpartaArcadeBomb::ASpartaArcadeBomb()
 
 	// 데디케이티드 서버를 위한 복제 및 이동 동기화 설정
 	bReplicates = true;
-	NetUpdateFrequency = 66.0f;
-	MinNetUpdateFrequency = 33.0f;
+	// [경고 수정] UE 5.5 Deprecation - SetNetUpdateFrequency / SetMinNetUpdateFrequency 사용
+	SetNetUpdateFrequency(66.0f);
+	SetMinNetUpdateFrequency(33.0f);
 	SetReplicateMovement(true);
 
 	// 구체 콜리전을 생성하여 루트 컴포넌트로 지정 (물리 스윕 감지용)
@@ -402,10 +404,35 @@ void ASpartaArcadeBomb::Multicast_PlayFuseEffect_Implementation()
 
 void ASpartaArcadeBomb::Multicast_PlayExplosionEffects_Implementation(const TArray<FVector>& Locations)
 {
-	// 폭발 사운드 에셋이 지정되어 있다면 처음 폭발 위치에서 사운드 재생
+	// 폭발 사운드 에셋이 지정되어 있다면 처음 폭발 위치에서 3D 감쇄 사운드로 재생
 	if (ExplosionSound && Locations.Num() > 0)
 	{
-		UGameplayStatics::PlaySoundAtLocation(GetWorld(), ExplosionSound, Locations[0]);
+		// [3D 사운드 버그 수정] 전역(2D)으로 들리는 문제를 방지하기 위해 ExplosionSoundAttenuation 인자를 전달하고, 없을 시 기본 3D 감쇄 객체 동적 적용
+		USoundAttenuation* TargetAttenuation = ExplosionSoundAttenuation;
+		if (!TargetAttenuation)
+		{
+			static TWeakObjectPtr<USoundAttenuation> DefaultExplosionAtten = nullptr;
+			if (!DefaultExplosionAtten.IsValid())
+			{
+				USoundAttenuation* NewAtten = NewObject<USoundAttenuation>();
+				NewAtten->Attenuation.bAttenuate = true;
+				NewAtten->Attenuation.bSpatialize = true;
+				NewAtten->Attenuation.AttenuationShape = EAttenuationShape::Sphere;
+				NewAtten->Attenuation.AttenuationShapeExtents = FVector(400.f, 0.f, 0.f);
+				NewAtten->Attenuation.FalloffDistance = 2100.f;
+				DefaultExplosionAtten = NewAtten;
+			}
+			TargetAttenuation = DefaultExplosionAtten.Get();
+		}
+
+		UGameplayStatics::PlaySoundAtLocation(
+			GetWorld(),
+			ExplosionSound,
+			Locations[0],
+			FRotator::ZeroRotator,
+			1.f, 1.f, 0.f,
+			TargetAttenuation
+		);
 	}
 
 	for (const FVector& Location : Locations)

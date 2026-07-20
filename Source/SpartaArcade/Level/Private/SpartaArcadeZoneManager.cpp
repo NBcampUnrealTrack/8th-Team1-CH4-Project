@@ -19,8 +19,8 @@ ASpartaArcadeZoneManager::ASpartaArcadeZoneManager()
 {
     PrimaryActorTick.bCanEverTick = true;
     bReplicates = true;
-    NetUpdateFrequency = 66.0f;
-    MinNetUpdateFrequency = 2.0f;
+    SetNetUpdateFrequency(66.0f);
+    SetMinNetUpdateFrequency(2.0f);
 
     USceneComponent* Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
     SetRootComponent(Root);
