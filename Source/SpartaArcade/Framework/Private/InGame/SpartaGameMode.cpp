@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "InGame/SpartaGameMode.h"
@@ -12,6 +12,8 @@
 #include "Engine/OverlapResult.h"
 #include "Level/Public/SpartaArcadeMapBuilder.h"
 #include "SpartaArcadePlayerController.h"
+#include "EOSGameInstanceSubsystem.h"
+#include "SessionService.h"
 
 ASpartaGameMode::ASpartaGameMode()
 	: MaxInitializeTeamInfoCount(10)
@@ -27,6 +29,17 @@ void ASpartaGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 	SpartaGameState = GetGameState<ASpartaGameState>();
+
+	if(IsValid(SpartaGameState))
+	{
+		UEOSGameInstanceSubsystem* EOSGameInstanceSubsystem = GetGameInstance()->GetSubsystem<UEOSGameInstanceSubsystem>();
+		if (IsValid(EOSGameInstanceSubsystem))
+		{
+			FSessionInfo CurrentSessionInfo = EOSGameInstanceSubsystem->GetSessionService()->GetCurrentSessionInfo();
+			SpartaGameState->SetGameModeType(static_cast<EGameModeType>(CurrentSessionInfo.GameModeType));
+		}
+	}
+
 	GetWorldTimerManager().SetTimerForNextTick(this, &ASpartaGameMode::InitializeTeamInfo);
 }
 
@@ -134,13 +147,6 @@ void ASpartaGameMode::HandlePlayerEliminated(ASpartaPlayerState* DeadPlayer)
 		return;
 	}
 
-	// 만약 TeamInfoMap이 비어있다면 즉시 자가 복구 초기화 수행
-	if (TeamInfoMap.Num() == 0)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[HandlePlayerEliminated] TeamInfoMap is empty. Rebuilding team info dynamically."));
-		InitializeTeamInfo();
-	}
-
 	UE_LOG(LogTemp, Warning, TEXT("[HandlePlayerEliminated] DeadPlayer: %s, TeamID: %d"), *DeadPlayer->GetPlayerName(), DeadPlayer->GetTeamID());
 
 	int32 TeamID = DeadPlayer->GetTeamID();
@@ -169,11 +175,12 @@ void ASpartaGameMode::HandlePlayerEliminated(ASpartaPlayerState* DeadPlayer)
 				}
 			}
 			DecreaseAliveTeam();
+			ShowGameResultToTeam(TeamID);
 		}
-
-		// 개인 결과 화면(순위 + 관전/로비 선택)은 사망 모션이 끝나는 시점에
-		// ASpartaArcadeCharacter::EliminateDestroy()에서 띄운다 (즉시 띄우지 않음).
-		// 최종 승패 결과는 매치가 끝날 때 ShowGameResultToAllPlayers()에서 한 번에 브로드캐스트됨
+		else
+		{
+			ShowGameResultToEliminatedPlayer(DeadPlayer);
+		}
 	}
 
 	CheckGameEnd();
@@ -259,6 +266,7 @@ void ASpartaGameMode::InitializeTeamInfo()
 					TeamInfoMap.Add(TeamID, NewTeamInfo);
 					UE_LOG(LogTemp, Warning, TEXT("[InitializeTeamInfo] Added TeamID: %d to TeamInfoMap"), TeamID);
 				}
+				TeamInfoMap[TeamID].TeamPlayerStates.Add(SpartaPlayerState);
 				++TeamInfoMap[TeamID].AliveCount;
 				++TotalAlivePlayers;
 				UE_LOG(LogTemp, Warning, TEXT("[InitializeTeamInfo] Player: %s, Assigned TeamID: %d, Current AliveCount: %d"), *SpartaPlayerState->GetPlayerName(), TeamID, TeamInfoMap[TeamID].AliveCount);
@@ -281,11 +289,6 @@ FMatchPlayerResult ASpartaGameMode::CreateGameResult(const ASpartaPlayerState* P
 	// 두 객체가 모두 유효할 때 게임 결과 구조체를 채우도록 올바른 조건식 적용
 	if(IsValid(PlayerState) && IsValid(SpartaGameState))
 	{
-		// 만약 TeamInfoMap이 비어있다면 즉시 자가 복구 초기화 수행
-		if (TeamInfoMap.Num() == 0)
-		{
-			InitializeTeamInfo();
-		}
 		// PlayerId 대신 고유 TeamID 사용
 		int32 TeamID = PlayerState->GetTeamID();
 		if (TeamInfoMap.Contains(TeamID))
@@ -306,13 +309,6 @@ FMatchPlayerResult ASpartaGameMode::CreateGameResult(const ASpartaPlayerState* P
 
 void ASpartaGameMode::ShowGameResultToAllPlayers()
 {
-	// 만약 TeamInfoMap이 비어있다면 즉시 자가 복구 초기화 수행
-	if (TeamInfoMap.Num() == 0)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[ShowGameResultToAllPlayers] TeamInfoMap is empty. Rebuilding team info dynamically."));
-		InitializeTeamInfo();
-	}
-
 	for (APlayerState* PlayerState : SpartaGameState->PlayerArray)
 	{
 		ASpartaPlayerState* SpartaPlayerState = Cast<ASpartaPlayerState>(PlayerState);
@@ -321,15 +317,13 @@ void ASpartaGameMode::ShowGameResultToAllPlayers()
 			ASpartaArcadePlayerController* PC = Cast<ASpartaArcadePlayerController>(SpartaPlayerState->GetOwner());
 			if(IsValid(PC))
 			{
-				// PlayerId 대신 고유 TeamID 사용
 				int32 TeamID = SpartaPlayerState->GetTeamID();
 				int32 PlayerRank = TeamInfoMap.Contains(TeamID) ? TeamInfoMap[TeamID].Rank : 0;
-				UE_LOG(LogTemp, Warning, TEXT("[ShowGameResultToAllPlayers] PC: %s, PlayerState: %s, TeamID: %d, Rank: %d"), *PC->GetName(), *SpartaPlayerState->GetPlayerName(), TeamID, PlayerRank);
-				PC->ClientShowMatchResult(PlayerRank == 1 ? EMatchResult::Victory : EMatchResult::Defeat, PlayerRank, MatchResults);
-			}
-			else
-			{
-				UE_LOG(LogTemp, Warning, TEXT("[ShowGameResultToAllPlayers] PlayerState: %s Owner is not a valid ASpartaArcadePlayerController"), *SpartaPlayerState->GetPlayerName());
+				FMatchResultData MatchResultData;
+				MatchResultData.Result = PlayerRank == 1 ? EMatchResult::Victory : EMatchResult::Defeat;
+				MatchResultData.MyRank = PlayerRank;
+				MatchResultData.PlayerResults = MatchResults;
+				PC->ClientShowMatchResult(MatchResultData);
 			}
 		}
 	}
@@ -347,7 +341,11 @@ void ASpartaGameMode::ShowGameResultToTeam(int32 TeamID)
 				if(IsValid(PC))
 				{
 					int32 PlayerRank = TeamInfoMap[TeamID].Rank;
-					PC->ClientShowMatchResult(EMatchResult::Defeat, PlayerRank, TArray<FMatchPlayerResult>());
+					FMatchResultData MatchResultData;
+					MatchResultData.Result = EMatchResult::Defeat;
+					MatchResultData.MyRank = PlayerRank;
+					MatchResultData.PlayerResults = TArray<FMatchPlayerResult>();
+					PC->ClientShowMatchResult(MatchResultData);
 				}
 			}
 		}
@@ -363,9 +361,22 @@ void ASpartaGameMode::ShowGameResultToEliminatedPlayer(ASpartaPlayerState* DeadP
 		{
 			int32 TeamID = DeadPlayer->GetTeamID();
 			int32 PlayerRank = TeamInfoMap.Contains(TeamID) ? TeamInfoMap[TeamID].Rank : 0;
-			PC->ClientShowMatchResult(EMatchResult::None, PlayerRank, TArray<FMatchPlayerResult>());
+			FMatchResultData MatchResultData;
+			MatchResultData.Result = EMatchResult::InProgress;
+			MatchResultData.MyRank = PlayerRank;
+			MatchResultData.PlayerResults = TArray<FMatchPlayerResult>();
+			PC->ClientShowMatchResult(MatchResultData);
 		}
 	}
+}
+
+bool ASpartaGameMode::IsTeamEliminated(int32 TeamID) const
+{
+	if (TeamInfoMap.Contains(TeamID))
+	{
+		return TeamInfoMap[TeamID].bEliminated;
+	}
+	return false;
 }
 
 //----------------------
@@ -384,8 +395,6 @@ void ASpartaGameMode::TeleportPlayersToSpawns(const TArray<FVector>& SpawnLocati
 			ExecuteSafeTeleportAndClear(PC, SpawnLocations);
 		}
 	}
-
-	InitializeTeamInfo();
 }
 
 int32 ASpartaGameMode::GetOrAssignSpawnIndex(APlayerController* PC)

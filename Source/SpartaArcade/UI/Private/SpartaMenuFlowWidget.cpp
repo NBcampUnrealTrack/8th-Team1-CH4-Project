@@ -99,13 +99,17 @@ void USpartaMenuFlowWidget::ShowPauseMenu()
 //     }
 // }
 
-void USpartaMenuFlowWidget::ShowMatchResult(EMatchResult Result, int32 MyRank, const TArray<FMatchPlayerResult>& PlayerResults)
+void USpartaMenuFlowWidget::ShowMatchResult(FMatchResultData MatchResultData)
 {
     if (MenuWidgetSwitcher)
     {
         MenuWidgetSwitcher->SetActiveWidgetIndex(Index_ResultScreen);
     }
-	UE_LOG(LogTemp, Warning, TEXT("[MatchResult] ShowMatchResult() 호출: Result=%d, MyRank=%d, PlayerResults.Num()=%d"), static_cast<int32>(Result), MyRank, PlayerResults.Num());
+	
+    EMatchResult Result = MatchResultData.Result;
+    int32 MyRank = MatchResultData.MyRank;
+    TArray<FMatchPlayerResult> PlayerResults = MatchResultData.PlayerResults;
+
     // 1. 승리/패배 타이틀 텍스트 설정
     if (ResultTitleText)
     {
@@ -121,6 +125,9 @@ void USpartaMenuFlowWidget::ShowMatchResult(EMatchResult Result, int32 MyRank, c
         case EMatchResult::Draw:
             TitleStr = TEXT("무승부!");
             break;
+        case EMatchResult::InProgress:
+            TitleStr = TEXT("팀 생존 중..");
+			break;
         }
         ResultTitleText->SetText(FText::FromString(TitleStr));
     }
@@ -128,7 +135,14 @@ void USpartaMenuFlowWidget::ShowMatchResult(EMatchResult Result, int32 MyRank, c
     // 2. 본인 순위 출력
     if (MyRankText)
     {
-        MyRankText->SetText(FText::FromString(FString::Printf(TEXT("순위 : #%d"), MyRank)));
+        if(Result == EMatchResult::InProgress)
+        {
+            MyRankText->SetText(FText::FromString(TEXT("순위 : 진행 중..")));
+        }
+        else
+        {
+            MyRankText->SetText(FText::FromString(FString::Printf(TEXT("순위 : #%d"), MyRank)));
+        }
     }
 
     // 3. 리더보드 목록 생성 및 렌더링
@@ -145,6 +159,7 @@ void USpartaMenuFlowWidget::ShowMatchResult(EMatchResult Result, int32 MyRank, c
                 {
                     UTextBlock* RankText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("RankTextBlock")));
                     UTextBlock* NameText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("PlayerNameTextBlock")));
+                    UTextBlock* SurvivalTimeText = Cast<UTextBlock>(EntryWidget->GetWidgetFromName(TEXT("SurvivalTimeTextBlock")));
 
                     if (RankText)
                     {
@@ -154,6 +169,12 @@ void USpartaMenuFlowWidget::ShowMatchResult(EMatchResult Result, int32 MyRank, c
                     {
                         NameText->SetText(FText::FromString(PlayerRes.PlayerName));
                     }
+                    if(SurvivalTimeText)
+                    {
+                        int32 Minutes = PlayerRes.SurvivalTime / 60;
+                        int32 Seconds = PlayerRes.SurvivalTime % 60;
+                        SurvivalTimeText->SetText(FText::FromString(FString::Printf(TEXT("%02d:%02d"), Minutes, Seconds)));
+					}
                     LeaderboardScrollBox->AddChild(EntryWidget);
                 }
             }

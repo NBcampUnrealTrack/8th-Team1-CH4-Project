@@ -97,3 +97,11 @@ void ASpartaGameState::SetZonePhase(int32 NewZonePhase)
 		OnRep_ZonePhase();
 	}
 }
+
+void ASpartaGameState::SetGameModeType(EGameModeType NewGameModeType)
+{
+	if (HasAuthority())
+	{
+		GameModeType = NewGameModeType;
+	}
+}

@@ -300,13 +300,18 @@ void USpartaHUDWidget::UpdateHasShield(bool bHasShield)
 
 }
 
-void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UBomberAttributeSet* InAttributeSet, UCombatComponent* CombatComp, UBombPlacerComponent* BombPlacerComp)
+void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UBomberAttributeSet* InAttributeSet, UCombatComponent* CombatComp)
 {
+    if(bIsInitialized)
+    {
+        return;
+	}
+    bIsInitialized = true;
+
     // 멤버 컴포넌트 캐싱 추가
     SpartaPlayerState = PlayerState;
     BomberAttributeSet = InAttributeSet;
     CombatComponent = CombatComp;
-    BombPlacerComponent = BombPlacerComp;
 
     // 스탯 바 위젯 초기화 (최대치 개수로 칸 동적 생성)
     if (StatSlotWidgetClass)
@@ -315,58 +320,98 @@ void USpartaHUDWidget::InitializeHUD(ASpartaPlayerState* PlayerState, UBomberAtt
         if (SpeedBar) SpeedBar->InitializeBar(5, StatSlotWidgetClass);       // 최대 5칸
     }
 
-    if (PlayerState)
-    {
-		PlayerState->OnHeartsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateHearts);
-		PlayerState->OnStunStateChanged.AddDynamic(this, &USpartaHUDWidget::SetStunActive);
-		PlayerState->OnFirstAidKitsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateMedKitStatus);
-		PlayerState->OnShieldsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateShieldItemStatus);
-		// 발차기 잠금 해제 상태 변화 이벤트 바인딩
-		PlayerState->OnKickUnlockedChanged.AddDynamic(this, &USpartaHUDWidget::HandleOnKickUnlockedChanged);
+	BindToTarget(SpartaPlayerState, BomberAttributeSet, CombatComponent);
+}
 
-		// 초기 가시성 상태 세팅
-		UpdateMedKitStatus(PlayerState->GetFirstAidKits());
-		UpdateShieldItemStatus(PlayerState->GetShields());
-		// 발차기 기능 초기 가시성 상태 세팅
-		UpdateKickStatus(PlayerState->IsKickUnlocked());
+void USpartaHUDWidget::DeinitializeHUD()
+{
+    if (SpartaPlayerState)
+    {
+        SpartaPlayerState->OnHeartsChanged.RemoveDynamic(this, &USpartaHUDWidget::UpdateHearts);
+        SpartaPlayerState->OnStunStateChanged.RemoveDynamic(this, &USpartaHUDWidget::SetStunActive);
+        SpartaPlayerState->OnFirstAidKitsChanged.RemoveDynamic(this, &USpartaHUDWidget::UpdateMedKitStatus);
+        SpartaPlayerState->OnShieldsChanged.RemoveDynamic(this, &USpartaHUDWidget::UpdateShieldItemStatus);
+        SpartaPlayerState->OnKickUnlockedChanged.RemoveDynamic(this, &USpartaHUDWidget::HandleOnKickUnlockedChanged);
+    }
+    if (BomberAttributeSet)
+    {
+        BomberAttributeSet->OnStatsChanged.RemoveDynamic(this, &USpartaHUDWidget::UpdateStats);
+
+        if (CurrentPlacedBombsHandle.IsValid())
+        {
+            if (UAbilitySystemComponent* ASC = BomberAttributeSet->GetOwningAbilitySystemComponent())
+            {
+                ASC->GetGameplayAttributeValueChangeDelegate(UBomberAttributeSet::GetCurrentPlacedBombsAttribute())
+                    .Remove(CurrentPlacedBombsHandle);
+            }
+            CurrentPlacedBombsHandle.Reset();
+        }
+    }
+    if (CombatComponent)
+    {
+        CombatComponent->OnShieldBlock.RemoveDynamic(this, &USpartaHUDWidget::HandleOnShieldBlock);
+        CombatComponent->OnHit.RemoveDynamic(this, &USpartaHUDWidget::HandleOnHit);
+        CombatComponent->OnbHasShieldChanged.RemoveDynamic(this, &USpartaHUDWidget::UpdateShieldStatus);
+        CombatComponent->OnEliminated.RemoveDynamic(this, &USpartaHUDWidget::HandleOnEliminated);
     }
     
+	SpartaPlayerState = nullptr;
+	BomberAttributeSet = nullptr;
+	CombatComponent = nullptr;
+}
 
-    if (InAttributeSet)
+void USpartaHUDWidget::BindToTarget(ASpartaPlayerState* PlayerState, UBomberAttributeSet* InAttributeSet, UCombatComponent* CombatComp)
+{
+	DeinitializeHUD();
+    
+    SpartaPlayerState = PlayerState;
+    BomberAttributeSet = InAttributeSet;
+    CombatComponent = CombatComp;
+
+    if (IsValid(SpartaPlayerState))
     {
-        InAttributeSet->OnStatsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateStats);
+        SpartaPlayerState->OnHeartsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateHearts);
+        SpartaPlayerState->OnStunStateChanged.AddDynamic(this, &USpartaHUDWidget::SetStunActive);
+        SpartaPlayerState->OnFirstAidKitsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateMedKitStatus);
+        SpartaPlayerState->OnShieldsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateShieldItemStatus);
+        SpartaPlayerState->OnKickUnlockedChanged.AddDynamic(this, &USpartaHUDWidget::HandleOnKickUnlockedChanged);
+        // 초기 가시성 상태 세팅
+		UpdateHearts(SpartaPlayerState->GetHearts(), SpartaPlayerState->GetStartHearts());
+        UpdateMedKitStatus(SpartaPlayerState->GetFirstAidKits());
+        UpdateShieldItemStatus(SpartaPlayerState->GetShields());
+		UpdateKickStatus(SpartaPlayerState->IsKickUnlocked());
+    }
 
+    if(IsValid(BomberAttributeSet))
+    {
+        BomberAttributeSet->OnStatsChanged.AddDynamic(this, &USpartaHUDWidget::UpdateStats);
         // 시작 시점의 초기 스탯치 값으로 바 가시성 세팅 강제 트리거
         UpdateStats(
-            FMath::RoundToInt(InAttributeSet->GetBombCount()),
-            InAttributeSet->GetBombRange(),
-            InAttributeSet->GetMoveSpeed()
+            FMath::RoundToInt(BomberAttributeSet->GetBombCount()),
+            BomberAttributeSet->GetBombRange(),
+            BomberAttributeSet->GetMoveSpeed()
         );
-
         // CurrentPlacedBombs가 변경될 때 HUD 폭탄 수량 실시간 갱신 바인딩 추가
-        if (UAbilitySystemComponent* ASC = InAttributeSet->GetOwningAbilitySystemComponent())
+        if (UAbilitySystemComponent* ASC = BomberAttributeSet->GetOwningAbilitySystemComponent())
         {
-            ASC->GetGameplayAttributeValueChangeDelegate(UBomberAttributeSet::GetCurrentPlacedBombsAttribute())
+            CurrentPlacedBombsHandle = ASC->GetGameplayAttributeValueChangeDelegate(UBomberAttributeSet::GetCurrentPlacedBombsAttribute())
                 .AddLambda([this](const FOnAttributeChangeData& Data)
                 {
                     UpdateCurrentBombs(FMath::RoundToInt(Data.NewValue));
                 });
         }
-        UpdateCurrentBombs(FMath::RoundToInt(InAttributeSet->GetCurrentPlacedBombs()));
-    }
-
-    if(CombatComp)
-    {
-        CombatComp->OnShieldBlock.AddDynamic(this, &USpartaHUDWidget::HandleOnShieldBlock);
-        // OnHit 델리게이트 바인딩 추가
-        CombatComp->OnHit.AddDynamic(this, &USpartaHUDWidget::HandleOnHit);
-		// 쉴드 활성 여부 델리게이트 구독 연동
-		CombatComp->OnbHasShieldChanged.AddDynamic(this, &USpartaHUDWidget::UpdateShieldStatus);
-        CombatComp->OnEliminated.AddDynamic(this, &USpartaHUDWidget::HandleOnEliminated);
-
-		// 초기 가시성 상태 세팅
-		UpdateShieldStatus(CombatComp->IsShielded());
+        UpdateCurrentBombs(FMath::RoundToInt(BomberAttributeSet->GetCurrentPlacedBombs()));
 	}
+
+    if (IsValid(CombatComponent))
+    {
+        CombatComponent->OnShieldBlock.AddDynamic(this, &USpartaHUDWidget::HandleOnShieldBlock);
+        CombatComponent->OnHit.AddDynamic(this, &USpartaHUDWidget::HandleOnHit);
+        CombatComponent->OnbHasShieldChanged.AddDynamic(this, &USpartaHUDWidget::UpdateShieldStatus);
+        CombatComponent->OnEliminated.AddDynamic(this, &USpartaHUDWidget::HandleOnEliminated);
+
+        UpdateShieldStatus(CombatComp->IsShielded());
+    }
 }
 
 // 쉴드 활성/비활성(실제 방어 중인지) 상태는 텍스트로만 표시

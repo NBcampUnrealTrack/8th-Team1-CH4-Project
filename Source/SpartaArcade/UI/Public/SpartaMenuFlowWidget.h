@@ -83,7 +83,7 @@ public:
     // void ShowStartCountdown(int32 RemainingSeconds);
 
     UFUNCTION(BlueprintCallable, Category = "UI | Flow")
-    void ShowMatchResult(EMatchResult Result, int32 MyRank, const TArray<FMatchPlayerResult>& PlayerResults);
+    void ShowMatchResult(FMatchResultData MatchResultData);
 
 protected:
     // --- 메인 메뉴 클릭 이벤트 ---

@@ -258,17 +258,26 @@ void ASpartaArcadePlayerController::ServerUseFirstAidKit_Implementation()
 	}
 }
 
-void ASpartaArcadePlayerController::ClientShowMatchResult_Implementation(EMatchResult Result, int32 MyRank, const TArray<FMatchPlayerResult>& PlayerResults)
+void ASpartaArcadePlayerController::ClientShowMatchResult_Implementation(const FMatchResultData& InMatchResultData)
 {
-	if (IsValid(HUDUIWidgetInstance))
+	if(IsValid(GetWorld()) == false)
 	{
-		HUDUIWidgetInstance->SetVisibility(ESlateVisibility::Collapsed);
+		return;
 	}
 
-	if(IsValid(MainMenuWidgetInstance))
+	GetWorld()->GetTimerManager().ClearTimer(ResultUITimerHandle);
+
+	MatchResultData = InMatchResultData;
+	FTimerDelegate TimerDelegate;
+	GetWorld()->GetTimerManager().SetTimer(ResultUITimerHandle, this, &ASpartaArcadePlayerController::ShowMatchResult, 2.0f, false);
+}
+
+void ASpartaArcadePlayerController::ShowMatchResult()
+{
+	if (IsValid(MainMenuWidgetInstance))
 	{
 		MainMenuWidgetInstance->SetVisibility(ESlateVisibility::Visible);
-		MainMenuWidgetInstance->ShowMatchResult(Result, MyRank, PlayerResults);
+		MainMenuWidgetInstance->ShowMatchResult(MatchResultData);
 		FInputModeUIOnly Mode;
 		Mode.SetWidgetToFocus(MainMenuWidgetInstance->GetCachedWidget());
 		SetInputMode(Mode);
@@ -343,7 +352,7 @@ void ASpartaArcadePlayerController::StartSpectating()
 		CurrentSpectateIndex = 0;
 
 		// 카메라 옮기기
-		SetViewTarget(SpectateTargets[0]);
+		SpectateTarget();
 	}
 }
 
@@ -355,7 +364,7 @@ void ASpartaArcadePlayerController::BeginInactiveState()
 	// 관전 중이라면 그 직후 다시 관전 대상으로 되돌린다
 	if (bIsSpectating && SpectateTargets.IsValidIndex(CurrentSpectateIndex))
 	{
-		SetViewTarget(SpectateTargets[CurrentSpectateIndex]);
+		SpectateTarget();
 	}
 }
 
@@ -365,6 +374,7 @@ void ASpartaArcadePlayerController::Tick(float DeltaSeconds)
 
 	// 엔진이 여러 경로(BeginInactiveState 외에도)에서 ViewTarget을 컨트롤러 자신으로
 	// 되돌리는 경우가 있어, 관전 중에는 매 틱마다 관전 대상으로 강제 유지한다
+	/*
 	if (bIsSpectating && SpectateTargets.IsValidIndex(CurrentSpectateIndex))
 	{
 		ASpartaArcadeCharacter* Target = SpectateTargets[CurrentSpectateIndex];
@@ -373,6 +383,7 @@ void ASpartaArcadePlayerController::Tick(float DeltaSeconds)
 			SetViewTarget(Target);
 		}
 	}
+	*/
 }
 
 void ASpartaArcadePlayerController::ClientSpectating_Implementation()
@@ -380,19 +391,73 @@ void ASpartaArcadePlayerController::ClientSpectating_Implementation()
 	StartSpectating();
 }
 
+bool ASpartaArcadePlayerController::MoveSpectateTargetIndex(int32 Direction)
+{
+	if (!bIsSpectating || SpectateTargets.IsEmpty())
+	{
+		return false;
+	}
+
+	int32 CheckCount = SpectateTargets.Num();
+	while (CheckCount--)
+	{
+		CurrentSpectateIndex = (CurrentSpectateIndex + Direction + SpectateTargets.Num()) % SpectateTargets.Num();
+		if (IsValid(SpectateTargets[CurrentSpectateIndex]))
+		{
+			return true;
+		}
+
+		SpectateTargets.RemoveAt(CurrentSpectateIndex);
+		if (SpectateTargets.IsEmpty())
+		{
+			return false;
+		}
+		CurrentSpectateIndex %= SpectateTargets.Num();
+	}
+
+	return false;
+}
+
 void ASpartaArcadePlayerController::SpectateNext()
 {
-	if (!bIsSpectating || SpectateTargets.Num() == 0) return;
-
-	CurrentSpectateIndex = (CurrentSpectateIndex + 1) % SpectateTargets.Num();
-	SetViewTarget(SpectateTargets[CurrentSpectateIndex]);
+	if(MoveSpectateTargetIndex(1))
+	{
+		SpectateTarget();
+	}
 }
 
 void ASpartaArcadePlayerController::SpectatePrev()
 {
-	if (!bIsSpectating || SpectateTargets.Num() == 0) return;
-
-	CurrentSpectateIndex = (CurrentSpectateIndex - 1 + SpectateTargets.Num()) % SpectateTargets.Num();
-	SetViewTarget(SpectateTargets[CurrentSpectateIndex]);
+	if (MoveSpectateTargetIndex(-1))
+	{
+		SpectateTarget();
+	}
 }
 
+void ASpartaArcadePlayerController::SpectateTarget()
+{
+	if (!bIsSpectating || !SpectateTargets.IsValidIndex(CurrentSpectateIndex)) 
+	{
+		return;
+	}
+
+	ASpartaArcadeCharacter* TargetCharacter = SpectateTargets[CurrentSpectateIndex];
+	if(!IsValid(TargetCharacter))
+	{
+		return;
+	}
+
+	if (IsValid(HUDUIWidgetInstance))
+	{
+		if(USpartaHUDWidget* HUDWidget = Cast<USpartaHUDWidget>(HUDUIWidgetInstance))
+		{
+			ASpartaPlayerState* PS = TargetCharacter->GetPlayerState<ASpartaPlayerState>();
+			UBomberAttributeSet* AttributeSet = TargetCharacter->GetAttributeSet();
+			UCombatComponent* CombatComp = TargetCharacter->GetCombatComponent();
+
+			// 함수 내부에서 검증 후 바인딩 처리하므로 여기서는 단순 호출
+			HUDWidget->BindToTarget(PS, AttributeSet, CombatComp);
+		}
+	}
+	SetViewTarget(TargetCharacter);
+}

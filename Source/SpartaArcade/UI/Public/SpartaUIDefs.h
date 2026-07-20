@@ -15,7 +15,7 @@ enum class EDeathReason : uint8
 UENUM(BlueprintType)
 enum class EMatchResult : uint8
 {
-	None		UMETA(DisplayName = "진행 중"),
+	InProgress	UMETA(DisplayName = "진행 중"),
     Victory     UMETA(DisplayName = "승리!"),
     Defeat      UMETA(DisplayName = "패배.."),
     Draw        UMETA(DisplayName = "무승부"),
@@ -63,3 +63,17 @@ enum class EUILayer : uint8
     SystemOverlay  UMETA(DisplayName = "System Overlay")
 };
 
+USTRUCT(BlueprintType)
+struct FMatchResultData
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly)
+    EMatchResult Result = EMatchResult::InProgress;
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 MyRank = 0;
+
+    UPROPERTY(BlueprintReadOnly)
+    TArray<FMatchPlayerResult> PlayerResults;
+};

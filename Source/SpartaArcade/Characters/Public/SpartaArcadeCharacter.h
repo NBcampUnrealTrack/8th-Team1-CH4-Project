@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
@@ -61,7 +61,9 @@ protected:
 	void OnHitFlash(float FlashDuration);
 	
 	void InitializeCharacterComponents();
-	
+
+	void InitializeHUD();
+
 	virtual void OnRep_PlayerState() override;
 
 public:
@@ -95,8 +97,6 @@ public:
 
 	void UpdateNickname(); 
 
-	void ShowMatchResultUI(EMatchResult Result);
-
 	// UI 및 HUD 연동을 위한 Getter 함수
 	UFUNCTION(BlueprintPure, Category = "Gameplay")
 	float GetHP() const;
@@ -117,6 +117,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Gameplay")
 	FORCEINLINE int32 GetFirstAidKitCount() const { return FirstAidKits; }
 
+	FORCEINLINE UBomberAttributeSet* GetAttributeSet() const { return AttributeSet; }
+
+	FORCEINLINE UCombatComponent* GetCombatComponent() const { return CombatComponent; }
+
 protected:
 	// 캐릭터의 하트 체력, 속도 레벨, 폭탄 소지 한도 및 기절 상태 속성
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attributes|Setup")
@@ -135,9 +139,12 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UDeathDropComponent> DeathDropComponent;
+		
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UUserWidget> NicknameWidgetClass;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	TObjectPtr<UWidgetComponent> NicknameWidgetComponent;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
+	TObjectPtr<UUserWidget> NicknameWidget;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PlayerState")
 	TObjectPtr<ASpartaPlayerState> SpartaPlayerState;
@@ -147,10 +154,6 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Attributes|Health")
 	int32 FirstAidKits;
-
-	// 팀전 구분을 위한 TeamID 속성
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attributes|Team")
-	int32 TeamID;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay")
 	TSubclassOf<class ASpartaArcadeBomb> BombClass;
@@ -264,4 +267,22 @@ private:
 	int32 InitializedComponentsCount;
 
 	bool bComponentsInitialized = false;
+
+	//------------------------------
+	// 애니메이션 재생 멀티캐스트 함수
+
+	UFUNCTION(NetMulticast, UnReliable)
+	void MulticastPlayPlaceBombAnim();
+
+	UFUNCTION(NetMulticast, UnReliable)
+	void MulticastPlayKickAnim();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastPlayDeathAnim();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastHitFlash(float FlashDuration);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastStopAnim(float InBlendOutTime);
 };

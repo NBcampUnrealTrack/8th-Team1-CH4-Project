@@ -1,4 +1,4 @@
-#include "SpartaArcadeCharacter.h"
+﻿#include "SpartaArcadeCharacter.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -32,6 +32,7 @@
 #include "Components/TextBlock.h"
 #include "Blueprint/WidgetTree.h"
 #include "Styling/SlateColor.h"
+#include "WorldToScreenWidget.h"
 
 ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 {
@@ -95,18 +96,11 @@ ASpartaArcadeCharacter::ASpartaArcadeCharacter()
 	{
 		CombatStatTable = CombatStatTableFinder.Object;
 	}
-
-	NicknameWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("NicknameWidgetComponent"));
-	NicknameWidgetComponent->SetupAttachment(RootComponent);
-	NicknameWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen); // 항상 화면을 향하도록 Screen 스페이스 설정
-	NicknameWidgetComponent->SetDrawSize(FVector2D(200.f, 50.f));
-	NicknameWidgetComponent->SetRelativeLocation(FVector(0.f, 0.f, 130.f)); // 캐릭터 머리 위 높이로 적당히 배치
 }
 
 void ASpartaArcadeCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	InitializeCharacterComponents();
 
 	// 블루프린트 덮어쓰기 설정을 방어하기 위해 런타임에 틱 강제 활성화
 	SetActorTickEnabled(true);
@@ -121,6 +115,8 @@ void ASpartaArcadeCharacter::BeginPlay()
 		DefaultGroundFriction = GetCharacterMovement()->GroundFriction;
 		DefaultBrakingDeceleration = GetCharacterMovement()->BrakingDecelerationWalking;
 	}
+
+	InitializeHUD();
 }
 
 void ASpartaArcadeCharacter::PossessedBy(AController* NewController)
@@ -152,18 +148,22 @@ void ASpartaArcadeCharacter::PossessedBy(AController* NewController)
 	}
 	// 서버 측에서 빙의 시 컴포넌트 및 HUD 초기화 진행
 	InitializeCharacterComponents();
+	InitializeHUD();
 	UpdateNickname(); 
 }
 
 void ASpartaArcadeCharacter::OnRep_PlayerState()                                                                                                                                                                                  
 {                                                                                                                                                                                                                                 
-	Super::OnRep_PlayerState();                                                                                                                                                                                                   
+	Super::OnRep_PlayerState();                         
+	SpartaPlayerState = GetPlayerState<ASpartaPlayerState>();
+
 	if (IsValid(AbilitySystemComponent))                                                                                                                                                                                          
 	{                                                                                                                                                                                                                             
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);                                                                                                                                                                 
 	}                                                                                                                                                                                                                             
 	// 클라이언트 측에서 PlayerState 수신 시 컴포넌트 및 HUD 연동 초기화 재수행
 	InitializeCharacterComponents();
+	InitializeHUD();
 	UpdateNickname();
 }     
 
@@ -180,7 +180,8 @@ float ASpartaArcadeCharacter::TakeDamage(float DamageAmount, struct FDamageEvent
 
 			// 블루프린트에 구현된 피격 시각 연출(깜빡임 등)을 실행합니다.
 			// OnHitFlash는 폭탄/장애물 피격 모두에 적용됩니다.
-			OnHitFlash(1.0f);
+			MulticastHitFlash(1.0f);
+			//OnHitFlash(1.0f);
 
 			// 무적 시간은 CombatComponent::ApplyDamage() 내부에서 1초(InvincibleDuration)로 관리됩니다.
 			// 아래 ECC_Visibility 0.2초 차단은 폭발 스윕 중복 피격 방어용으로 병존시킵니다.
@@ -213,7 +214,8 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 		return;
 	}
 
-	if (!IsValid(GetPlayerState()) || !IsValid(CombatComponent))
+	SpartaPlayerState = GetPlayerState<ASpartaPlayerState>();
+	if (!IsValid(SpartaPlayerState) || !IsValid(CombatComponent))
 	{
 		if(InitializedComponentsCount >= MaxInitializedComponentsCount)
 		{
@@ -230,13 +232,6 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 	// 컴포넌트 기반 초기화 및 델리게이트 바인딩
 	FName RowName = FName(TEXT("Default"));
 	UMaterialInstance* TargetMaterial = nullptr;
-	SpartaPlayerState = GetPlayerState<ASpartaPlayerState>();
-	
-	// PlayerState가 아직 존재하지 않거나 캐스팅에 실패한 경우 조기 리턴 (OnRep_PlayerState 등에서 재수행 보장)
-	if (!IsValid(SpartaPlayerState))
-	{
-		return;
-	}
 
 	if (IsValid(SpartaPlayerState))
 	{
@@ -290,24 +285,29 @@ void ASpartaArcadeCharacter::InitializeCharacterComponents()
 		}
 	}
 
-	if (IsLocallyControlled())
-	{
-		if (ASpartaArcadePlayerController* PC = Cast<ASpartaArcadePlayerController>(GetController()))
-		{
-			if (USpartaHUDWidget* HUDWidget = Cast<USpartaHUDWidget>(PC->HUDUIWidgetInstance))
-			{
-				HUDWidget->InitializeHUD(SpartaPlayerState, AttributeSet, CombatComponent, nullptr);
-				SpartaPlayerState->BroadcastCurrentState();
-				CombatComponent->BroadcastCurrentState();
-			}
-		}
-	}
 	UpdateNickname();
 
 	// 성공적으로 모든 초기화 및 HUD 바인딩 완료 시 플래그 설정
 	bComponentsInitialized = true;
 }
 
+void ASpartaArcadeCharacter::InitializeHUD()
+{
+	if (IsLocallyControlled())
+	{
+		ASpartaArcadePlayerController* PC = Cast<ASpartaArcadePlayerController>(GetController());
+		if (IsValid(PC) && IsValid(PC->HUDUIWidgetInstance) && IsValid(SpartaPlayerState) && IsValid(AttributeSet) && IsValid(CombatComponent))
+		{
+			USpartaHUDWidget* HUDWidget = Cast<USpartaHUDWidget>(PC->HUDUIWidgetInstance);
+			if (IsValid(HUDWidget))
+			{
+				HUDWidget->InitializeHUD(SpartaPlayerState, AttributeSet, CombatComponent);
+				SpartaPlayerState->BroadcastCurrentState();
+				CombatComponent->BroadcastCurrentState();
+			}
+		}
+	}
+}
 
 // 클래식 봄버맨 타일 일치를 위해 캐릭터의 현재 발밑 좌표를 100단위 그리드로 보정하여 스폰
 void ASpartaArcadeCharacter::PlaceBomb()
@@ -330,7 +330,8 @@ void ASpartaArcadeCharacter::PlayPlaceBombAnim()
 	// 실제 스폰 성공 시 어빌리티 단에서 이 함수를 호출하여 몽타주 재생
 	if (PlaceBombMontage)
 	{
-		PlayAnimMontage(PlaceBombMontage, 1.0f);
+		MulticastPlayPlaceBombAnim();
+		//PlayAnimMontage(PlaceBombMontage, 1.0f);
 	}
 }
 
@@ -363,7 +364,8 @@ void ASpartaArcadeCharacter::PerformUseShield()
 	SpartaPlayerState->SetShields(SpartaPlayerState->GetShields() - 1);
 	CombatComponent->GrantShield();
 	
-	OnHitFlash(3.0f);
+	MulticastHitFlash(3.0f);
+	//OnHitFlash(3.0f);
 }
 
 void ASpartaArcadeCharacter::UnlockKickBomb()
@@ -531,7 +533,8 @@ void ASpartaArcadeCharacter::PerformKickBomb()
 		FVector KickDir = GetSnappedKickDirection();
 		if (KickBombMontage)
 		{
-			PlayAnimMontage(KickBombMontage, 1.0f);
+			MulticastPlayKickAnim();
+			//PlayAnimMontage(KickBombMontage, 1.0f);
 		}
 		Bomb->Kick(KickDir);
 		UE_LOG(LogTemp, Log, TEXT("%s 가 폭탄을 %s 방향으로 찼습니다!"), *GetName(), *KickDir.ToString());
@@ -567,10 +570,7 @@ void ASpartaArcadeCharacter::HandleOnStun()
 	GetCharacterMovement()->DisableMovement();
 
 	// 기절 진입 시 현재 재생 중인 몽타주(폭탄 설치/차기 등)를 강제 정지하여 상태 기계 핑퐁 방지
-	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
-	{
-		AnimInstance->Montage_Stop(0.2f);
-	}
+	MulticastStopAnim(0.2f);
 
 	UE_LOG(LogTemp, Warning, TEXT("%s 기절 상태 진입!"), *GetName());
 }
@@ -626,7 +626,9 @@ void ASpartaArcadeCharacter::HandleOnEliminated()
 	float WaitDuration = DestroyDelay;
 	if (DeathMontage)
 	{
-		float MontageLength = PlayAnimMontage(DeathMontage, 1.0f);
+		MulticastPlayDeathAnim();
+		//float MontageLength = PlayAnimMontage(DeathMontage, 1.0f);
+		float MontageLength = DeathMontage->GetPlayLength();
 		WaitDuration = FMath::Max(DestroyDelay, MontageLength);
 	}
 
@@ -659,11 +661,6 @@ void ASpartaArcadeCharacter::HandleOnEliminated()
 void ASpartaArcadeCharacter::EliminateDestroy()
 {
 	UE_LOG(LogTemp, Log, TEXT("%s 캐릭터 액터가 월드에서 완전히 제거(소멸)됩니다."), *GetName());
-
-	if (ASpartaGameMode* GameMode = GetWorld()->GetAuthGameMode<ASpartaGameMode>())
-	{
-		GameMode->ShowGameResultToEliminatedPlayer(SpartaPlayerState);
-	}
 
 	Destroy();
 }
@@ -704,115 +701,46 @@ UAbilitySystemComponent* ASpartaArcadeCharacter::GetAbilitySystemComponent() con
 // 캐릭터 위에 닉네임을 상시 렌더링하고 동기화하는 함수
 void ASpartaArcadeCharacter::UpdateNickname()
 {
-	if (!IsValid(NicknameWidgetComponent))
+	if (GetNetMode() == NM_DedicatedServer || !NicknameWidgetClass || IsValid(NicknameWidget))
 	{
 		return;
 	}
 
-	UUserWidget* UserWidget = NicknameWidgetComponent->GetUserWidgetObject();
-	if (!UserWidget)
+	APlayerController* LocalPlayerController = nullptr;
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
-		// 위젯 오브젝트가 아직 로드되지 않은 경우, 0.1초 뒤에 재시도
-		FTimerHandle TempHandle;
-		GetWorldTimerManager().SetTimer(TempHandle, this, &ASpartaArcadeCharacter::UpdateNickname, 0.1f, false);
-		return;
-	}
+		APlayerController* PC = It->Get();
 
-	APlayerState* PS = GetPlayerState();
-	if (IsValid(PS))
-	{
-		FString PlayerName = PS->GetPlayerName();
-		
-		// 위젯 트리에서 첫 번째 TextBlock을 찾아 플레이어 닉네임 적용
-		UTextBlock* TargetText = nullptr;
-		UserWidget->WidgetTree->ForEachWidget([&TargetText](UWidget* Widget)
+		if (PC && PC->IsLocalController() && PC->GetLocalPlayer())
 		{
-			// 첫 번째 발견한 TextBlock만 선택되도록 수정
-			if (!TargetText)
-			{
-				if (UTextBlock* TextBlock = Cast<UTextBlock>(Widget))
-				{
-					TargetText = TextBlock;
-				}
-			}
-		});
-
-		if (TargetText)
-		{
-			TargetText->SetText(FText::FromString(PlayerName));
-
-			// Team 1이면 빨간색, Team 2면 파란색으로 닉네임 색상 표시
-			if (ASpartaPlayerState* SPS = Cast<ASpartaPlayerState>(PS))
-			{
-				int32 LocalTeamID = SPS->GetTeamID();
-				if (LocalTeamID == 1)
-				{
-					TargetText->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.25f, 0.25f)));
-				}
-				else if (LocalTeamID == 2)
-				{
-					TargetText->SetColorAndOpacity(FSlateColor(FLinearColor(0.25f, 0.5f, 1.0f)));
-				}
-				else
-				{
-					TargetText->SetColorAndOpacity(FSlateColor(FLinearColor::White)); // 기본 색상 (흰색)
-				}
-			}
+			LocalPlayerController = PC;
+			break;
 		}
 	}
-	else
-	{
-		// PlayerState가 유효해질 때까지 재시도
-		FTimerHandle TempHandle;
-		GetWorldTimerManager().SetTimer(TempHandle, this, &ASpartaArcadeCharacter::UpdateNickname, 0.1f, false);
-	}
-}
 
-void ASpartaArcadeCharacter::ShowMatchResultUI(EMatchResult Result)
-{
-	if (bMatchResultShown || !IsLocallyControlled())
+	ASpartaPlayerState* SPS = GetPlayerState<ASpartaPlayerState>();
+	if (!IsValid(SPS) || !IsValid(LocalPlayerController))
 	{
+		FTimerDelegate TimerDel;
+		TimerDel.BindUObject(this, &ASpartaArcadeCharacter::UpdateNickname);
+		GetWorldTimerManager().SetTimerForNextTick(TimerDel);
 		return;
 	}
-	bMatchResultShown = true;
 
-	for (TObjectIterator<USpartaMenuFlowWidget> It; It; ++It)
+	if (LocalPlayerController)
 	{
-		if (It->GetWorld() == GetWorld())
+		UWorldToScreenWidget* NameWidget = CreateWidget<UWorldToScreenWidget>(LocalPlayerController, NicknameWidgetClass);
+		if (NameWidget)
 		{
-			int32 AliveCount = 0;
-			TArray<FMatchPlayerResult> MatchResults;
+			NameWidget->AttachedActor = this;
+			NameWidget->HeightOffset = 130.f;
+			NameWidget->SetVisibility(ESlateVisibility::HitTestInvisible);
+			NameWidget->AddToViewport(-1);
+			NicknameWidget = NameWidget;
 
-			if (AGameStateBase* GS = GetWorld()->GetGameState())
-			{
-				for (APlayerState* PS : GS->PlayerArray)
-				{
-					if (ASpartaPlayerState* SPS = Cast<ASpartaPlayerState>(PS))
-					{
-						if (SPS->GetCurrentState() != EBomberPlayerState::Eliminated)
-						{
-							AliveCount++;
-						}
-
-						FMatchPlayerResult Res;
-						Res.PlayerName = SPS->GetPlayerName();
-						Res.Rank = (SPS->GetCurrentState() == EBomberPlayerState::Eliminated) ? 4 : 1;
-						MatchResults.Add(Res);
-					}
-				}
-			}
-
-			// 사망 당시 살아있던 플레이어 수 기준 순위 오류 수정
-			// 패배 시 본인 사망 후 생존한 플레이어 수(AliveCount)에 1을 더하여 정확한 순위 계산 (나를 포함해 2명 생존 시 2등)
-			int32 FinalRank = (Result == EMatchResult::Defeat) ? (AliveCount + 1) : 1;
-			It->ShowMatchResult(Result, FinalRank, MatchResults);
-
-			if (APlayerController* PC = Cast<APlayerController>(GetController()))
-			{
-				PC->SetShowMouseCursor(true);
-				PC->SetInputMode(FInputModeUIOnly());
-			}
-			return;
+			FString PlayerName = SPS->GetPlayerName();
+			int32 TeamID = SPS->GetTeamID();
+			NameWidget->SetNickname(PlayerName, TeamID, LocalPlayerController);
 		}
 	}
 }
@@ -919,3 +847,66 @@ void ASpartaArcadeCharacter::ApplyTileEffectToMovement(float DeltaSeconds)
 	}
 }
 
+//------------------------------
+// 애니메이션 재생 멀티캐스트 함수
+
+void ASpartaArcadeCharacter::MulticastPlayPlaceBombAnim_Implementation()
+{
+	if(IsRunningDedicatedServer())
+	{
+		return;
+	}
+
+	if(IsValid(PlaceBombMontage))
+	{
+		PlayAnimMontage(PlaceBombMontage, 1.0f);
+	}
+}
+
+void ASpartaArcadeCharacter::MulticastPlayKickAnim_Implementation()
+{
+	if (IsRunningDedicatedServer())
+	{
+		return;
+	}
+
+	if (IsValid(KickBombMontage))
+	{
+		PlayAnimMontage(KickBombMontage, 1.0f);
+	}
+}
+
+void ASpartaArcadeCharacter::MulticastPlayDeathAnim_Implementation()
+{
+	if (IsRunningDedicatedServer())
+	{
+		return;
+	}
+	if (IsValid(DeathMontage))
+	{
+		PlayAnimMontage(DeathMontage, 1.0f);
+	}
+}
+
+void ASpartaArcadeCharacter::MulticastHitFlash_Implementation(float FlashDuration)
+{
+	if (IsRunningDedicatedServer())
+	{
+		return;
+	}
+	
+	OnHitFlash(FlashDuration);
+}
+
+void ASpartaArcadeCharacter::MulticastStopAnim_Implementation(float InBlendOutTime)
+{
+	if (IsRunningDedicatedServer())
+	{
+		return;
+	}
+
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		AnimInstance->Montage_Stop(0.2f);
+	}
+}
