@@ -6,6 +6,9 @@
 
 **SpartaArcade**는 Unreal Engine 5와 C++를 기반으로 개발된 **멀티플레이어 아케이드 봄버(Bomber) 게임**입니다. 클래식 봄버맨 스타일의 규칙에 현대적인 **GAS(Gameplay Ability System)** 아키텍처와 **EOS(Epic Online Services)** 멀티플레이어 매칭 환경을 결합하였습니다.
 
+
+게임 다운로드 : https://drive.google.com/drive/my-drive
+
 ---
 
 ## 🎮 Key Features (핵심 기능)
