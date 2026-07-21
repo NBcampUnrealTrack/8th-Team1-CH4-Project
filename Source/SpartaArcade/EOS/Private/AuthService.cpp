@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "AuthService.h"
@@ -22,19 +22,34 @@ void UAuthService::Login(const FString& AuthToken)
 {
 	if (!Identity.IsValid())
 	{
+		UE_LOG(LogTemp, Error, TEXT("[AuthService] Identity Interface가 유효하지 않아 로그인을 진행할 수 없습니다."));
 		return;
 	}
 
 #if WITH_EDITOR || UE_BUILD_DEBUG
-	FOnlineAccountCredentials Credentials;
-	Credentials.Type = TEXT("developer");
-	Credentials.Id = TEXT("localhost:6300");
-	Credentials.Token = AuthToken;
+	if (!AuthToken.IsEmpty())
+	{
+		FOnlineAccountCredentials Credentials;
+		Credentials.Type = TEXT("developer");
+		Credentials.Id = TEXT("localhost:6300");
+		Credentials.Token = AuthToken;
 
-	Identity->Login(0, Credentials);
-#else
-	Identity->AutoLogin(0);
+		UE_LOG(LogTemp, Log, TEXT("[AuthService] Developer Auth Tool 로그인 시도 (%s)"), *AuthToken);
+		Identity->Login(0, Credentials);
+		return;
+	}
 #endif
+
+	UE_LOG(LogTemp, Log, TEXT("[AuthService] EOS / EOSPlus AutoLogin 시도..."));
+	if (!Identity->AutoLogin(0))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[AuthService] AutoLogin(0) 실패 -> persistentauth 로그인 재시도"));
+		FOnlineAccountCredentials Credentials;
+		Credentials.Type = TEXT("persistentauth");
+		Credentials.Id = TEXT("");
+		Credentials.Token = TEXT("");
+		Identity->Login(0, Credentials);
+	}
 }
 
 void UAuthService::Logout()
@@ -67,11 +82,21 @@ void UAuthService::OnLoginComplete(int32 LocalUserNum, bool bWasSuccessful, cons
 {
 	if (bWasSuccessful)
 	{
-		UE_LOG(LogTemp, Log, TEXT("Login successful for user: %s"), *UserId.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("[AuthService] EOS/EOSPlus 로그인 성공! UserID: %s, DisplayName: %s"), *UserId.ToString(), *GetDisplayName());
 	}
 	else
 	{
-		UE_LOG(LogTemp, Error, TEXT("Login failed: %s"), *Error);
+		UE_LOG(LogTemp, Error, TEXT("[AuthService] EOS 로그인 실패: %s"), *Error);
+		
+		if (Error.Contains(TEXT("persistentauth")) || Error.Contains(TEXT("credentials")) || Error.Contains(TEXT("NOT_FOUND")))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[AuthService] accountportal 에픽 로그인 포털 시도"));
+			FOnlineAccountCredentials Credentials;
+			Credentials.Type = TEXT("accountportal");
+			Credentials.Id = TEXT("");
+			Credentials.Token = TEXT("");
+			Identity->Login(0, Credentials);
+		}
 	}
 }
 
