@@ -3,6 +3,7 @@
 
 #include "Lobby/LobbyPlayerController.h"
 #include "Blueprint/UserWidget.h"
+#include "Kismet/GameplayStatics.h"
 #include "Lobby/LobbyPlayerState.h"
 #include "Lobby/LobbyGameModeBase.h"
 #include "Lobby/LobbyGameStateBase.h"
@@ -19,6 +20,11 @@ void ALobbyPlayerController::BeginPlay()
 	if (IsLocalController() == false)
 	{
 		return;
+	}
+
+	if (IsValid(LevelBGM) == true)
+	{
+		UGameplayStatics::SpawnSound2D(this, LevelBGM);
 	}
 
 	if (IsValid(MainMenuWidgetClass) == true)

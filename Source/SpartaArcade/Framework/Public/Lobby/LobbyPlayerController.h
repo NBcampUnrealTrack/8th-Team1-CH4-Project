@@ -8,6 +8,7 @@
 
 enum class ESpartaArcadeCharacterType : uint8;
 class USpartaMenuFlowWidget;
+class USoundBase;
 UCLASS()
 class SPARTAARCADE_API ALobbyPlayerController : public APlayerController
 {
@@ -38,6 +39,10 @@ public:
     void HandleDestroySessionComplete(FName SessionName, bool bWasSuccessful);
 
 private:
+    // 로비 화면 진입 시 재생할 배경음악
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Sound", Meta = (AllowPrivateAccess))
+    TObjectPtr<USoundBase> LevelBGM;
+
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
     TSubclassOf<USpartaMenuFlowWidget> MainMenuWidgetClass;
 
