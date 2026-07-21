@@ -19,6 +19,11 @@ void ATitlePlayerController::BeginPlay()
 		return;
 	}
 
+	if (IsValid(LevelBGM) == true)
+	{
+		UGameplayStatics::SpawnSound2D(this, LevelBGM);
+	}
+
 	if (IsValid(UIWidgetClass) == true)
 	{
 		UIWidgetInstance = CreateWidget<USpartaMenuFlowWidget>(this, UIWidgetClass);

@@ -11,6 +11,7 @@ class UInputMappingContext;
 class UInputAction;
 class USpartaMenuFlowWidget;
 class ASpartaArcadeCharacter;
+class USoundBase;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -68,6 +69,10 @@ public:
 	UPROPERTY(Transient)
 	int32 CurrentSpectateIndex = -1;
 
+
+	// 인게임 진입 시 재생할 배경음악
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Sound", Meta = (AllowPrivateAccess))
+	TObjectPtr<USoundBase> LevelBGM;
 
 	// 테스트를 위한 HUD UI 위젯 클래스 및 인스턴스
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = PlayerController, Meta = (AllowPrivateAccess))
