@@ -10,6 +10,7 @@ class UStaticMesh;
 class UMaterialInterface;
 class UStaticMeshComponent;
 class UInstancedStaticMeshComponent;
+class UHierarchicalInstancedStaticMeshComponent;
 class UDataTable;
 
 /** 런타임에 칸이 바뀔 때 알림(서버·클라 각자 로컬 브로드캐스트). UI 미니맵 갱신 등 구독용. */

@@ -6,6 +6,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
+#include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -874,7 +875,8 @@ bool ASpartaArcadeMapBuilder::WorldToTile(const FVector& World, int32& OutX, int
     const FVector Local = World - GetActorLocation();
     OutX = FMath::RoundToInt(Local.X / TileSize);
     OutY = FMath::RoundToInt(Local.Y / TileSize);
-    return (OutX >= 0 && OutY >= 0 && OutX < MapGrid.Width && OutY < MapGrid.Height);
+    if (MapGrid.Tiles.Num() == 0) return false;
+    return MapGrid.IsInside(OutX, OutY);
 }
 
 ESpartaArcadeTileType ASpartaArcadeMapBuilder::GetTileTypeAtWorldPosition(const FVector& WorldPos) const

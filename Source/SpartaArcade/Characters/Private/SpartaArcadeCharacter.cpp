@@ -1,4 +1,4 @@
-﻿#include "SpartaArcadeCharacter.h"
+#include "SpartaArcadeCharacter.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -651,17 +651,8 @@ void ASpartaArcadeCharacter::HandleOnEliminated()
 	{
 		MulticastPlayDeathAnim();
 	}
-
-	// 팀전은 Eliminate()가 이미 기절 시간(설정값)에 맞춰 호출되므로 추가 대기 없이 바로 Destroy.
-	// 개인전은 Eliminate()가 즉시 호출되므로, 사망 모션을 잠깐 보여주기 위해 DestroyDelay만큼 대기.
-	float WaitDuration = 0.f;
-	if (ASpartaGameState* SpartaGS = GetWorld()->GetGameState<ASpartaGameState>())
-	{
-		if (SpartaGS->GetGameModeType() == EGameModeType::Solo)
-		{
-			WaitDuration = DestroyDelay;
-		}
-	}
+	
+	float WaitDuration = DestroyDelay;
 
 	// 사망 위치에 아이템 드롭 (서버 전용 컴포넌트 내부에서 Authority 체크)
 	if (IsValid(DeathDropComponent))
@@ -844,10 +835,15 @@ void ASpartaArcadeCharacter::ApplyTileEffectToMovement(float DeltaSeconds)
 		return;
 	}
 
-	// 현재 캐릭터가 서 있는 위치의 지형 타일 타입 및 좌표 조회
+	// Modified: 맵 그리드가 수신되지 않았거나 유효하지 않은 타일 좌표일 경우 조기 리턴
 	FVector CurrentLocation = GetActorLocation();
 	int32 TileX = 0, TileY = 0;
 	bool bValidTile = CachedMapBuilder->WorldToTile(CurrentLocation, TileX, TileY);
+	if (!bValidTile)
+	{
+		return;
+	}
+
 	FIntPoint CurrentTileCoords(TileX, TileY);
 	ESpartaArcadeTileType TileType = CachedMapBuilder->GetTileTypeAtWorldPosition(CurrentLocation);
 	uint8 CurrentTileTypeRaw = static_cast<uint8>(TileType);

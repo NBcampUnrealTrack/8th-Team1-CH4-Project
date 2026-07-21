@@ -135,6 +135,7 @@ private:
     // GE_Shield 미설정 시 수동 태그 제거 함수
     void ClearShieldTags();
 
+    UPROPERTY(Replicated)
     float StunDuration = 3.f;
     float InvincibleDuration = 1.f;
 

@@ -35,12 +35,6 @@ AItemActor::AItemActor()
     FloatSpeed = 2.0f;
     FloatHeight = 15.0f;
     RotationSpeed = 45.0f;
-
-    static ConstructorHelpers::FObjectFinder<USoundBase> SoundF(TEXT("/Engine/EngineSounds/A_Item_Pickup_Cue.A_Item_Pickup_Cue"));
-    if (SoundF.Succeeded())
-    {
-        PickupSound = SoundF.Object;
-    }
 }
 
 void AItemActor::BeginPlay()

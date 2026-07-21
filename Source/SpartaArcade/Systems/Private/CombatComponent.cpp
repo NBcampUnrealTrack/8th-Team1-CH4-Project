@@ -16,6 +16,7 @@ void UCombatComponent::GetLifetimeReplicatedProps(
     TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    DOREPLIFETIME(UCombatComponent, StunDuration);
 }
 
 void UCombatComponent::BeginPlay()
@@ -514,20 +515,52 @@ void UCombatComponent::Heal(int32 Amount)
 
 float UCombatComponent::GetStunProgressPercent() const
 {
-    if (IsValid(CachedASC) && CachedASC->HasMatchingGameplayTag(BomberGameplayTags::State_Stunned))
+    bool bIsStunned = false;
+    if (IsValid(SpartaPlayerState) && SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Stunned)
     {
-        if (GetWorld() && StunDuration > 0.f)
-        {
-            // 1. 서버 측 타이머 핸들 남은 시간 우선 확인
-            float Remaining = GetWorld()->GetTimerManager().GetTimerRemaining(StunTimerHandle);
-            if (Remaining > 0.f)
-            {
-                return FMath::Clamp((StunDuration - Remaining) / StunDuration, 0.f, 1.f);
-            }
+        bIsStunned = true;
+    }
+    else if (IsValid(CachedASC) && CachedASC->HasMatchingGameplayTag(BomberGameplayTags::State_Stunned))
+    {
+        bIsStunned = true;
+    }
 
-            if (ActiveStunEffectHandle.IsValid())
+    if (bIsStunned && GetWorld())
+    {
+        // 1. 서버 측 타이머 핸들 전체시간 대비 남은 시간 비율 우선 확인
+        if (GetWorld()->GetTimerManager().IsTimerActive(StunTimerHandle))
+        {
+            float Duration = GetWorld()->GetTimerManager().GetTimerRate(StunTimerHandle);
+            float Remaining = GetWorld()->GetTimerManager().GetTimerRemaining(StunTimerHandle);
+            if (Duration > 0.f && Remaining >= 0.f)
             {
-                if (const FActiveGameplayEffect* ActiveGE = CachedASC->GetActiveGameplayEffect(ActiveStunEffectHandle))
+                return FMath::Clamp((Duration - Remaining) / Duration, 0.f, 1.f);
+            }
+        }
+
+        // 2. ActiveStunEffectHandle 확인 (서버 또는 로컬 부여 시)
+        if (IsValid(CachedASC) && ActiveStunEffectHandle.IsValid())
+        {
+            if (const FActiveGameplayEffect* ActiveGE = CachedASC->GetActiveGameplayEffect(ActiveStunEffectHandle))
+            {
+                float TimeRemaining = ActiveGE->GetTimeRemaining(GetWorld()->GetTimeSeconds());
+                float TotalDuration = ActiveGE->GetDuration();
+                if (TotalDuration > 0.f && TimeRemaining >= 0.f)
+                {
+                    return FMath::Clamp((TotalDuration - TimeRemaining) / TotalDuration, 0.f, 1.f);
+                }
+            }
+        }
+
+        // 3. 클라이언트 복제용: ASC의 ActiveGameplayEffects 목록에서 Stun 태그를 가진 GE 탐색
+        if (IsValid(CachedASC))
+        {
+            FGameplayEffectQuery Query;
+            Query.OwningTagQuery = FGameplayTagQuery::MakeQuery_MatchTag(BomberGameplayTags::State_Stunned);
+            TArray<FActiveGameplayEffectHandle> ActiveHandles = CachedASC->GetActiveEffects(Query);
+            if (ActiveHandles.Num() > 0)
+            {
+                if (const FActiveGameplayEffect* ActiveGE = CachedASC->GetActiveGameplayEffect(ActiveHandles[0]))
                 {
                     float TimeRemaining = ActiveGE->GetTimeRemaining(GetWorld()->GetTimeSeconds());
                     float TotalDuration = ActiveGE->GetDuration();
@@ -536,6 +569,16 @@ float UCombatComponent::GetStunProgressPercent() const
                         return FMath::Clamp((TotalDuration - TimeRemaining) / TotalDuration, 0.f, 1.f);
                     }
                 }
+            }
+        }
+
+        // 4. 백업 계산 (StunDuration 기반)
+        if (StunDuration > 0.f)
+        {
+            float Remaining = GetWorld()->GetTimerManager().GetTimerRemaining(StunTimerHandle);
+            if (Remaining > 0.f)
+            {
+                return FMath::Clamp((StunDuration - Remaining) / StunDuration, 0.f, 1.f);
             }
         }
     }

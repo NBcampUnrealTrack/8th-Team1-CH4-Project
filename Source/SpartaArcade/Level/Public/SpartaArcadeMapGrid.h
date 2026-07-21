@@ -40,7 +40,8 @@ struct FSpartaArcadeMapGrid
 
     FORCEINLINE bool IsInside(int32 X, int32 Y) const
     {
-        return X >= 0 && X < Width && Y >= 0 && Y < Height;
+        const int32 Index = IndexOf(X, Y);
+        return X >= 0 && X < Width && Y >= 0 && Y < Height && Tiles.IsValidIndex(Index);
     }
 
     FORCEINLINE int32 IndexOf(int32 X, int32 Y) const
