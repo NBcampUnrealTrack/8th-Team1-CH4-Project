@@ -49,7 +49,7 @@ void ASpartaGameMode::Logout(AController* Exiting)
 	if (IsValid(SpartaGameState))
 	{
 		ASpartaPlayerState* ExitingPlayerState = Cast<ASpartaPlayerState>(Exiting->PlayerState);
-		if (IsValid(ExitingPlayerState))
+		if (IsValid(ExitingPlayerState) && ExitingPlayerState->GetCurrentState() != EBomberPlayerState::Eliminated)
 		{
 			HandlePlayerEliminated(ExitingPlayerState, nullptr, EDeathReason::Obstacle);
 		}
