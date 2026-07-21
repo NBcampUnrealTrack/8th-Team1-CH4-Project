@@ -16,6 +16,7 @@ class SPARTAARCADE_API ALobbyPlayerController : public APlayerController
 	
 public:
     virtual void BeginPlay() override;
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
     UFUNCTION(Server, Reliable, WithValidation)
     void ServerSelectCharacter(ESpartaArcadeCharacterType NewType);

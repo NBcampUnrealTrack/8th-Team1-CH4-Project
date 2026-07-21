@@ -87,6 +87,22 @@ void ASpartaArcadePlayerController::BeginPlay()
 	}
 }
 
+void ASpartaArcadePlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (UEOSGameInstanceSubsystem* EOSSubsystem = GameInstance->GetSubsystem<UEOSGameInstanceSubsystem>())
+		{
+			if (USessionService* SessionService = EOSSubsystem->GetSessionService())
+			{
+				SessionService->OnDestroySessionCompleteEvent.RemoveAll(this);
+			}
+		}
+	}
+
+	Super::EndPlay(EndPlayReason);
+}
+
 void ASpartaArcadePlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();

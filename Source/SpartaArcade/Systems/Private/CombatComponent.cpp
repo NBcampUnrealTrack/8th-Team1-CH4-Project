@@ -289,6 +289,8 @@ void UCombatComponent::SetLastAttacker(ASpartaPlayerState* Attacker, EDeathReaso
 void UCombatComponent::Eliminate()
 {
     if (!IsValid(SpartaPlayerState)) return;
+    if (SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Eliminated) return;
+
     GetWorld()->GetTimerManager().ClearTimer(StunTimerHandle);
 
     SpartaPlayerState->SetCurrentState(EBomberPlayerState::Eliminated);
@@ -387,6 +389,7 @@ void UCombatComponent::InstantEliminate()
 {
     if (!GetOwner()->HasAuthority()) return;
     if (!IsValid(SpartaPlayerState)) return;
+    if (SpartaPlayerState->GetCurrentState() == EBomberPlayerState::Eliminated) return;
 
     GetWorld()->GetTimerManager().ClearTimer(StunTimerHandle);
 

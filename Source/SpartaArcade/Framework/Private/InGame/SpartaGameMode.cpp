@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "InGame/SpartaGameMode.h"
@@ -219,7 +219,10 @@ void ASpartaGameMode::DecreaseAliveTeam()
 
 void ASpartaGameMode::CheckGameEnd()
 {
-	if (SpartaGameState && SpartaGameState->GetAliveTeamCount() <= 1)
+	if (!IsValid(SpartaGameState)) return;
+
+	int32 TargetAliveTeamThreshold = (SpartaGameState->GetTotalAliveTeamCount() > 1) ? 1 : 0;
+	if (SpartaGameState->GetAliveTeamCount() <= TargetAliveTeamThreshold)
 	{
 		EndMatch();
 	}
@@ -371,13 +374,7 @@ void ASpartaGameMode::ShowGameResultToEliminatedPlayer(ASpartaPlayerState* DeadP
 		ASpartaArcadePlayerController* PC = Cast<ASpartaArcadePlayerController>(DeadPlayer->GetOwner());
 		if(IsValid(PC))
 		{
-			int32 TeamID = DeadPlayer->GetTeamID();
-			int32 PlayerRank = TeamInfoMap.Contains(TeamID) ? TeamInfoMap[TeamID].Rank : 0;
-			FMatchResultData MatchResultData;
-			MatchResultData.Result = EMatchResult::InProgress;
-			MatchResultData.MyRank = PlayerRank;
-			MatchResultData.PlayerResults = TArray<FMatchPlayerResult>();
-			PC->ClientShowMatchResult(MatchResultData);
+			PC->StartSpectating();
 		}
 	}
 }

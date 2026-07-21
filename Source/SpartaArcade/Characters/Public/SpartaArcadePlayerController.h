@@ -121,8 +121,9 @@ public:
 	void ShowMatchResult();
 protected:
 
-	virtual void SetupInputComponent() override;
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual void SetupInputComponent() override;
 	virtual void Tick(float DeltaSeconds) override;
 
 	// Pawn을 잃으면 엔진이 이 함수 안에서 자동으로 SetViewTarget(this)를 호출해

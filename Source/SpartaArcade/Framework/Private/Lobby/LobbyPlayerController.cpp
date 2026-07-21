@@ -53,6 +53,22 @@ void ALobbyPlayerController::BeginPlay()
 	}
 }
 
+void ALobbyPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (UEOSGameInstanceSubsystem* EOSSubsystem = GameInstance->GetSubsystem<UEOSGameInstanceSubsystem>())
+		{
+			if (USessionService* SessionService = EOSSubsystem->GetSessionService())
+			{
+				SessionService->OnDestroySessionCompleteEvent.RemoveAll(this);
+			}
+		}
+	}
+
+	Super::EndPlay(EndPlayReason);
+}
+
 // 캐릭터 변경 요청을 서버로 전송하는 함수
 void ALobbyPlayerController::ServerSelectCharacter_Implementation(ESpartaArcadeCharacterType NewType)
 {

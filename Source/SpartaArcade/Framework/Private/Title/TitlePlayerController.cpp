@@ -47,6 +47,23 @@ void ATitlePlayerController::BeginPlay()
 	}
 }
 
+void ATitlePlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (UEOSGameInstanceSubsystem* EOSSubsystem = GameInstance->GetSubsystem<UEOSGameInstanceSubsystem>())
+		{
+			if (USessionService* SessionService = EOSSubsystem->GetSessionService())
+			{
+				SessionService->OnStartSessionCompleteEvent.RemoveAll(this);
+				SessionService->OnJoinSessionCompleteEvent.RemoveAll(this);
+			}
+		}
+	}
+
+	Super::EndPlay(EndPlayReason);
+}
+
 void ATitlePlayerController::JoinServer(const FString& InIPAddress, const FString& InPlayerName)
 {
 	FString ConnectionURL = FString::Printf(TEXT("%s?PlayerName=%s"), *InIPAddress, *InPlayerName);

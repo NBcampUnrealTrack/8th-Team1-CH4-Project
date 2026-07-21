@@ -17,6 +17,7 @@ class SPARTAARCADE_API ATitlePlayerController : public APlayerController
 
 public:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	void JoinServer(const FString& InIPAddress, const FString& InPlayerName);
 
