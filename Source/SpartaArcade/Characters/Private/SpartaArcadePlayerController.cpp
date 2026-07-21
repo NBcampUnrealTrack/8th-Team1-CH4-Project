@@ -12,6 +12,7 @@
 #include "InputActionValue.h"
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
+#include "Kismet/GameplayStatics.h"
 #include "Blueprint/UserWidget.h"
 #include "UI/Public/SpartaHUDWidget.h"
 #include "EOSGameInstanceSubsystem.h"
@@ -46,6 +47,11 @@ void ASpartaArcadePlayerController::BeginPlay()
 	FInputModeGameOnly GameOnly;
 	SetInputMode(GameOnly);
 	bShowMouseCursor = false;
+
+	if (IsValid(LevelBGM))
+	{
+		UGameplayStatics::SpawnSound2D(this, LevelBGM);
+	}
 
 	// 테스트용 HUD UI 위젯 생성 및 뷰포트에 추가
 	if(IsValid(HUDUIWidgetClass))
