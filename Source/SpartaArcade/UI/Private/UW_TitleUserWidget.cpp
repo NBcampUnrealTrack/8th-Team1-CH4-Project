@@ -201,20 +201,30 @@ void UUW_TitleUserWidget::OnCreateSessionButtonClicked()
 	if (EOSGameInstanceSubsystem)
 	{
 		FSessionInfo CreationSettings;
-		CreationSettings.SessionName = SessionNameEditableText->GetText().ToString();
-		
-		int32 MaxPlayers = 4;
-		FString MaxPlayersStr = MaxPlayerEditableText->GetText().ToString();
-		if (!MaxPlayersStr.IsEmpty())
+		FString InputRoomName = IsValid(SessionNameEditableText) ? SessionNameEditableText->GetText().ToString() : TEXT("");
+		if (InputRoomName.IsEmpty())
 		{
-			int32 ParsedValue = FCString::Atoi(*MaxPlayersStr);
-			MaxPlayers = FMath::Clamp(ParsedValue, 2, 4);
+			FString DevName = EOSGameInstanceSubsystem->GetAuthService() ? EOSGameInstanceSubsystem->GetAuthService()->GetDisplayName() : TEXT("Player");
+			InputRoomName = DevName.IsEmpty() ? TEXT("Sparta Session") : FString::Printf(TEXT("%s's Room"), *DevName);
+		}
+		CreationSettings.SessionName = InputRoomName;
+
+		int32 MaxPlayers = 4;
+		if (IsValid(MaxPlayerEditableText))
+		{
+			FString MaxPlayersStr = MaxPlayerEditableText->GetText().ToString();
+			if (!MaxPlayersStr.IsEmpty())
+			{
+				int32 ParsedValue = FCString::Atoi(*MaxPlayersStr);
+				MaxPlayers = FMath::Clamp(ParsedValue, 2, 4);
+			}
 		}
 		CreationSettings.MaxPlayers = MaxPlayers;
 
-		CreationSettings.bIsPrivate = (IsPrivateCheckBox->GetCheckedState() == ECheckBoxState::Checked);
-		CreationSettings.GameModeType = SoloModeButton->GetIsEnabled() ? static_cast<int32>(EGameModeType::Team) : static_cast<int32>(EGameModeType::Solo);
+		CreationSettings.bIsPrivate = IsValid(IsPrivateCheckBox) ? (IsPrivateCheckBox->GetCheckedState() == ECheckBoxState::Checked) : false;
+		CreationSettings.GameModeType = (IsValid(SoloModeButton) && SoloModeButton->GetIsEnabled()) ? static_cast<int32>(EGameModeType::Team) : static_cast<int32>(EGameModeType::Solo);
 
+		UE_LOG(LogTemp, Warning, TEXT("[TitleWidget] CreateSession 클릭! 방제: %s, 인원: %d"), *CreationSettings.SessionName, CreationSettings.MaxPlayers);
 		EOSGameInstanceSubsystem->GetSessionService()->CreateSession(CreationSettings);
 	}
 }

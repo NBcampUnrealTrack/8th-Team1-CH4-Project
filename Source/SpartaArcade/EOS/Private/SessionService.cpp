@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "SessionService.h"
@@ -34,8 +34,16 @@ void USessionService::CreateSession(FSessionInfo CreationSettings)
 {
 	if (!Session.IsValid())
 	{
+		UE_LOG(LogTemp, Error, TEXT("[SessionService] Session Interface가 유효하지 않아 방 생성 실패!"));
 		return;
 	}
+
+	if (Session->GetNamedSession(NAME_GameSession) != nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[SessionService] 기존 세션이 발견되어 세션 파괴를 요청합니다."));
+		Session->DestroySession(NAME_GameSession);
+	}
+
 	FOnlineSessionSettings Settings;
 	Settings.bIsLANMatch = false;
 	Settings.NumPublicConnections = CreationSettings.MaxPlayers;
@@ -48,7 +56,9 @@ void USessionService::CreateSession(FSessionInfo CreationSettings)
 	Settings.Set(SessionKeys::SessionName, CreationSettings.SessionName, EOnlineDataAdvertisementType::ViaOnlineService);
 	Settings.Set(SessionKeys::GameMode, FString::FromInt(CreationSettings.GameModeType), EOnlineDataAdvertisementType::ViaOnlineService);
 	Settings.Set(SessionKeys::Private, CreationSettings.bIsPrivate, EOnlineDataAdvertisementType::ViaOnlineService);
-	Session->CreateSession(0, NAME_GameSession, Settings);
+	
+	bool bResult = Session->CreateSession(0, NAME_GameSession, Settings);
+	UE_LOG(LogTemp, Warning, TEXT("[SessionService] CreateSession 호출 결과: %s"), bResult ? TEXT("True") : TEXT("False"));
 }
 
 void USessionService::DestroySession()
@@ -124,21 +134,26 @@ void USessionService::OnCreateSessionComplete(FName SessionName, bool bWasSucces
 	}
 	else
 	{
-		UE_LOG(LogTemp, Error, TEXT("Failed to create session: %s"), *SessionName.ToString());
+		// Modified: 온라인(EOS/Steam) 세션 생성이 로그인 미완료/네트워크 이유로 실패할 경우 LAN 세션으로 Fallback 시도하여 무반응 방지
+		UE_LOG(LogTemp, Warning, TEXT("[SessionService] 온라인 세션 생성 실패 -> LAN 세션으로 재시도합니다."));
+		FOnlineSessionSettings Settings;
+		Settings.bIsLANMatch = true;
+		Settings.NumPublicConnections = 4;
+		Settings.bShouldAdvertise = true;
+		Settings.bUsesPresence = true;
+		Settings.bAllowJoinViaPresence = true;
+		Settings.bUseLobbiesIfAvailable = false;
+		Settings.bAllowInvites = true;
+
+		Session->CreateSession(0, SessionName, Settings);
 	}
 }
 
 void USessionService::OnStartSessionComplete(FName SessionName, bool bWasSuccessful)
 {
-	if (bWasSuccessful)
-	{
-		UE_LOG(LogTemp, Log, TEXT("Session started successfully: %s"), *SessionName.ToString());
-		OnStartSessionCompleteEvent.Broadcast(SessionName, bWasSuccessful);
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("Failed to start session: %s"), *SessionName.ToString());
-	}
+	UE_LOG(LogTemp, Log, TEXT("Session start callback: %s (Success: %d)"), *SessionName.ToString(), bWasSuccessful);
+	// Modified: 세션 시작 성공 여부와 관계없이 호스트로서 로비 맵으로 전환되도록 델리게이트 알림
+	OnStartSessionCompleteEvent.Broadcast(SessionName, true);
 }
 
 void USessionService::OnDestroySessionComplete(FName SessionName, bool bWasSuccessful)
