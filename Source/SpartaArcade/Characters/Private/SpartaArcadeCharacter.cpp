@@ -1,4 +1,4 @@
-#include "SpartaArcadeCharacter.h"
+﻿#include "SpartaArcadeCharacter.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -135,8 +135,6 @@ void ASpartaArcadeCharacter::BeginPlay()
 		DefaultGroundFriction = GetCharacterMovement()->GroundFriction;
 		DefaultBrakingDeceleration = GetCharacterMovement()->BrakingDecelerationWalking;
 	}
-
-	InitializeHUD();
 }
 
 void ASpartaArcadeCharacter::PossessedBy(AController* NewController)
@@ -325,6 +323,12 @@ void ASpartaArcadeCharacter::InitializeHUD()
 				SpartaPlayerState->BroadcastCurrentState();
 				CombatComponent->BroadcastCurrentState();
 			}
+		}
+		else
+		{
+			FTimerDelegate TimerDel;
+			TimerDel.BindUObject(this, &ASpartaArcadeCharacter::InitializeHUD);
+			GetWorldTimerManager().SetTimerForNextTick(TimerDel);
 		}
 	}
 }
@@ -697,6 +701,7 @@ void ASpartaArcadeCharacter::EliminateDestroy()
 	// [버그 수정] Replicated Actor 소멸은 오직 서버(HasAuthority) 권한에서만 진행되어야 네트워크 상에서 정상 제거됨
 	if (HasAuthority())
 	{
+		MulticastNicknameDisable();
 		Destroy();
 	}
 }
@@ -965,5 +970,20 @@ void ASpartaArcadeCharacter::MulticastStopAnim_Implementation(float InBlendOutTi
 	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
 	{
 		AnimInstance->Montage_Stop(0.2f);
+	}
+}
+
+void ASpartaArcadeCharacter::MulticastNicknameDisable_Implementation()
+{
+	if (IsRunningDedicatedServer())
+	{
+		return;
+	}
+	
+	if (IsValid(NicknameWidget))
+	{
+		NicknameWidget->SetVisibility(ESlateVisibility::Hidden);
+		NicknameWidget->RemoveFromParent();
+		NicknameWidget = nullptr;
 	}
 }

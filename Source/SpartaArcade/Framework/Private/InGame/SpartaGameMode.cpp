@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "InGame/SpartaGameMode.h"
@@ -49,7 +49,7 @@ void ASpartaGameMode::Logout(AController* Exiting)
 	if (IsValid(SpartaGameState))
 	{
 		ASpartaPlayerState* ExitingPlayerState = Cast<ASpartaPlayerState>(Exiting->PlayerState);
-		if (IsValid(ExitingPlayerState))
+		if (IsValid(ExitingPlayerState) && ExitingPlayerState->GetCurrentState() != EBomberPlayerState::Eliminated)
 		{
 			HandlePlayerEliminated(ExitingPlayerState, nullptr, EDeathReason::Obstacle);
 		}
@@ -116,11 +116,9 @@ void ASpartaGameMode::StartMatch()
 
 void ASpartaGameMode::EndMatch()
 {
-	Super::EndMatch();
-
 	UE_LOG(LogTemp, Warning, TEXT("Match Ended!"));
 
-	if (!IsValid(SpartaGameState))
+	if (!IsValid(SpartaGameState) || HasMatchEnded())
 	{
 		return;
 	}
@@ -144,6 +142,8 @@ void ASpartaGameMode::EndMatch()
 	}
 	Algo::Reverse(MatchResults);
 	ShowGameResultToAllPlayers();
+
+	Super::EndMatch();
 }
 
 void ASpartaGameMode::HandlePlayerEliminated(ASpartaPlayerState* DeadPlayer, ASpartaPlayerState* KillerPlayerState, EDeathReason Reason)

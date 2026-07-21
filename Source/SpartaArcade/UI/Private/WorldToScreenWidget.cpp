@@ -17,7 +17,6 @@ void UWorldToScreenWidget::NativeTick(const FGeometry& MyGeometry, float InDelta
 
 	if (bIsInitialized && !IsValid(AttachedActor))
 	{
-		UE_LOG(LogTemp, Log, TEXT("Removing World to Screen Widget %s from %s"), *GetName(), *GetNameSafe(AttachedActor))
 		if (IsInViewport())
 		{
 			UE_LOG(LogTemp, Log, TEXT("Removing World to Screen Widget %s from %s"), *GetName(), *GetNameSafe(AttachedActor))

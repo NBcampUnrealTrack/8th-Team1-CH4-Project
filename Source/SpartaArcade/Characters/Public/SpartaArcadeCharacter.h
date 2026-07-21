@@ -292,4 +292,7 @@ private:
 
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastStopAnim(float InBlendOutTime);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastNicknameDisable();
 };
