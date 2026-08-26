@@ -35,7 +35,7 @@ void UWorldToScreenWidget::NativeTick(const FGeometry& MyGeometry, float InDelta
 	const float DistanceSquared = IsValid(LocalPawn) ? FVector::DistSquared(LocalPawn->GetActorLocation(), AttachedActor->GetActorLocation()) : 0.f;
 	if (DistanceSquared > FMath::Square(MaxDistance))
 	{
-		SetRenderTranslation(FVector2D(-10000.f, -10000.f));
+		SetRenderOpacity(0.f);
 		return;
 	}
 
@@ -48,7 +48,12 @@ void UWorldToScreenWidget::NativeTick(const FGeometry& MyGeometry, float InDelta
 	{
 		const FVector2D Size = GetDesiredSize();
 		const FVector2D CenteredTranslation(OutScreenPos.X - Size.X * 0.5f, OutScreenPos.Y);
+		SetRenderOpacity(1.f);
 		SetRenderTranslation(CenteredTranslation);
+	}
+	else
+	{
+		SetRenderOpacity(0.f);
 	}
 }
 
